@@ -726,6 +726,8 @@ function FlyerSection({
         onChange={(t) => setState({ ...state, template: t })}
       />
 
+      {standalone && <FlyerCustomizer state={state} setState={setState} />}
+
       <Flyer state={state} ref={flyerRef} />
 
       <div className="grid grid-cols-2 gap-3">

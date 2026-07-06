@@ -705,7 +705,7 @@ function FlyerSection({
   flyerRef: React.MutableRefObject<HTMLDivElement | null>;
   standalone?: boolean;
 }) {
-  const [busy, setBusy] = useState<null | "png" | "share" | "fb" | "ig">(null);
+  const [busy, setBusy] = useState<null | "png" | "share" | "fb">(null);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {

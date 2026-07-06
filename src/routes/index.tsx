@@ -908,8 +908,8 @@ const Flyer = ({
           {/* QR */}
           <div className="pt-3 flex flex-col items-center gap-2">
             <div
-              className="size-24 rounded-xl p-2 grid place-items-center"
-              style={{ backgroundColor: `${t.ink}0d` }}
+              className="size-24 rounded-xl p-2 grid place-items-center bg-white ring-1"
+              style={{ boxShadow: "0 0 0 1px rgba(0,0,0,0.06)" }}
             >
               {qrDataUrl ? (
                 <img

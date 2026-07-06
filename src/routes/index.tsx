@@ -22,6 +22,15 @@ type TemplateId =
   | "rustic"
   | "clean";
 
+type ShareFormat = "portrait" | "story" | "square";
+type BackgroundId =
+  | "paper"
+  | "cream-grid"
+  | "kraft"
+  | "sunset-gradient"
+  | "sage-linen"
+  | "charcoal-grain";
+
 type TruckState = {
   name: string;
   live: boolean;
@@ -31,8 +40,11 @@ type TruckState = {
   special: string;
   menu: MenuItem[];
   orderUrl: string;
+  qrUrl: string;
   template: TemplateId;
   heroPhoto?: string; // data URL of user-uploaded flyer photo
+  shareFormat: ShareFormat;
+  background: BackgroundId;
 };
 
 const DEFAULT_STATE: TruckState = {
@@ -49,13 +61,100 @@ const DEFAULT_STATE: TruckState = {
     { id: "4", name: "Horchata", price: "5" },
   ],
   orderUrl: "https://order.example.com/nacho-galley",
+  qrUrl: "",
   template: "bright",
+  shareFormat: "portrait",
+  background: "paper",
 };
 
-const APP_VERSION = "0.2.0";
+const APP_VERSION = "0.3.0";
 const STORAGE_KEY = "truckdash.state.v1";
 const VERSION_KEY = "truckdash.version";
-const ONBOARD_KEY = "truckdash.onboarded.v1";
+const ONBOARD_KEY = "truckdash.onboarded.v3";
+
+const SHARE_FORMATS: { id: ShareFormat; label: string; aspect: string; hero: string }[] = [
+  { id: "portrait", label: "Post 4:5", aspect: "aspect-[4/5]", hero: "aspect-[4/3]" },
+  { id: "story", label: "Story 9:16", aspect: "aspect-[9/16]", hero: "aspect-[9/8]" },
+  { id: "square", label: "Square 1:1", aspect: "aspect-square", hero: "aspect-[3/2]" },
+];
+
+// Inlined SVG textures so exports work offline.
+const NOISE_SVG =
+  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.35  0 0 0 0 0.25  0 0 0 0 0.15  0 0 0 0.35 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.35'/></svg>\")";
+const GRID_SVG =
+  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><path d='M24 0H0V24' fill='none' stroke='%231b4332' stroke-opacity='0.08' stroke-width='1'/></svg>\")";
+const LINEN_SVG =
+  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='6' height='6'><path d='M0 3h6M3 0v6' stroke='%231b4332' stroke-opacity='0.09' stroke-width='0.5'/></svg>\")";
+
+type BackgroundPreset = {
+  id: BackgroundId;
+  label: string;
+  swatch: string;
+  css: React.CSSProperties;
+  darkText?: boolean;
+};
+
+const BACKGROUNDS: Record<BackgroundId, BackgroundPreset> = {
+  paper: {
+    id: "paper",
+    label: "Paper",
+    swatch: "#fffdf9",
+    css: { backgroundColor: "#fffdf9" },
+  },
+  "cream-grid": {
+    id: "cream-grid",
+    label: "Cream Grid",
+    swatch: "#f6ecd8",
+    css: { backgroundColor: "#f6ecd8", backgroundImage: GRID_SVG },
+  },
+  kraft: {
+    id: "kraft",
+    label: "Kraft",
+    swatch: "#d9b98a",
+    css: {
+      backgroundColor: "#d9b98a",
+      backgroundImage: NOISE_SVG,
+      backgroundBlendMode: "multiply",
+    },
+  },
+  "sunset-gradient": {
+    id: "sunset-gradient",
+    label: "Sunset",
+    swatch: "#f8a44c",
+    css: {
+      background: "linear-gradient(160deg, #ffd166 0%, #f8a44c 45%, #e85d04 100%)",
+    },
+  },
+  "sage-linen": {
+    id: "sage-linen",
+    label: "Sage Linen",
+    swatch: "#c9d6b9",
+    css: { backgroundColor: "#e6ecdc", backgroundImage: LINEN_SVG },
+  },
+  "charcoal-grain": {
+    id: "charcoal-grain",
+    label: "Charcoal",
+    swatch: "#2a231f",
+    css: {
+      backgroundColor: "#2a231f",
+      backgroundImage: NOISE_SVG,
+      backgroundBlendMode: "screen",
+    },
+    darkText: true,
+  },
+};
+
+function validateUrl(u: string): { ok: boolean; reason?: string } {
+  const trimmed = u.trim();
+  if (!trimmed) return { ok: false, reason: "Empty" };
+  if (!/^https?:\/\//i.test(trimmed)) return { ok: false, reason: "Missing https://" };
+  try {
+    new URL(trimmed);
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: "Not a valid URL" };
+  }
+}
 
 type TemplateTheme = {
   id: TemplateId;

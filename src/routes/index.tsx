@@ -790,27 +790,8 @@ function FlyerSection({
     }
   };
 
-  const shareInstagram = async () => {
-    setBusy("ig");
-    try {
-      const blob = await captureBlob();
-      const caption = buildCaption(state);
-      if (blob && navigator.canShare) {
-        const file = new File([blob], `${slug(state.name)}-flyer.png`, { type: "image/png" });
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], text: caption });
-          return;
-        }
-      }
-      if (blob) triggerDownload(blob, `${slug(state.name)}-flyer.png`);
-      await copyText(caption);
-      setToast("Flyer saved · caption copied — post in Instagram");
-    } catch (e: unknown) {
-      if ((e as { name?: string })?.name !== "AbortError") console.error(e);
-    } finally {
-      setBusy(null);
-    }
-  };
+
+
 
   return (
     <section className="space-y-4">

@@ -780,6 +780,107 @@ function FlyerSection({
   );
 }
 
+function FlyerCustomizer({
+  state,
+  setState,
+}: {
+  state: TruckState;
+  setState: (s: TruckState) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  const onPickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      if (result) setState({ ...state, heroPhoto: result });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  return (
+    <section className="bg-white rounded-3xl border border-brand-green/5 shadow-sm p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-brand-green/60">
+          Flyer content
+        </h4>
+      </div>
+
+      {/* Photo */}
+      <div className="flex items-center gap-3">
+        <div className="size-14 rounded-xl overflow-hidden bg-brand-sand border border-brand-green/10 shrink-0">
+          <img
+            src={state.heroPhoto || flyerFood}
+            alt=""
+            className="size-full object-cover"
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-brand-green">Food photo</p>
+          <p className="text-[11px] text-brand-green/60 truncate">
+            {state.heroPhoto ? "Your photo" : "Default photo"}
+          </p>
+        </div>
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="text-[11px] font-bold uppercase tracking-wider text-brand-orange bg-brand-orange/10 px-3 py-2 rounded-lg"
+          >
+            {state.heroPhoto ? "Replace" : "Upload"}
+          </button>
+          {state.heroPhoto && (
+            <button
+              onClick={() => setState({ ...state, heroPhoto: undefined })}
+              className="text-[11px] font-bold uppercase tracking-wider text-brand-green/60 bg-brand-green/5 px-3 py-2 rounded-lg"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={onPickPhoto}
+        />
+      </div>
+
+      {/* Order-ahead URL */}
+      <label className="block space-y-1">
+        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-green/60">
+          Order Ahead URL
+        </span>
+        <input
+          type="url"
+          inputMode="url"
+          value={state.orderUrl}
+          onChange={(e) => setState({ ...state, orderUrl: e.target.value })}
+          placeholder="https://order.square.site/..."
+          className="w-full bg-brand-sand rounded-xl px-3 py-2.5 text-sm font-medium border border-brand-green/10 focus:outline-none focus:border-brand-orange"
+        />
+        <span className="block text-[11px] text-brand-green/50">
+          Used on the flyer button and QR code.
+        </span>
+      </label>
+
+      {/* QR preview link */}
+      <div className="rounded-xl bg-brand-sand border border-brand-green/10 p-3">
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-green/60">
+          QR code links to
+        </p>
+        <p className="text-xs font-mono text-brand-green break-all mt-0.5">
+          {state.orderUrl || "https://truckdash.app"}
+        </p>
+      </div>
+    </section>
+  );
+}
+
 function TemplatePicker({
   value,
   onChange,

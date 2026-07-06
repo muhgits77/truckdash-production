@@ -955,15 +955,6 @@ function FlyerCustomizer({
         </span>
       </label>
 
-      {/* QR preview link */}
-      <div className="rounded-xl bg-brand-sand border border-brand-green/10 p-3">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-green/60">
-          QR code links to
-        </p>
-        <p className="text-xs font-mono text-brand-green break-all mt-0.5">
-          {state.orderUrl || "https://truckdash.app"}
-        </p>
-      </div>
     </section>
   );
 }

@@ -67,15 +67,71 @@ const DEFAULT_STATE: TruckState = {
   background: "paper",
 };
 
-const APP_VERSION = "0.3.0";
+const APP_VERSION = "0.3.1";
 const STORAGE_KEY = "truckdash.state.v1";
 const VERSION_KEY = "truckdash.version";
 const ONBOARD_KEY = "truckdash.onboarded.v3";
 
-const SHARE_FORMATS: { id: ShareFormat; label: string; aspect: string; hero: string }[] = [
-  { id: "portrait", label: "Post 4:5", aspect: "aspect-[4/5]", hero: "aspect-[16/10]" },
-  { id: "story", label: "Story 9:16", aspect: "aspect-[9/16]", hero: "aspect-[4/3]" },
-  { id: "square", label: "Square 1:1", aspect: "aspect-square", hero: "aspect-[16/9]" },
+const SHARE_FORMATS: {
+  id: ShareFormat;
+  label: string;
+  aspect: string;
+  rows: string;
+  menuLimit: number;
+  bodyClass: string;
+  titleClass: string;
+  locationClass: string;
+  menuItemClass: string;
+  footerClass: string;
+  orderClass: string;
+  qrSize: string;
+  qrNameClass: string;
+}[] = [
+  {
+    id: "portrait",
+    label: "Post 4:5",
+    aspect: "aspect-[4/5]",
+    rows: "34% minmax(0, 1fr) 136px",
+    menuLimit: 4,
+    bodyClass: "px-5 pt-3 pb-1 gap-1.5",
+    titleClass: "text-[1.05rem]",
+    locationClass: "text-sm",
+    menuItemClass: "py-0.5 text-[10px]",
+    footerClass: "px-5 pt-1 pb-4 gap-1.5",
+    orderClass: "py-2 px-4 text-[10px]",
+    qrSize: "size-[4.5rem]",
+    qrNameClass: "text-[10px]",
+  },
+  {
+    id: "story",
+    label: "Story 9:16",
+    aspect: "aspect-[9/16]",
+    rows: "39% minmax(0, 1fr) 158px",
+    menuLimit: 5,
+    bodyClass: "px-5 pt-4 pb-1 gap-2",
+    titleClass: "text-2xl",
+    locationClass: "text-base",
+    menuItemClass: "py-1 text-[11px]",
+    footerClass: "px-5 pt-1 pb-5 gap-2",
+    orderClass: "py-2.5 px-4 text-[11px]",
+    qrSize: "size-[5.25rem]",
+    qrNameClass: "text-[11px]",
+  },
+  {
+    id: "square",
+    label: "Square 1:1",
+    aspect: "aspect-square",
+    rows: "27% minmax(0, 1fr) 118px",
+    menuLimit: 3,
+    bodyClass: "px-4 pt-2 pb-0 gap-1",
+    titleClass: "text-base",
+    locationClass: "text-xs",
+    menuItemClass: "py-0.5 text-[9px]",
+    footerClass: "px-4 pt-0.5 pb-3 gap-1.5",
+    orderClass: "py-1.5 px-3 text-[9px]",
+    qrSize: "size-16",
+    qrNameClass: "text-[10px]",
+  },
 ];
 
 // Inlined SVG textures so exports work offline.
@@ -1209,11 +1265,11 @@ const Flyer = ({
       style={{ backgroundColor: t.frame, boxShadow: `0 20px 40px -20px ${t.frame}55` }}
     >
       <div
-        className="rounded-[1.85rem] overflow-hidden size-full flex flex-col"
-        style={{ ...bg.css, color: paperInk }}
+        className="rounded-[1.85rem] overflow-hidden size-full grid"
+        style={{ ...bg.css, color: paperInk, gridTemplateRows: format.rows }}
       >
         {/* Hero */}
-        <div className={`relative w-full ${format.hero} shrink-0`}>
+        <div className="relative w-full min-h-0 overflow-hidden">
           {t.hero === "photo" ? (
             <img
               src={state.heroPhoto || flyerFood}
@@ -1252,9 +1308,9 @@ const Flyer = ({
         </div>
 
         {/* Body */}
-        <div className="flex-1 min-h-0 flex flex-col px-5 pt-4 pb-5 gap-2.5 text-center">
+        <div className={`min-h-0 overflow-hidden flex flex-col text-center ${format.bodyClass}`}>
           {/* Special */}
-          <div className="space-y-1.5">
+          <div className="space-y-1 shrink-0">
             <div
               className="inline-block px-3 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-[0.2em]"
               style={{ backgroundColor: t.accent, color: t.accentText }}
@@ -1262,7 +1318,7 @@ const Flyer = ({
               Today's Special
             </div>
             <h4
-              className="text-xl leading-tight italic text-balance"
+              className={`leading-tight italic text-balance line-clamp-2 ${format.titleClass}`}
               style={{ fontFamily: t.serif, color: paperInk }}
             >
               {state.special}
@@ -1270,7 +1326,7 @@ const Flyer = ({
           </div>
 
           {/* Location */}
-          <div className="space-y-0">
+          <div className="space-y-0 shrink-0">
             <p
               className="text-[9px] font-bold uppercase tracking-[0.2em]"
               style={{ color: paperInkSoft }}
@@ -1278,7 +1334,7 @@ const Flyer = ({
               Find us at
             </p>
             <p
-              className="text-base leading-tight text-balance"
+              className={`leading-tight text-balance line-clamp-2 ${format.locationClass}`}
               style={{ fontFamily: t.serif, color: paperInk }}
             >
               {state.location}
@@ -1288,23 +1344,23 @@ const Flyer = ({
             </p>
           </div>
 
-          {/* Menu — 5 items, flex-1 to absorb any extra room */}
+          {/* Menu — bounded so it never collides with the QR footer */}
           {state.menu.length > 0 && (
-            <div className="flex-1 min-h-0 flex flex-col justify-center">
-              <ul className="text-left w-full max-w-[18rem] mx-auto">
-                {state.menu.slice(0, 5).map((item, i, arr) => (
+            <div className="flex-1 min-h-0 overflow-hidden flex items-center">
+              <ul className="text-left w-full max-w-[18rem] mx-auto overflow-hidden">
+                {state.menu.slice(0, format.menuLimit).map((item, i, arr) => (
                   <li
                     key={item.id}
-                    className="flex justify-between items-baseline gap-2 py-1"
+                    className={`flex justify-between items-baseline gap-2 ${format.menuItemClass}`}
                     style={{
                       color: paperInk,
                       borderBottom:
                         i < arr.length - 1 ? `1px dashed ${paperDivider}` : "none",
                     }}
                   >
-                    <span className="truncate text-[11px] font-medium">{item.name}</span>
+                    <span className="truncate font-medium">{item.name}</span>
                     <span
-                      className="text-[11px] font-bold shrink-0"
+                      className="font-bold shrink-0"
                       style={{ color: t.accent }}
                     >
                       ${item.price}
@@ -1314,19 +1370,21 @@ const Flyer = ({
               </ul>
             </div>
           )}
+        </div>
 
+        <div className={`shrink-0 flex flex-col ${format.footerClass}`}>
           {/* Order Ahead */}
           <div
-            className="w-full py-2.5 px-4 rounded-xl text-[11px] font-bold uppercase tracking-widest"
+            className={`w-full rounded-xl font-bold uppercase tracking-widest text-center truncate ${format.orderClass}`}
             style={{ backgroundColor: t.accent, color: t.accentText }}
           >
             Order Ahead{domain ? ` · ${domain}` : ""}
           </div>
 
-          {/* QR — always visible, safe bottom padding */}
-          <div className="flex items-center justify-center gap-3 pt-1">
+          {/* QR — protected footer, always fully visible and unobstructed */}
+          <div className="flex min-h-0 flex-1 items-center justify-center gap-3">
             <div
-              className="size-16 rounded-lg p-1 grid place-items-center bg-white shrink-0"
+              className={`rounded-lg p-1.5 grid place-items-center bg-white shrink-0 ${format.qrSize}`}
               style={{ boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}
             >
               {qrDataUrl ? (
@@ -1335,13 +1393,13 @@ const Flyer = ({
                   alt="Scan to order"
                   width={160}
                   height={160}
-                  className="size-full"
+                  className="size-full object-contain"
                 />
               ) : (
                 <span className="text-[9px] text-black/40">QR</span>
               )}
             </div>
-            <div className="text-left">
+            <div className="min-w-0 text-left">
               <p
                 className="text-[8px] font-bold uppercase tracking-[0.2em]"
                 style={{ color: paperInkSoft }}
@@ -1349,7 +1407,7 @@ const Flyer = ({
                 Scan to order
               </p>
               <p
-                className="text-[11px] font-semibold leading-tight"
+                className={`font-semibold leading-tight line-clamp-2 ${format.qrNameClass}`}
                 style={{ fontFamily: t.serif, color: paperInk }}
               >
                 {state.name}

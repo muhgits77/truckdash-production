@@ -1205,35 +1205,33 @@ const Flyer = ({
     <div
       ref={ref}
       id="truckdash-flyer"
-      className="relative overflow-hidden rounded-[2.25rem] p-1.5 shadow-2xl"
+      className={`relative overflow-hidden rounded-[2.25rem] p-1.5 shadow-2xl ${format.aspect}`}
       style={{ backgroundColor: t.frame, boxShadow: `0 20px 40px -20px ${t.frame}55` }}
     >
       <div
-        className="rounded-[1.85rem] overflow-hidden"
-        style={{ backgroundColor: t.paper, color: t.ink }}
+        className="rounded-[1.85rem] overflow-hidden size-full flex flex-col"
+        style={{ ...bg.css, color: paperInk }}
       >
         {/* Hero */}
-        <div className="relative w-full aspect-[4/5]">
+        <div className={`relative w-full ${format.hero} shrink-0`}>
           {t.hero === "photo" ? (
             <img
               src={state.heroPhoto || flyerFood}
               alt=""
-              width={1080}
-              height={1350}
               className="absolute inset-0 size-full object-cover"
               crossOrigin="anonymous"
+              style={{ boxShadow: "inset 0 -20px 40px -20px rgba(0,0,0,0.35)" }}
             />
-          ) : null}
-          {t.hero !== "photo" && (
+          ) : (
             <div
               className="absolute inset-0 grid place-items-center"
               style={{
-                background: `radial-gradient(circle at 30% 20%, ${t.accent}22, transparent 60%), ${t.paper}`,
+                background: `radial-gradient(circle at 30% 20%, ${t.accent}22, transparent 60%)`,
               }}
             >
               <span
                 className="text-[10rem] leading-none font-bold italic"
-                style={{ fontFamily: t.serif, color: t.ink, opacity: 0.08 }}
+                style={{ fontFamily: t.serif, color: paperInk, opacity: 0.12 }}
               >
                 {initials(state.name)}
               </span>
@@ -1241,7 +1239,7 @@ const Flyer = ({
           )}
           <div
             className="absolute top-4 left-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur"
-            style={{ backgroundColor: `${t.paper}ee`, color: t.ink }}
+            style={{ backgroundColor: bg.darkText ? "rgba(20,18,16,0.75)" : `${t.paper}ee`, color: paperInk }}
           >
             <span
               className="size-1.5 rounded-full animate-pulse"
@@ -1254,45 +1252,48 @@ const Flyer = ({
         </div>
 
         {/* Body */}
-        <div className="p-7 text-center space-y-4">
+        <div className="flex-1 p-6 text-center flex flex-col justify-center gap-3 min-h-0">
           <div
-            className="inline-block px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-[0.2em]"
+            className="inline-block mx-auto px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-[0.2em]"
             style={{ backgroundColor: t.accent, color: t.accentText }}
           >
             Today's Special
           </div>
           <h4
-            className="text-3xl leading-tight italic text-balance"
-            style={{ fontFamily: t.serif, color: t.ink }}
+            className="text-2xl leading-tight italic text-balance"
+            style={{ fontFamily: t.serif, color: paperInk }}
           >
             {state.special}
           </h4>
-          <div className="h-px w-12 mx-auto" style={{ backgroundColor: t.divider }} />
+          <div className="h-px w-12 mx-auto" style={{ backgroundColor: paperDivider }} />
 
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             <p
               className="text-[10px] font-bold uppercase tracking-[0.2em]"
-              style={{ color: t.inkSoft }}
+              style={{ color: paperInkSoft }}
             >
               Find us at
             </p>
-            <p className="text-xl text-balance" style={{ fontFamily: t.serif, color: t.ink }}>
+            <p
+              className="text-lg text-balance"
+              style={{ fontFamily: t.serif, color: paperInk }}
+            >
               {state.location}
             </p>
-            <p className="text-sm font-medium" style={{ color: t.inkSoft }}>
+            <p className="text-xs font-medium" style={{ color: paperInkSoft }}>
               {state.hoursStart} — {state.hoursEnd}
             </p>
           </div>
 
-          {state.menu.length > 0 && (
-            <ul className="text-left max-w-[16rem] mx-auto pt-2 space-y-1.5">
-              {state.menu.slice(0, 4).map((item) => (
+          {state.menu.length > 0 && state.shareFormat !== "square" && (
+            <ul className="text-left max-w-[16rem] mx-auto space-y-1">
+              {state.menu.slice(0, state.shareFormat === "story" ? 4 : 3).map((item) => (
                 <li
                   key={item.id}
-                  className="flex justify-between text-sm pb-1.5"
+                  className="flex justify-between text-xs pb-1"
                   style={{
-                    color: t.ink,
-                    borderBottom: `1px dashed ${t.divider}`,
+                    color: paperInk,
+                    borderBottom: `1px dashed ${paperDivider}`,
                   }}
                 >
                   <span className="truncate pr-2 font-medium">{item.name}</span>
@@ -1305,17 +1306,17 @@ const Flyer = ({
           )}
 
           {/* Order Ahead */}
-          <div className="pt-2">
+          <div>
             <div
-              className="w-full py-3.5 px-5 rounded-2xl text-sm font-bold uppercase tracking-widest text-center"
+              className="w-full py-3 px-5 rounded-2xl text-xs font-bold uppercase tracking-widest text-center"
               style={{ backgroundColor: t.accent, color: t.accentText }}
             >
               Order Ahead
             </div>
             {domain && (
               <p
-                className="text-[10px] mt-1.5 font-semibold tracking-widest uppercase"
-                style={{ color: t.inkSoft }}
+                className="text-[10px] mt-1 font-semibold tracking-widest uppercase"
+                style={{ color: paperInkSoft }}
               >
                 {domain}
               </p>
@@ -1323,9 +1324,9 @@ const Flyer = ({
           </div>
 
           {/* QR */}
-          <div className="pt-3 flex flex-col items-center gap-2">
+          <div className="flex flex-col items-center gap-1">
             <div
-              className="size-24 rounded-xl p-2 grid place-items-center bg-white ring-1"
+              className="size-20 rounded-xl p-1.5 grid place-items-center bg-white"
               style={{ boxShadow: "0 0 0 1px rgba(0,0,0,0.06)" }}
             >
               {qrDataUrl ? (
@@ -1337,21 +1338,19 @@ const Flyer = ({
                   className="size-full"
                 />
               ) : (
-                <span className="text-[9px]" style={{ color: t.inkSoft }}>
-                  QR
-                </span>
+                <span className="text-[9px] text-black/40">QR</span>
               )}
             </div>
             <p
               className="text-[9px] font-bold uppercase tracking-[0.2em]"
-              style={{ color: t.inkSoft }}
+              style={{ color: paperInkSoft }}
             >
               Scan · Order · Follow
             </p>
           </div>
 
-          <div className="pt-2 border-t" style={{ borderColor: t.divider }}>
-            <p className="text-lg" style={{ fontFamily: t.serif, color: t.ink }}>
+          <div className="pt-1 border-t" style={{ borderColor: paperDivider }}>
+            <p className="text-base" style={{ fontFamily: t.serif, color: paperInk }}>
               {state.name}
             </p>
           </div>

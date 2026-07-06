@@ -13,7 +13,14 @@ export const Route = createFileRoute("/")({
 
 type MenuItem = { id: string; name: string; price: string };
 
-type TemplateId = "bright" | "bbq" | "moody" | "minimal";
+type TemplateId =
+  | "bright"
+  | "bbq"
+  | "moody"
+  | "minimal"
+  | "boldbbq"
+  | "rustic"
+  | "clean";
 
 type TruckState = {
   name: string;
@@ -25,6 +32,7 @@ type TruckState = {
   menu: MenuItem[];
   orderUrl: string;
   template: TemplateId;
+  heroPhoto?: string; // data URL of user-uploaded flyer photo
 };
 
 const DEFAULT_STATE: TruckState = {
@@ -44,7 +52,10 @@ const DEFAULT_STATE: TruckState = {
   template: "bright",
 };
 
+const APP_VERSION = "0.2.0";
 const STORAGE_KEY = "truckdash.state.v1";
+const VERSION_KEY = "truckdash.version";
+const ONBOARD_KEY = "truckdash.onboarded.v1";
 
 type TemplateTheme = {
   id: TemplateId;

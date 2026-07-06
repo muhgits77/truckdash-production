@@ -199,8 +199,32 @@ function Dashboard() {
   const [state, setState] = useTruckState();
   const [tab, setTab] = useState<"home" | "menu" | "flyer">("home");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showOnboard, setShowOnboard] = useState(false);
   const flyerRef = useRef<HTMLDivElement | null>(null);
   const menuHighlights = useMemo(() => state.menu.slice(0, 3), [state.menu]);
+
+  // Force-reload on version bump so users always get latest assets.
+  useEffect(() => {
+    try {
+      const prev = localStorage.getItem(VERSION_KEY);
+      if (prev && prev !== APP_VERSION) {
+        localStorage.setItem(VERSION_KEY, APP_VERSION);
+        window.location.reload();
+        return;
+      }
+      if (!prev) localStorage.setItem(VERSION_KEY, APP_VERSION);
+    } catch {}
+    try {
+      if (!localStorage.getItem(ONBOARD_KEY)) setShowOnboard(true);
+    } catch {}
+  }, []);
+
+  const dismissOnboard = () => {
+    try {
+      localStorage.setItem(ONBOARD_KEY, "1");
+    } catch {}
+    setShowOnboard(false);
+  };
 
   return (
     <div className="min-h-screen bg-brand-sand text-brand-green pb-28">
@@ -226,6 +250,12 @@ function Dashboard() {
         {tab === "flyer" && (
           <FlyerSection state={state} setState={setState} flyerRef={flyerRef} standalone />
         )}
+
+        <footer className="pt-6 pb-2 text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-green/40">
+            TruckDash · v{APP_VERSION}
+          </p>
+        </footer>
       </main>
 
       <BottomNav tab={tab} setTab={setTab} />
@@ -233,6 +263,70 @@ function Dashboard() {
       {settingsOpen && (
         <SettingsSheet state={state} setState={setState} onClose={() => setSettingsOpen(false)} />
       )}
+
+      {showOnboard && (
+        <OnboardingModal
+          onDone={() => {
+            dismissOnboard();
+            setTab("flyer");
+          }}
+          onSkip={dismissOnboard}
+        />
+      )}
+    </div>
+  );
+}
+
+function OnboardingModal({ onDone, onSkip }: { onDone: () => void; onSkip: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <button
+        onClick={onSkip}
+        aria-label="Close"
+        className="absolute inset-0 bg-brand-green/50 backdrop-blur-sm"
+      />
+      <div className="relative w-full max-w-md bg-brand-sand rounded-t-[2rem] sm:rounded-3xl p-6 space-y-4 shadow-2xl">
+        <div className="flex items-center gap-2">
+          <span className="size-2 rounded-full bg-brand-orange" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-orange">
+            Welcome to TruckDash
+          </span>
+        </div>
+        <h2 className="font-display text-2xl leading-tight">
+          Your daily flyer, ready in one tap.
+        </h2>
+        <p className="text-sm text-brand-green/70 leading-relaxed">
+          Head to the <span className="font-semibold text-brand-green">Flyer</span> tab to design
+          a beautiful post for today.
+        </p>
+        <ul className="space-y-2.5 text-sm">
+          {[
+            ["🎨", "7 flyer templates — Bold BBQ, Rustic Wood, Clean Minimal & more"],
+            ["📷", "Use your own food photo from your phone"],
+            ["🔗", "Real QR code linked to your Order Ahead URL"],
+            ["📤", "Download PNG or share to Instagram & Facebook"],
+          ].map(([icon, text]) => (
+            <li key={text} className="flex gap-3 items-start">
+              <span className="text-lg leading-none pt-0.5">{icon}</span>
+              <span className="text-brand-green/80">{text}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="grid grid-cols-2 gap-3 pt-2">
+          <button
+            onClick={onSkip}
+            className="py-3.5 rounded-2xl text-sm font-bold text-brand-green/70 bg-white border border-brand-green/10"
+          >
+            Explore first
+          </button>
+          <button
+            onClick={onDone}
+            className="py-3.5 rounded-2xl text-sm font-bold text-white bg-brand-orange shadow-lg shadow-brand-orange/25"
+          >
+            Open Flyer Studio
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

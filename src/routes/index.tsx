@@ -195,12 +195,21 @@ function Header({
 }) {
   return (
     <header className="sticky top-0 z-40 bg-brand-sand/85 backdrop-blur-md border-b border-brand-green/5 px-4 py-3 grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
-      <div className="min-w-0 pl-2">
-        <h1 className="font-display text-2xl font-bold tracking-tight truncate">{state.name}</h1>
-        <p className="text-[10px] font-semibold text-brand-green/60 uppercase tracking-[0.2em] mt-0.5">
+      <div className="min-w-0 pl-1">
+        <div className="flex items-center gap-1.5">
+          <span className="size-1.5 rounded-full bg-brand-orange" />
+          <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-brand-orange">
+            TruckDash
+          </span>
+        </div>
+        <h1 className="font-display text-xl font-bold tracking-tight truncate leading-tight">
+          {state.name}
+        </h1>
+        <p className="text-[9px] font-semibold text-brand-green/60 uppercase tracking-[0.2em]">
           {state.live ? "Active Session" : "Off the clock"}
         </p>
       </div>
+      <p className="hidden">{/* spacer */}</p>
       <button
         onClick={() => setState({ ...state, live: !state.live })}
         aria-pressed={state.live}

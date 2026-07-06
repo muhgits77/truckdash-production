@@ -67,15 +67,71 @@ const DEFAULT_STATE: TruckState = {
   background: "paper",
 };
 
-const APP_VERSION = "0.3.0";
+const APP_VERSION = "0.3.1";
 const STORAGE_KEY = "truckdash.state.v1";
 const VERSION_KEY = "truckdash.version";
 const ONBOARD_KEY = "truckdash.onboarded.v3";
 
-const SHARE_FORMATS: { id: ShareFormat; label: string; aspect: string; hero: string }[] = [
-  { id: "portrait", label: "Post 4:5", aspect: "aspect-[4/5]", hero: "aspect-[16/10]" },
-  { id: "story", label: "Story 9:16", aspect: "aspect-[9/16]", hero: "aspect-[4/3]" },
-  { id: "square", label: "Square 1:1", aspect: "aspect-square", hero: "aspect-[16/9]" },
+const SHARE_FORMATS: {
+  id: ShareFormat;
+  label: string;
+  aspect: string;
+  rows: string;
+  menuLimit: number;
+  bodyClass: string;
+  titleClass: string;
+  locationClass: string;
+  menuItemClass: string;
+  footerClass: string;
+  orderClass: string;
+  qrSize: string;
+  qrNameClass: string;
+}[] = [
+  {
+    id: "portrait",
+    label: "Post 4:5",
+    aspect: "aspect-[4/5]",
+    rows: "34% minmax(0, 1fr) 136px",
+    menuLimit: 4,
+    bodyClass: "px-5 pt-3 pb-1 gap-1.5",
+    titleClass: "text-[1.05rem]",
+    locationClass: "text-sm",
+    menuItemClass: "py-0.5 text-[10px]",
+    footerClass: "px-5 pt-1 pb-4 gap-1.5",
+    orderClass: "py-2 px-4 text-[10px]",
+    qrSize: "size-[4.5rem]",
+    qrNameClass: "text-[10px]",
+  },
+  {
+    id: "story",
+    label: "Story 9:16",
+    aspect: "aspect-[9/16]",
+    rows: "39% minmax(0, 1fr) 158px",
+    menuLimit: 5,
+    bodyClass: "px-5 pt-4 pb-1 gap-2",
+    titleClass: "text-2xl",
+    locationClass: "text-base",
+    menuItemClass: "py-1 text-[11px]",
+    footerClass: "px-5 pt-1 pb-5 gap-2",
+    orderClass: "py-2.5 px-4 text-[11px]",
+    qrSize: "size-[5.25rem]",
+    qrNameClass: "text-[11px]",
+  },
+  {
+    id: "square",
+    label: "Square 1:1",
+    aspect: "aspect-square",
+    rows: "27% minmax(0, 1fr) 118px",
+    menuLimit: 3,
+    bodyClass: "px-4 pt-2 pb-0 gap-1",
+    titleClass: "text-base",
+    locationClass: "text-xs",
+    menuItemClass: "py-0.5 text-[9px]",
+    footerClass: "px-4 pt-0.5 pb-3 gap-1.5",
+    orderClass: "py-1.5 px-3 text-[9px]",
+    qrSize: "size-16",
+    qrNameClass: "text-[10px]",
+  },
 ];
 
 // Inlined SVG textures so exports work offline.

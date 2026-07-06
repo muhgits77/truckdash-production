@@ -73,9 +73,9 @@ const VERSION_KEY = "truckdash.version";
 const ONBOARD_KEY = "truckdash.onboarded.v3";
 
 const SHARE_FORMATS: { id: ShareFormat; label: string; aspect: string; hero: string }[] = [
-  { id: "portrait", label: "Post 4:5", aspect: "aspect-[4/5]", hero: "aspect-[4/3]" },
-  { id: "story", label: "Story 9:16", aspect: "aspect-[9/16]", hero: "aspect-[9/8]" },
-  { id: "square", label: "Square 1:1", aspect: "aspect-square", hero: "aspect-[3/2]" },
+  { id: "portrait", label: "Post 4:5", aspect: "aspect-[4/5]", hero: "aspect-[16/10]" },
+  { id: "story", label: "Story 9:16", aspect: "aspect-[9/16]", hero: "aspect-[4/3]" },
+  { id: "square", label: "Square 1:1", aspect: "aspect-square", hero: "aspect-[16/9]" },
 ];
 
 // Inlined SVG textures so exports work offline.

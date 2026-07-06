@@ -765,7 +765,7 @@ const Flyer = ({
       margin: 0,
       scale: 8,
       errorCorrectionLevel: "M",
-      color: { dark: t.ink, light: "#00000000" },
+      color: { dark: "#000000", light: "#ffffff" },
     })
       .then((url) => {
         if (!cancelled) setQrDataUrl(url);

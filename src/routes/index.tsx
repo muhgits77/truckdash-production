@@ -1023,6 +1023,143 @@ function ShareChip({
   );
 }
 
+function FormatPicker({
+  value,
+  onChange,
+}: {
+  value: ShareFormat;
+  onChange: (f: ShareFormat) => void;
+}) {
+  return (
+    <div className="flex gap-2">
+      {SHARE_FORMATS.map((f) => {
+        const active = value === f.id;
+        return (
+          <button
+            key={f.id}
+            onClick={() => onChange(f.id)}
+            className={`flex-1 py-2 rounded-full border text-[11px] font-bold uppercase tracking-wider transition ${
+              active
+                ? "bg-brand-green text-white border-brand-green shadow-md shadow-brand-green/20"
+                : "bg-white text-brand-green/70 border-brand-green/10"
+            }`}
+          >
+            {f.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function BackgroundPicker({
+  value,
+  onChange,
+}: {
+  value: BackgroundId;
+  onChange: (b: BackgroundId) => void;
+}) {
+  return (
+    <div className="-mx-4 px-4 overflow-x-auto no-scrollbar">
+      <div className="flex gap-2 pb-1 items-center">
+        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-green/50 shrink-0 pr-1">
+          Background
+        </span>
+        {Object.values(BACKGROUNDS).map((b) => {
+          const active = value === b.id;
+          return (
+            <button
+              key={b.id}
+              onClick={() => onChange(b.id)}
+              aria-label={b.label}
+              title={b.label}
+              className={`shrink-0 size-9 rounded-full border-2 transition ${
+                active ? "border-brand-orange scale-110" : "border-white"
+              }`}
+              style={{
+                ...b.css,
+                boxShadow: active
+                  ? "0 0 0 2px rgba(232,93,4,0.15)"
+                  : "0 0 0 1px rgba(27,67,50,0.08)",
+              }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function QrPreviewCard({
+  state,
+  setState,
+}: {
+  state: TruckState;
+  setState: (s: TruckState) => void;
+}) {
+  const effective = (state.qrUrl.trim() || state.orderUrl.trim() || "https://truckdash.app").trim();
+  const validation = validateUrl(effective);
+  const [mini, setMini] = useState<string>("");
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!validation.ok) {
+      setMini("");
+      return;
+    }
+    QRCode.toDataURL(effective, {
+      margin: 0,
+      scale: 4,
+      errorCorrectionLevel: "M",
+      color: { dark: "#000000", light: "#ffffff" },
+    })
+      .then((url) => {
+        if (!cancelled) setMini(url);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [effective, validation.ok]);
+
+  return (
+    <section className="bg-white rounded-3xl border border-brand-green/5 shadow-sm p-4 flex gap-4 items-center">
+      <div className="size-20 rounded-xl bg-white ring-1 ring-brand-green/10 p-1.5 grid place-items-center shrink-0">
+        {mini ? (
+          <img src={mini} alt="QR preview" className="size-full" />
+        ) : (
+          <span className="text-[9px] text-brand-green/40">QR</span>
+        )}
+      </div>
+      <div className="flex-1 min-w-0 space-y-1.5">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-green/60">
+            QR encodes
+          </span>
+          {validation.ok ? (
+            <span className="text-[10px] font-bold uppercase tracking-wider text-brand-green bg-brand-green/10 px-2 py-0.5 rounded-full">
+              Valid
+            </span>
+          ) : (
+            <span className="text-[10px] font-bold uppercase tracking-wider text-brand-orange bg-brand-orange/10 px-2 py-0.5 rounded-full">
+              {validation.reason}
+            </span>
+          )}
+        </div>
+        <input
+          type="url"
+          inputMode="url"
+          value={state.qrUrl}
+          onChange={(e) => setState({ ...state, qrUrl: e.target.value })}
+          placeholder="Same as Order Ahead URL"
+          className="w-full bg-brand-sand rounded-lg px-2.5 py-2 text-xs font-mono border border-brand-green/10 focus:outline-none focus:border-brand-orange"
+        />
+        <p className="text-[10px] text-brand-green/50 truncate">→ {effective}</p>
+      </div>
+    </section>
+  );
+}
+
 const Flyer = ({
   state,
   ref,

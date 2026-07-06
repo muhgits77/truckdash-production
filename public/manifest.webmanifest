@@ -1,0 +1,14 @@
+{
+  "name": "TruckPost — Food Truck Dashboard",
+  "short_name": "TruckPost",
+  "description": "Update location, hours, menu and share a beautiful daily flyer.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8f9fa",
+  "theme_color": "#e85d04",
+  "icons": [
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

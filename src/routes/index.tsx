@@ -13,7 +13,14 @@ export const Route = createFileRoute("/")({
 
 type MenuItem = { id: string; name: string; price: string };
 
-type TemplateId = "bright" | "bbq" | "moody" | "minimal";
+type TemplateId =
+  | "bright"
+  | "bbq"
+  | "moody"
+  | "minimal"
+  | "boldbbq"
+  | "rustic"
+  | "clean";
 
 type TruckState = {
   name: string;
@@ -25,6 +32,7 @@ type TruckState = {
   menu: MenuItem[];
   orderUrl: string;
   template: TemplateId;
+  heroPhoto?: string; // data URL of user-uploaded flyer photo
 };
 
 const DEFAULT_STATE: TruckState = {
@@ -44,7 +52,10 @@ const DEFAULT_STATE: TruckState = {
   template: "bright",
 };
 
+const APP_VERSION = "0.2.0";
 const STORAGE_KEY = "truckdash.state.v1";
+const VERSION_KEY = "truckdash.version";
+const ONBOARD_KEY = "truckdash.onboarded.v1";
 
 type TemplateTheme = {
   id: TemplateId;
@@ -118,6 +129,48 @@ const TEMPLATES: Record<TemplateId, TemplateTheme> = {
     hero: "solid",
     swatch: ["#ffffff", "#111111", "#1b4332"],
   },
+  boldbbq: {
+    id: "boldbbq",
+    label: "Bold BBQ",
+    frame: "#1a0a06",
+    paper: "#ffd93d",
+    ink: "#1a0a06",
+    inkSoft: "rgba(26,10,6,0.7)",
+    accent: "#c9280f",
+    accentText: "#fff8d1",
+    divider: "rgba(26,10,6,0.25)",
+    serif: '"Fraunces", Georgia, serif',
+    hero: "photo",
+    swatch: ["#c9280f", "#ffd93d", "#1a0a06"],
+  },
+  rustic: {
+    id: "rustic",
+    label: "Rustic Wood",
+    frame: "#4a2c1a",
+    paper: "#eadcc0",
+    ink: "#3a1d0e",
+    inkSoft: "rgba(58,29,14,0.65)",
+    accent: "#6b8e23",
+    accentText: "#fdfaf2",
+    divider: "rgba(58,29,14,0.2)",
+    serif: '"Fraunces", Georgia, serif',
+    hero: "photo",
+    swatch: ["#4a2c1a", "#6b8e23", "#eadcc0"],
+  },
+  clean: {
+    id: "clean",
+    label: "Clean Minimal",
+    frame: "#f5f5f0",
+    paper: "#ffffff",
+    ink: "#1a1a1a",
+    inkSoft: "rgba(26,26,26,0.5)",
+    accent: "#ff6b35",
+    accentText: "#ffffff",
+    divider: "rgba(26,26,26,0.08)",
+    serif: '"Fraunces", Georgia, serif',
+    hero: "gradient",
+    swatch: ["#ffffff", "#ff6b35", "#1a1a1a"],
+  },
 };
 
 function useTruckState() {
@@ -146,8 +199,32 @@ function Dashboard() {
   const [state, setState] = useTruckState();
   const [tab, setTab] = useState<"home" | "menu" | "flyer">("home");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showOnboard, setShowOnboard] = useState(false);
   const flyerRef = useRef<HTMLDivElement | null>(null);
   const menuHighlights = useMemo(() => state.menu.slice(0, 3), [state.menu]);
+
+  // Force-reload on version bump so users always get latest assets.
+  useEffect(() => {
+    try {
+      const prev = localStorage.getItem(VERSION_KEY);
+      if (prev && prev !== APP_VERSION) {
+        localStorage.setItem(VERSION_KEY, APP_VERSION);
+        window.location.reload();
+        return;
+      }
+      if (!prev) localStorage.setItem(VERSION_KEY, APP_VERSION);
+    } catch {}
+    try {
+      if (!localStorage.getItem(ONBOARD_KEY)) setShowOnboard(true);
+    } catch {}
+  }, []);
+
+  const dismissOnboard = () => {
+    try {
+      localStorage.setItem(ONBOARD_KEY, "1");
+    } catch {}
+    setShowOnboard(false);
+  };
 
   return (
     <div className="min-h-screen bg-brand-sand text-brand-green pb-28">
@@ -173,6 +250,12 @@ function Dashboard() {
         {tab === "flyer" && (
           <FlyerSection state={state} setState={setState} flyerRef={flyerRef} standalone />
         )}
+
+        <footer className="pt-6 pb-2 text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-green/40">
+            TruckDash · v{APP_VERSION}
+          </p>
+        </footer>
       </main>
 
       <BottomNav tab={tab} setTab={setTab} />
@@ -180,6 +263,70 @@ function Dashboard() {
       {settingsOpen && (
         <SettingsSheet state={state} setState={setState} onClose={() => setSettingsOpen(false)} />
       )}
+
+      {showOnboard && (
+        <OnboardingModal
+          onDone={() => {
+            dismissOnboard();
+            setTab("flyer");
+          }}
+          onSkip={dismissOnboard}
+        />
+      )}
+    </div>
+  );
+}
+
+function OnboardingModal({ onDone, onSkip }: { onDone: () => void; onSkip: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <button
+        onClick={onSkip}
+        aria-label="Close"
+        className="absolute inset-0 bg-brand-green/50 backdrop-blur-sm"
+      />
+      <div className="relative w-full max-w-md bg-brand-sand rounded-t-[2rem] sm:rounded-3xl p-6 space-y-4 shadow-2xl">
+        <div className="flex items-center gap-2">
+          <span className="size-2 rounded-full bg-brand-orange" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-orange">
+            Welcome to TruckDash
+          </span>
+        </div>
+        <h2 className="font-display text-2xl leading-tight">
+          Your daily flyer, ready in one tap.
+        </h2>
+        <p className="text-sm text-brand-green/70 leading-relaxed">
+          Head to the <span className="font-semibold text-brand-green">Flyer</span> tab to design
+          a beautiful post for today.
+        </p>
+        <ul className="space-y-2.5 text-sm">
+          {[
+            ["🎨", "7 flyer templates — Bold BBQ, Rustic Wood, Clean Minimal & more"],
+            ["📷", "Use your own food photo from your phone"],
+            ["🔗", "Real QR code linked to your Order Ahead URL"],
+            ["📤", "Download PNG or share to Instagram & Facebook"],
+          ].map(([icon, text]) => (
+            <li key={text} className="flex gap-3 items-start">
+              <span className="text-lg leading-none pt-0.5">{icon}</span>
+              <span className="text-brand-green/80">{text}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="grid grid-cols-2 gap-3 pt-2">
+          <button
+            onClick={onSkip}
+            className="py-3.5 rounded-2xl text-sm font-bold text-brand-green/70 bg-white border border-brand-green/10"
+          >
+            Explore first
+          </button>
+          <button
+            onClick={onDone}
+            className="py-3.5 rounded-2xl text-sm font-bold text-white bg-brand-orange shadow-lg shadow-brand-orange/25"
+          >
+            Open Flyer Studio
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -579,6 +726,8 @@ function FlyerSection({
         onChange={(t) => setState({ ...state, template: t })}
       />
 
+      {standalone && <FlyerCustomizer state={state} setState={setState} />}
+
       <Flyer state={state} ref={flyerRef} />
 
       <div className="grid grid-cols-2 gap-3">
@@ -631,6 +780,107 @@ function FlyerSection({
   );
 }
 
+function FlyerCustomizer({
+  state,
+  setState,
+}: {
+  state: TruckState;
+  setState: (s: TruckState) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  const onPickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      if (result) setState({ ...state, heroPhoto: result });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  return (
+    <section className="bg-white rounded-3xl border border-brand-green/5 shadow-sm p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-brand-green/60">
+          Flyer content
+        </h4>
+      </div>
+
+      {/* Photo */}
+      <div className="flex items-center gap-3">
+        <div className="size-14 rounded-xl overflow-hidden bg-brand-sand border border-brand-green/10 shrink-0">
+          <img
+            src={state.heroPhoto || flyerFood}
+            alt=""
+            className="size-full object-cover"
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-brand-green">Food photo</p>
+          <p className="text-[11px] text-brand-green/60 truncate">
+            {state.heroPhoto ? "Your photo" : "Default photo"}
+          </p>
+        </div>
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="text-[11px] font-bold uppercase tracking-wider text-brand-orange bg-brand-orange/10 px-3 py-2 rounded-lg"
+          >
+            {state.heroPhoto ? "Replace" : "Upload"}
+          </button>
+          {state.heroPhoto && (
+            <button
+              onClick={() => setState({ ...state, heroPhoto: undefined })}
+              className="text-[11px] font-bold uppercase tracking-wider text-brand-green/60 bg-brand-green/5 px-3 py-2 rounded-lg"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={onPickPhoto}
+        />
+      </div>
+
+      {/* Order-ahead URL */}
+      <label className="block space-y-1">
+        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-green/60">
+          Order Ahead URL
+        </span>
+        <input
+          type="url"
+          inputMode="url"
+          value={state.orderUrl}
+          onChange={(e) => setState({ ...state, orderUrl: e.target.value })}
+          placeholder="https://order.square.site/..."
+          className="w-full bg-brand-sand rounded-xl px-3 py-2.5 text-sm font-medium border border-brand-green/10 focus:outline-none focus:border-brand-orange"
+        />
+        <span className="block text-[11px] text-brand-green/50">
+          Used on the flyer button and QR code.
+        </span>
+      </label>
+
+      {/* QR preview link */}
+      <div className="rounded-xl bg-brand-sand border border-brand-green/10 p-3">
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-green/60">
+          QR code links to
+        </p>
+        <p className="text-xs font-mono text-brand-green break-all mt-0.5">
+          {state.orderUrl || "https://truckdash.app"}
+        </p>
+      </div>
+    </section>
+  );
+}
+
 function TemplatePicker({
   value,
   onChange,
@@ -638,7 +888,7 @@ function TemplatePicker({
   value: TemplateId;
   onChange: (t: TemplateId) => void;
 }) {
-  const ids: TemplateId[] = ["bright", "bbq", "moody", "minimal"];
+  const ids: TemplateId[] = ["bright", "boldbbq", "rustic", "clean", "bbq", "moody", "minimal"];
   return (
     <div className="-mx-4 px-4 overflow-x-auto no-scrollbar">
       <div className="flex gap-2.5 pb-1">
@@ -712,7 +962,7 @@ const Flyer = ({
       margin: 0,
       scale: 8,
       errorCorrectionLevel: "M",
-      color: { dark: t.ink, light: "#00000000" },
+      color: { dark: "#000000", light: "#ffffff" },
     })
       .then((url) => {
         if (!cancelled) setQrDataUrl(url);
@@ -746,14 +996,15 @@ const Flyer = ({
         <div className="relative w-full aspect-[4/5]">
           {t.hero === "photo" ? (
             <img
-              src={flyerFood}
+              src={state.heroPhoto || flyerFood}
               alt=""
               width={1080}
               height={1350}
               className="absolute inset-0 size-full object-cover"
               crossOrigin="anonymous"
             />
-          ) : (
+          ) : null}
+          {t.hero !== "photo" && (
             <div
               className="absolute inset-0 grid place-items-center"
               style={{
@@ -854,8 +1105,8 @@ const Flyer = ({
           {/* QR */}
           <div className="pt-3 flex flex-col items-center gap-2">
             <div
-              className="size-24 rounded-xl p-2 grid place-items-center"
-              style={{ backgroundColor: `${t.ink}0d` }}
+              className="size-24 rounded-xl p-2 grid place-items-center bg-white ring-1"
+              style={{ boxShadow: "0 0 0 1px rgba(0,0,0,0.06)" }}
             >
               {qrDataUrl ? (
                 <img

@@ -799,14 +799,15 @@ const Flyer = ({
         <div className="relative w-full aspect-[4/5]">
           {t.hero === "photo" ? (
             <img
-              src={flyerFood}
+              src={state.heroPhoto || flyerFood}
               alt=""
               width={1080}
               height={1350}
               className="absolute inset-0 size-full object-cover"
               crossOrigin="anonymous"
             />
-          ) : (
+          ) : null}
+          {t.hero !== "photo" && (
             <div
               className="absolute inset-0 grid place-items-center"
               style={{

@@ -821,36 +821,42 @@ function FlyerSection({
         </span>
       </div>
 
+      <FormatPicker
+        value={state.shareFormat}
+        onChange={(f) => setState({ ...state, shareFormat: f })}
+      />
+
       <TemplatePicker
         value={state.template}
         onChange={(t) => setState({ ...state, template: t })}
       />
 
-      {standalone && <FlyerCustomizer state={state} setState={setState} />}
+      <BackgroundPicker
+        value={state.background}
+        onChange={(b) => setState({ ...state, background: b })}
+      />
+
+      {standalone && (
+        <>
+          <QrPreviewCard state={state} setState={setState} />
+          <FlyerCustomizer state={state} setState={setState} />
+        </>
+      )}
 
       <Flyer state={state} ref={flyerRef} />
 
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          onClick={shareNative}
-          disabled={busy !== null}
-          className="bg-brand-orange text-white font-bold py-4 rounded-2xl shadow-lg shadow-brand-orange/25 active:scale-[0.98] transition disabled:opacity-60"
-        >
-          {busy === "share" ? "Preparing…" : "Share Flyer"}
-        </button>
-        <button
-          onClick={downloadPng}
-          disabled={busy !== null}
-          className="bg-brand-green text-white font-bold py-4 rounded-2xl shadow-lg shadow-brand-green/25 active:scale-[0.98] transition disabled:opacity-60"
-        >
-          {busy === "png" ? "Rendering…" : "Download PNG"}
-        </button>
-      </div>
+      <button
+        onClick={shareNative}
+        disabled={busy !== null}
+        className="w-full bg-brand-orange text-white font-bold py-4 rounded-2xl shadow-lg shadow-brand-orange/25 active:scale-[0.98] transition disabled:opacity-60"
+      >
+        {busy === "share" ? "Preparing flyer…" : `Share ${SHARE_FORMATS.find((f) => f.id === state.shareFormat)?.label ?? "Flyer"}`}
+      </button>
 
       <div className="grid grid-cols-3 gap-2">
         <ShareChip
-          label={busy === "ig" ? "…" : "Instagram"}
-          onClick={shareInstagram}
+          label={busy === "png" ? "Rendering…" : "Download"}
+          onClick={downloadPng}
           disabled={busy !== null}
         />
         <ShareChip
@@ -859,7 +865,7 @@ function FlyerSection({
           disabled={busy !== null}
         />
         <ShareChip
-          label="Copy Text"
+          label="Copy Caption"
           onClick={async () => {
             await copyText(buildCaption(state));
             setToast("Caption copied");

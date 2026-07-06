@@ -400,10 +400,11 @@ function OnboardingModal({ onDone, onSkip }: { onDone: () => void; onSkip: () =>
         </p>
         <ul className="space-y-2.5 text-sm">
           {[
-            ["🎨", "7 flyer templates — Bold BBQ, Rustic Wood, Clean Minimal & more"],
+            ["🎨", "7 templates + 6 warm background textures"],
+            ["📐", "Post, Story & Square formats — one tap"],
             ["📷", "Use your own food photo from your phone"],
-            ["🔗", "Real QR code linked to your Order Ahead URL"],
-            ["📤", "Download PNG or share to Instagram & Facebook"],
+            ["🔗", "Real QR code with live URL validation"],
+            ["📤", "Share to Instagram & Facebook, ready-sized"],
           ].map(([icon, text]) => (
             <li key={text} className="flex gap-3 items-start">
               <span className="text-lg leading-none pt-0.5">{icon}</span>

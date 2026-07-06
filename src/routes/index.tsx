@@ -22,6 +22,15 @@ type TemplateId =
   | "rustic"
   | "clean";
 
+type ShareFormat = "portrait" | "story" | "square";
+type BackgroundId =
+  | "paper"
+  | "cream-grid"
+  | "kraft"
+  | "sunset-gradient"
+  | "sage-linen"
+  | "charcoal-grain";
+
 type TruckState = {
   name: string;
   live: boolean;
@@ -31,8 +40,11 @@ type TruckState = {
   special: string;
   menu: MenuItem[];
   orderUrl: string;
+  qrUrl: string;
   template: TemplateId;
   heroPhoto?: string; // data URL of user-uploaded flyer photo
+  shareFormat: ShareFormat;
+  background: BackgroundId;
 };
 
 const DEFAULT_STATE: TruckState = {
@@ -49,13 +61,100 @@ const DEFAULT_STATE: TruckState = {
     { id: "4", name: "Horchata", price: "5" },
   ],
   orderUrl: "https://order.example.com/nacho-galley",
+  qrUrl: "",
   template: "bright",
+  shareFormat: "portrait",
+  background: "paper",
 };
 
-const APP_VERSION = "0.2.0";
+const APP_VERSION = "0.3.0";
 const STORAGE_KEY = "truckdash.state.v1";
 const VERSION_KEY = "truckdash.version";
-const ONBOARD_KEY = "truckdash.onboarded.v1";
+const ONBOARD_KEY = "truckdash.onboarded.v3";
+
+const SHARE_FORMATS: { id: ShareFormat; label: string; aspect: string; hero: string }[] = [
+  { id: "portrait", label: "Post 4:5", aspect: "aspect-[4/5]", hero: "aspect-[4/3]" },
+  { id: "story", label: "Story 9:16", aspect: "aspect-[9/16]", hero: "aspect-[9/8]" },
+  { id: "square", label: "Square 1:1", aspect: "aspect-square", hero: "aspect-[3/2]" },
+];
+
+// Inlined SVG textures so exports work offline.
+const NOISE_SVG =
+  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.35  0 0 0 0 0.25  0 0 0 0 0.15  0 0 0 0.35 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.35'/></svg>\")";
+const GRID_SVG =
+  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><path d='M24 0H0V24' fill='none' stroke='%231b4332' stroke-opacity='0.08' stroke-width='1'/></svg>\")";
+const LINEN_SVG =
+  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='6' height='6'><path d='M0 3h6M3 0v6' stroke='%231b4332' stroke-opacity='0.09' stroke-width='0.5'/></svg>\")";
+
+type BackgroundPreset = {
+  id: BackgroundId;
+  label: string;
+  swatch: string;
+  css: React.CSSProperties;
+  darkText?: boolean;
+};
+
+const BACKGROUNDS: Record<BackgroundId, BackgroundPreset> = {
+  paper: {
+    id: "paper",
+    label: "Paper",
+    swatch: "#fffdf9",
+    css: { backgroundColor: "#fffdf9" },
+  },
+  "cream-grid": {
+    id: "cream-grid",
+    label: "Cream Grid",
+    swatch: "#f6ecd8",
+    css: { backgroundColor: "#f6ecd8", backgroundImage: GRID_SVG },
+  },
+  kraft: {
+    id: "kraft",
+    label: "Kraft",
+    swatch: "#d9b98a",
+    css: {
+      backgroundColor: "#d9b98a",
+      backgroundImage: NOISE_SVG,
+      backgroundBlendMode: "multiply",
+    },
+  },
+  "sunset-gradient": {
+    id: "sunset-gradient",
+    label: "Sunset",
+    swatch: "#f8a44c",
+    css: {
+      background: "linear-gradient(160deg, #ffd166 0%, #f8a44c 45%, #e85d04 100%)",
+    },
+  },
+  "sage-linen": {
+    id: "sage-linen",
+    label: "Sage Linen",
+    swatch: "#c9d6b9",
+    css: { backgroundColor: "#e6ecdc", backgroundImage: LINEN_SVG },
+  },
+  "charcoal-grain": {
+    id: "charcoal-grain",
+    label: "Charcoal",
+    swatch: "#2a231f",
+    css: {
+      backgroundColor: "#2a231f",
+      backgroundImage: NOISE_SVG,
+      backgroundBlendMode: "screen",
+    },
+    darkText: true,
+  },
+};
+
+function validateUrl(u: string): { ok: boolean; reason?: string } {
+  const trimmed = u.trim();
+  if (!trimmed) return { ok: false, reason: "Empty" };
+  if (!/^https?:\/\//i.test(trimmed)) return { ok: false, reason: "Missing https://" };
+  try {
+    new URL(trimmed);
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: "Not a valid URL" };
+  }
+}
 
 type TemplateTheme = {
   id: TemplateId;
@@ -301,10 +400,11 @@ function OnboardingModal({ onDone, onSkip }: { onDone: () => void; onSkip: () =>
         </p>
         <ul className="space-y-2.5 text-sm">
           {[
-            ["🎨", "7 flyer templates — Bold BBQ, Rustic Wood, Clean Minimal & more"],
+            ["🎨", "7 templates + 6 warm background textures"],
+            ["📐", "Post, Story & Square formats — one tap"],
             ["📷", "Use your own food photo from your phone"],
-            ["🔗", "Real QR code linked to your Order Ahead URL"],
-            ["📤", "Download PNG or share to Instagram & Facebook"],
+            ["🔗", "Real QR code with live URL validation"],
+            ["📤", "Share to Instagram & Facebook, ready-sized"],
           ].map(([icon, text]) => (
             <li key={text} className="flex gap-3 items-start">
               <span className="text-lg leading-none pt-0.5">{icon}</span>
@@ -605,7 +705,7 @@ function FlyerSection({
   flyerRef: React.MutableRefObject<HTMLDivElement | null>;
   standalone?: boolean;
 }) {
-  const [busy, setBusy] = useState<null | "png" | "share" | "fb" | "ig">(null);
+  const [busy, setBusy] = useState<null | "png" | "share" | "fb">(null);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -690,27 +790,8 @@ function FlyerSection({
     }
   };
 
-  const shareInstagram = async () => {
-    setBusy("ig");
-    try {
-      const blob = await captureBlob();
-      const caption = buildCaption(state);
-      if (blob && navigator.canShare) {
-        const file = new File([blob], `${slug(state.name)}-flyer.png`, { type: "image/png" });
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], text: caption });
-          return;
-        }
-      }
-      if (blob) triggerDownload(blob, `${slug(state.name)}-flyer.png`);
-      await copyText(caption);
-      setToast("Flyer saved · caption copied — post in Instagram");
-    } catch (e: unknown) {
-      if ((e as { name?: string })?.name !== "AbortError") console.error(e);
-    } finally {
-      setBusy(null);
-    }
-  };
+
+
 
   return (
     <section className="space-y-4">
@@ -721,36 +802,42 @@ function FlyerSection({
         </span>
       </div>
 
+      <FormatPicker
+        value={state.shareFormat}
+        onChange={(f) => setState({ ...state, shareFormat: f })}
+      />
+
       <TemplatePicker
         value={state.template}
         onChange={(t) => setState({ ...state, template: t })}
       />
 
-      {standalone && <FlyerCustomizer state={state} setState={setState} />}
+      <BackgroundPicker
+        value={state.background}
+        onChange={(b) => setState({ ...state, background: b })}
+      />
+
+      {standalone && (
+        <>
+          <QrPreviewCard state={state} setState={setState} />
+          <FlyerCustomizer state={state} setState={setState} />
+        </>
+      )}
 
       <Flyer state={state} ref={flyerRef} />
 
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          onClick={shareNative}
-          disabled={busy !== null}
-          className="bg-brand-orange text-white font-bold py-4 rounded-2xl shadow-lg shadow-brand-orange/25 active:scale-[0.98] transition disabled:opacity-60"
-        >
-          {busy === "share" ? "Preparing…" : "Share Flyer"}
-        </button>
-        <button
-          onClick={downloadPng}
-          disabled={busy !== null}
-          className="bg-brand-green text-white font-bold py-4 rounded-2xl shadow-lg shadow-brand-green/25 active:scale-[0.98] transition disabled:opacity-60"
-        >
-          {busy === "png" ? "Rendering…" : "Download PNG"}
-        </button>
-      </div>
+      <button
+        onClick={shareNative}
+        disabled={busy !== null}
+        className="w-full bg-brand-orange text-white font-bold py-4 rounded-2xl shadow-lg shadow-brand-orange/25 active:scale-[0.98] transition disabled:opacity-60"
+      >
+        {busy === "share" ? "Preparing flyer…" : `Share ${SHARE_FORMATS.find((f) => f.id === state.shareFormat)?.label ?? "Flyer"}`}
+      </button>
 
       <div className="grid grid-cols-3 gap-2">
         <ShareChip
-          label={busy === "ig" ? "…" : "Instagram"}
-          onClick={shareInstagram}
+          label={busy === "png" ? "Rendering…" : "Download"}
+          onClick={downloadPng}
           disabled={busy !== null}
         />
         <ShareChip
@@ -759,7 +846,7 @@ function FlyerSection({
           disabled={busy !== null}
         />
         <ShareChip
-          label="Copy Text"
+          label="Copy Caption"
           onClick={async () => {
             await copyText(buildCaption(state));
             setToast("Caption copied");
@@ -868,15 +955,6 @@ function FlyerCustomizer({
         </span>
       </label>
 
-      {/* QR preview link */}
-      <div className="rounded-xl bg-brand-sand border border-brand-green/10 p-3">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-green/60">
-          QR code links to
-        </p>
-        <p className="text-xs font-mono text-brand-green break-all mt-0.5">
-          {state.orderUrl || "https://truckdash.app"}
-        </p>
-      </div>
     </section>
   );
 }
@@ -945,6 +1023,143 @@ function ShareChip({
   );
 }
 
+function FormatPicker({
+  value,
+  onChange,
+}: {
+  value: ShareFormat;
+  onChange: (f: ShareFormat) => void;
+}) {
+  return (
+    <div className="flex gap-2">
+      {SHARE_FORMATS.map((f) => {
+        const active = value === f.id;
+        return (
+          <button
+            key={f.id}
+            onClick={() => onChange(f.id)}
+            className={`flex-1 py-2 rounded-full border text-[11px] font-bold uppercase tracking-wider transition ${
+              active
+                ? "bg-brand-green text-white border-brand-green shadow-md shadow-brand-green/20"
+                : "bg-white text-brand-green/70 border-brand-green/10"
+            }`}
+          >
+            {f.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function BackgroundPicker({
+  value,
+  onChange,
+}: {
+  value: BackgroundId;
+  onChange: (b: BackgroundId) => void;
+}) {
+  return (
+    <div className="-mx-4 px-4 overflow-x-auto no-scrollbar">
+      <div className="flex gap-2 pb-1 items-center">
+        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-green/50 shrink-0 pr-1">
+          Background
+        </span>
+        {Object.values(BACKGROUNDS).map((b) => {
+          const active = value === b.id;
+          return (
+            <button
+              key={b.id}
+              onClick={() => onChange(b.id)}
+              aria-label={b.label}
+              title={b.label}
+              className={`shrink-0 size-9 rounded-full border-2 transition ${
+                active ? "border-brand-orange scale-110" : "border-white"
+              }`}
+              style={{
+                ...b.css,
+                boxShadow: active
+                  ? "0 0 0 2px rgba(232,93,4,0.15)"
+                  : "0 0 0 1px rgba(27,67,50,0.08)",
+              }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function QrPreviewCard({
+  state,
+  setState,
+}: {
+  state: TruckState;
+  setState: (s: TruckState) => void;
+}) {
+  const effective = (state.qrUrl.trim() || state.orderUrl.trim() || "https://truckdash.app").trim();
+  const validation = validateUrl(effective);
+  const [mini, setMini] = useState<string>("");
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!validation.ok) {
+      setMini("");
+      return;
+    }
+    QRCode.toDataURL(effective, {
+      margin: 0,
+      scale: 4,
+      errorCorrectionLevel: "M",
+      color: { dark: "#000000", light: "#ffffff" },
+    })
+      .then((url) => {
+        if (!cancelled) setMini(url);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [effective, validation.ok]);
+
+  return (
+    <section className="bg-white rounded-3xl border border-brand-green/5 shadow-sm p-4 flex gap-4 items-center">
+      <div className="size-20 rounded-xl bg-white ring-1 ring-brand-green/10 p-1.5 grid place-items-center shrink-0">
+        {mini ? (
+          <img src={mini} alt="QR preview" className="size-full" />
+        ) : (
+          <span className="text-[9px] text-brand-green/40">QR</span>
+        )}
+      </div>
+      <div className="flex-1 min-w-0 space-y-1.5">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-green/60">
+            QR encodes
+          </span>
+          {validation.ok ? (
+            <span className="text-[10px] font-bold uppercase tracking-wider text-brand-green bg-brand-green/10 px-2 py-0.5 rounded-full">
+              Valid
+            </span>
+          ) : (
+            <span className="text-[10px] font-bold uppercase tracking-wider text-brand-orange bg-brand-orange/10 px-2 py-0.5 rounded-full">
+              {validation.reason}
+            </span>
+          )}
+        </div>
+        <input
+          type="url"
+          inputMode="url"
+          value={state.qrUrl}
+          onChange={(e) => setState({ ...state, qrUrl: e.target.value })}
+          placeholder="Same as Order Ahead URL"
+          className="w-full bg-brand-sand rounded-lg px-2.5 py-2 text-xs font-mono border border-brand-green/10 focus:outline-none focus:border-brand-orange"
+        />
+        <p className="text-[10px] text-brand-green/50 truncate">→ {effective}</p>
+      </div>
+    </section>
+  );
+}
+
 const Flyer = ({
   state,
   ref,
@@ -953,7 +1168,12 @@ const Flyer = ({
   ref: React.MutableRefObject<HTMLDivElement | null>;
 }) => {
   const t = TEMPLATES[state.template];
-  const qrTarget = state.orderUrl || "https://truckdash.app";
+  const bg = BACKGROUNDS[state.background];
+  const format = SHARE_FORMATS.find((f) => f.id === state.shareFormat) ?? SHARE_FORMATS[0];
+  const qrTarget = state.qrUrl.trim() || state.orderUrl.trim() || "https://truckdash.app";
+  const paperInk = bg.darkText ? "#f6efe1" : t.ink;
+  const paperInkSoft = bg.darkText ? "rgba(246,239,225,0.7)" : t.inkSoft;
+  const paperDivider = bg.darkText ? "rgba(246,239,225,0.15)" : t.divider;
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
 
   useEffect(() => {
@@ -985,35 +1205,33 @@ const Flyer = ({
     <div
       ref={ref}
       id="truckdash-flyer"
-      className="relative overflow-hidden rounded-[2.25rem] p-1.5 shadow-2xl"
+      className={`relative overflow-hidden rounded-[2.25rem] p-1.5 shadow-2xl ${format.aspect}`}
       style={{ backgroundColor: t.frame, boxShadow: `0 20px 40px -20px ${t.frame}55` }}
     >
       <div
-        className="rounded-[1.85rem] overflow-hidden"
-        style={{ backgroundColor: t.paper, color: t.ink }}
+        className="rounded-[1.85rem] overflow-hidden size-full flex flex-col"
+        style={{ ...bg.css, color: paperInk }}
       >
         {/* Hero */}
-        <div className="relative w-full aspect-[4/5]">
+        <div className={`relative w-full ${format.hero} shrink-0`}>
           {t.hero === "photo" ? (
             <img
               src={state.heroPhoto || flyerFood}
               alt=""
-              width={1080}
-              height={1350}
               className="absolute inset-0 size-full object-cover"
               crossOrigin="anonymous"
+              style={{ boxShadow: "inset 0 -20px 40px -20px rgba(0,0,0,0.35)" }}
             />
-          ) : null}
-          {t.hero !== "photo" && (
+          ) : (
             <div
               className="absolute inset-0 grid place-items-center"
               style={{
-                background: `radial-gradient(circle at 30% 20%, ${t.accent}22, transparent 60%), ${t.paper}`,
+                background: `radial-gradient(circle at 30% 20%, ${t.accent}22, transparent 60%)`,
               }}
             >
               <span
                 className="text-[10rem] leading-none font-bold italic"
-                style={{ fontFamily: t.serif, color: t.ink, opacity: 0.08 }}
+                style={{ fontFamily: t.serif, color: paperInk, opacity: 0.12 }}
               >
                 {initials(state.name)}
               </span>
@@ -1021,7 +1239,7 @@ const Flyer = ({
           )}
           <div
             className="absolute top-4 left-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur"
-            style={{ backgroundColor: `${t.paper}ee`, color: t.ink }}
+            style={{ backgroundColor: bg.darkText ? "rgba(20,18,16,0.75)" : `${t.paper}ee`, color: paperInk }}
           >
             <span
               className="size-1.5 rounded-full animate-pulse"
@@ -1034,45 +1252,48 @@ const Flyer = ({
         </div>
 
         {/* Body */}
-        <div className="p-7 text-center space-y-4">
+        <div className="flex-1 p-6 text-center flex flex-col justify-center gap-3 min-h-0">
           <div
-            className="inline-block px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-[0.2em]"
+            className="inline-block mx-auto px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-[0.2em]"
             style={{ backgroundColor: t.accent, color: t.accentText }}
           >
             Today's Special
           </div>
           <h4
-            className="text-3xl leading-tight italic text-balance"
-            style={{ fontFamily: t.serif, color: t.ink }}
+            className="text-2xl leading-tight italic text-balance"
+            style={{ fontFamily: t.serif, color: paperInk }}
           >
             {state.special}
           </h4>
-          <div className="h-px w-12 mx-auto" style={{ backgroundColor: t.divider }} />
+          <div className="h-px w-12 mx-auto" style={{ backgroundColor: paperDivider }} />
 
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             <p
               className="text-[10px] font-bold uppercase tracking-[0.2em]"
-              style={{ color: t.inkSoft }}
+              style={{ color: paperInkSoft }}
             >
               Find us at
             </p>
-            <p className="text-xl text-balance" style={{ fontFamily: t.serif, color: t.ink }}>
+            <p
+              className="text-lg text-balance"
+              style={{ fontFamily: t.serif, color: paperInk }}
+            >
               {state.location}
             </p>
-            <p className="text-sm font-medium" style={{ color: t.inkSoft }}>
+            <p className="text-xs font-medium" style={{ color: paperInkSoft }}>
               {state.hoursStart} — {state.hoursEnd}
             </p>
           </div>
 
-          {state.menu.length > 0 && (
-            <ul className="text-left max-w-[16rem] mx-auto pt-2 space-y-1.5">
-              {state.menu.slice(0, 4).map((item) => (
+          {state.menu.length > 0 && state.shareFormat !== "square" && (
+            <ul className="text-left max-w-[16rem] mx-auto space-y-1">
+              {state.menu.slice(0, state.shareFormat === "story" ? 4 : 3).map((item) => (
                 <li
                   key={item.id}
-                  className="flex justify-between text-sm pb-1.5"
+                  className="flex justify-between text-xs pb-1"
                   style={{
-                    color: t.ink,
-                    borderBottom: `1px dashed ${t.divider}`,
+                    color: paperInk,
+                    borderBottom: `1px dashed ${paperDivider}`,
                   }}
                 >
                   <span className="truncate pr-2 font-medium">{item.name}</span>
@@ -1085,17 +1306,17 @@ const Flyer = ({
           )}
 
           {/* Order Ahead */}
-          <div className="pt-2">
+          <div>
             <div
-              className="w-full py-3.5 px-5 rounded-2xl text-sm font-bold uppercase tracking-widest text-center"
+              className="w-full py-3 px-5 rounded-2xl text-xs font-bold uppercase tracking-widest text-center"
               style={{ backgroundColor: t.accent, color: t.accentText }}
             >
               Order Ahead
             </div>
             {domain && (
               <p
-                className="text-[10px] mt-1.5 font-semibold tracking-widest uppercase"
-                style={{ color: t.inkSoft }}
+                className="text-[10px] mt-1 font-semibold tracking-widest uppercase"
+                style={{ color: paperInkSoft }}
               >
                 {domain}
               </p>
@@ -1103,9 +1324,9 @@ const Flyer = ({
           </div>
 
           {/* QR */}
-          <div className="pt-3 flex flex-col items-center gap-2">
+          <div className="flex flex-col items-center gap-1">
             <div
-              className="size-24 rounded-xl p-2 grid place-items-center bg-white ring-1"
+              className="size-20 rounded-xl p-1.5 grid place-items-center bg-white"
               style={{ boxShadow: "0 0 0 1px rgba(0,0,0,0.06)" }}
             >
               {qrDataUrl ? (
@@ -1117,21 +1338,19 @@ const Flyer = ({
                   className="size-full"
                 />
               ) : (
-                <span className="text-[9px]" style={{ color: t.inkSoft }}>
-                  QR
-                </span>
+                <span className="text-[9px] text-black/40">QR</span>
               )}
             </div>
             <p
               className="text-[9px] font-bold uppercase tracking-[0.2em]"
-              style={{ color: t.inkSoft }}
+              style={{ color: paperInkSoft }}
             >
               Scan · Order · Follow
             </p>
           </div>
 
-          <div className="pt-2 border-t" style={{ borderColor: t.divider }}>
-            <p className="text-lg" style={{ fontFamily: t.serif, color: t.ink }}>
+          <div className="pt-1 border-t" style={{ borderColor: paperDivider }}>
+            <p className="text-base" style={{ fontFamily: t.serif, color: paperInk }}>
               {state.name}
             </p>
           </div>

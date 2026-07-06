@@ -209,7 +209,7 @@ function Header({
           {state.live ? "Active Session" : "Off the clock"}
         </p>
       </div>
-      <p className="hidden">{/* spacer */}</p>
+      
       <button
         onClick={() => setState({ ...state, live: !state.live })}
         aria-pressed={state.live}

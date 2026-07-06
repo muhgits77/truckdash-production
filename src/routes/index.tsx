@@ -73,9 +73,9 @@ const VERSION_KEY = "truckdash.version";
 const ONBOARD_KEY = "truckdash.onboarded.v3";
 
 const SHARE_FORMATS: { id: ShareFormat; label: string; aspect: string; hero: string }[] = [
-  { id: "portrait", label: "Post 4:5", aspect: "aspect-[4/5]", hero: "aspect-[4/3]" },
-  { id: "story", label: "Story 9:16", aspect: "aspect-[9/16]", hero: "aspect-[9/8]" },
-  { id: "square", label: "Square 1:1", aspect: "aspect-square", hero: "aspect-[3/2]" },
+  { id: "portrait", label: "Post 4:5", aspect: "aspect-[4/5]", hero: "aspect-[16/10]" },
+  { id: "story", label: "Story 9:16", aspect: "aspect-[9/16]", hero: "aspect-[4/3]" },
+  { id: "square", label: "Square 1:1", aspect: "aspect-square", hero: "aspect-[16/9]" },
 ];
 
 // Inlined SVG textures so exports work offline.
@@ -1252,82 +1252,82 @@ const Flyer = ({
         </div>
 
         {/* Body */}
-        <div className="flex-1 p-6 text-center flex flex-col justify-center gap-3 min-h-0">
-          <div
-            className="inline-block mx-auto px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-[0.2em]"
-            style={{ backgroundColor: t.accent, color: t.accentText }}
-          >
-            Today's Special
+        <div className="flex-1 min-h-0 flex flex-col px-5 pt-4 pb-5 gap-2.5 text-center">
+          {/* Special */}
+          <div className="space-y-1.5">
+            <div
+              className="inline-block px-3 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-[0.2em]"
+              style={{ backgroundColor: t.accent, color: t.accentText }}
+            >
+              Today's Special
+            </div>
+            <h4
+              className="text-xl leading-tight italic text-balance"
+              style={{ fontFamily: t.serif, color: paperInk }}
+            >
+              {state.special}
+            </h4>
           </div>
-          <h4
-            className="text-2xl leading-tight italic text-balance"
-            style={{ fontFamily: t.serif, color: paperInk }}
-          >
-            {state.special}
-          </h4>
-          <div className="h-px w-12 mx-auto" style={{ backgroundColor: paperDivider }} />
 
-          <div className="space-y-0.5">
+          {/* Location */}
+          <div className="space-y-0">
             <p
-              className="text-[10px] font-bold uppercase tracking-[0.2em]"
+              className="text-[9px] font-bold uppercase tracking-[0.2em]"
               style={{ color: paperInkSoft }}
             >
               Find us at
             </p>
             <p
-              className="text-lg text-balance"
+              className="text-base leading-tight text-balance"
               style={{ fontFamily: t.serif, color: paperInk }}
             >
               {state.location}
             </p>
-            <p className="text-xs font-medium" style={{ color: paperInkSoft }}>
+            <p className="text-[11px] font-medium" style={{ color: paperInkSoft }}>
               {state.hoursStart} — {state.hoursEnd}
             </p>
           </div>
 
-          {state.menu.length > 0 && state.shareFormat !== "square" && (
-            <ul className="text-left max-w-[16rem] mx-auto space-y-1">
-              {state.menu.slice(0, state.shareFormat === "story" ? 4 : 3).map((item) => (
-                <li
-                  key={item.id}
-                  className="flex justify-between text-xs pb-1"
-                  style={{
-                    color: paperInk,
-                    borderBottom: `1px dashed ${paperDivider}`,
-                  }}
-                >
-                  <span className="truncate pr-2 font-medium">{item.name}</span>
-                  <span className="font-semibold" style={{ color: t.accent }}>
-                    ${item.price}
-                  </span>
-                </li>
-              ))}
-            </ul>
+          {/* Menu — 5 items, flex-1 to absorb any extra room */}
+          {state.menu.length > 0 && (
+            <div className="flex-1 min-h-0 flex flex-col justify-center">
+              <ul className="text-left w-full max-w-[18rem] mx-auto">
+                {state.menu.slice(0, 5).map((item, i, arr) => (
+                  <li
+                    key={item.id}
+                    className="flex justify-between items-baseline gap-2 py-1"
+                    style={{
+                      color: paperInk,
+                      borderBottom:
+                        i < arr.length - 1 ? `1px dashed ${paperDivider}` : "none",
+                    }}
+                  >
+                    <span className="truncate text-[11px] font-medium">{item.name}</span>
+                    <span
+                      className="text-[11px] font-bold shrink-0"
+                      style={{ color: t.accent }}
+                    >
+                      ${item.price}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           {/* Order Ahead */}
-          <div>
-            <div
-              className="w-full py-3 px-5 rounded-2xl text-xs font-bold uppercase tracking-widest text-center"
-              style={{ backgroundColor: t.accent, color: t.accentText }}
-            >
-              Order Ahead
-            </div>
-            {domain && (
-              <p
-                className="text-[10px] mt-1 font-semibold tracking-widest uppercase"
-                style={{ color: paperInkSoft }}
-              >
-                {domain}
-              </p>
-            )}
+          <div
+            className="w-full py-2.5 px-4 rounded-xl text-[11px] font-bold uppercase tracking-widest"
+            style={{ backgroundColor: t.accent, color: t.accentText }}
+          >
+            Order Ahead{domain ? ` · ${domain}` : ""}
           </div>
 
-          {/* QR */}
-          <div className="flex flex-col items-center gap-1">
+          {/* QR — always visible, safe bottom padding */}
+          <div className="flex items-center justify-center gap-3 pt-1">
             <div
-              className="size-20 rounded-xl p-1.5 grid place-items-center bg-white"
-              style={{ boxShadow: "0 0 0 1px rgba(0,0,0,0.06)" }}
+              className="size-16 rounded-lg p-1 grid place-items-center bg-white shrink-0"
+              style={{ boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}
             >
               {qrDataUrl ? (
                 <img
@@ -1341,18 +1341,20 @@ const Flyer = ({
                 <span className="text-[9px] text-black/40">QR</span>
               )}
             </div>
-            <p
-              className="text-[9px] font-bold uppercase tracking-[0.2em]"
-              style={{ color: paperInkSoft }}
-            >
-              Scan · Order · Follow
-            </p>
-          </div>
-
-          <div className="pt-1 border-t" style={{ borderColor: paperDivider }}>
-            <p className="text-base" style={{ fontFamily: t.serif, color: paperInk }}>
-              {state.name}
-            </p>
+            <div className="text-left">
+              <p
+                className="text-[8px] font-bold uppercase tracking-[0.2em]"
+                style={{ color: paperInkSoft }}
+              >
+                Scan to order
+              </p>
+              <p
+                className="text-[11px] font-semibold leading-tight"
+                style={{ fontFamily: t.serif, color: paperInk }}
+              >
+                {state.name}
+              </p>
+            </div>
           </div>
         </div>
       </div>

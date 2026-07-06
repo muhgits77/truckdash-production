@@ -1168,7 +1168,12 @@ const Flyer = ({
   ref: React.MutableRefObject<HTMLDivElement | null>;
 }) => {
   const t = TEMPLATES[state.template];
-  const qrTarget = state.orderUrl || "https://truckdash.app";
+  const bg = BACKGROUNDS[state.background];
+  const format = SHARE_FORMATS.find((f) => f.id === state.shareFormat) ?? SHARE_FORMATS[0];
+  const qrTarget = state.qrUrl.trim() || state.orderUrl.trim() || "https://truckdash.app";
+  const paperInk = bg.darkText ? "#f6efe1" : t.ink;
+  const paperInkSoft = bg.darkText ? "rgba(246,239,225,0.7)" : t.inkSoft;
+  const paperDivider = bg.darkText ? "rgba(246,239,225,0.15)" : t.divider;
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
 
   useEffect(() => {

@@ -490,23 +490,24 @@ function OnboardingModal({ onDone, onSkip }: { onDone: () => void; onSkip: () =>
         <div className="flex items-center gap-2">
           <span className="size-2 rounded-full bg-brand-orange" />
           <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-orange">
-            Welcome to TruckDash
+            Howdy, neighbor
           </span>
         </div>
         <h2 className="font-display text-2xl leading-tight">
-          Your daily flyer, ready in one tap.
+          Daily flyers that work as hard as you do.
         </h2>
         <p className="text-sm text-brand-green/70 leading-relaxed">
-          Head to the <span className="font-semibold text-brand-green">Flyer</span> tab to design
-          a beautiful post for today.
+          Built by a Monticello neighbor for the trucks running Lake Cumberland — ramps,
+          festivals, and Food Truck Friday. Update your spot, spin up a flyer, and get back to
+          cooking.
         </p>
         <ul className="space-y-2.5 text-sm">
           {[
-            ["🎨", "7 templates + 6 warm background textures"],
-            ["📐", "Post, Story & Square formats — one tap"],
-            ["📷", "Use your own food photo from your phone"],
-            ["🔗", "Real QR code with live URL validation"],
-            ["📤", "Share to Instagram & Facebook, ready-sized"],
+            ["📍", "One-tap “Today's Location” with GPS"],
+            ["🎨", "Kentucky-flavored flyer templates"],
+            ["📐", "Post, Story & Square — sized for Facebook & Instagram"],
+            ["📷", "Snap your own food photo, right from your phone"],
+            ["🔗", "Real QR code for order-ahead & tips"],
           ].map(([icon, text]) => (
             <li key={text} className="flex gap-3 items-start">
               <span className="text-lg leading-none pt-0.5">{icon}</span>
@@ -519,13 +520,13 @@ function OnboardingModal({ onDone, onSkip }: { onDone: () => void; onSkip: () =>
             onClick={onSkip}
             className="py-3.5 rounded-2xl text-sm font-bold text-brand-green/70 bg-white border border-brand-green/10"
           >
-            Explore first
+            Look around first
           </button>
           <button
             onClick={onDone}
             className="py-3.5 rounded-2xl text-sm font-bold text-white bg-brand-orange shadow-lg shadow-brand-orange/25"
           >
-            Open Flyer Studio
+            Make my first flyer
           </button>
         </div>
       </div>

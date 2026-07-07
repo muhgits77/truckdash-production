@@ -14,6 +14,9 @@ export const Route = createFileRoute("/")({
 type MenuItem = { id: string; name: string; price: string };
 
 type TemplateId =
+  | "lakecumberland"
+  | "festival"
+  | "bourbonbarrel"
   | "bright"
   | "bbq"
   | "moody"
@@ -48,29 +51,30 @@ type TruckState = {
 };
 
 const DEFAULT_STATE: TruckState = {
-  name: "Nacho Galley",
+  name: "Bluegrass Kitchen",
   live: true,
-  location: "Arts District Central",
-  hoursStart: "12:00 PM",
+  location: "Food Truck Friday · Russell Springs",
+  hoursStart: "5:00 PM",
   hoursEnd: "9:00 PM",
-  special: "Kimchi Loaded Nachos",
+  special: "Bourbon-Glazed Pulled Pork Nachos",
   menu: [
-    { id: "1", name: "Loaded Nachos", price: "12" },
-    { id: "2", name: "Al Pastor Tacos (3)", price: "11" },
-    { id: "3", name: "Elote Cup", price: "6" },
-    { id: "4", name: "Horchata", price: "5" },
+    { id: "1", name: "Pulled Pork Sandwich", price: "10" },
+    { id: "2", name: "Bourbon Nachos", price: "12" },
+    { id: "3", name: "Bluegrass Slaw", price: "4" },
+    { id: "4", name: "Kettle Chips", price: "3" },
+    { id: "5", name: "Sweet Tea", price: "3" },
   ],
-  orderUrl: "https://order.example.com/nacho-galley",
+  orderUrl: "https://order.example.com/bluegrass-kitchen",
   qrUrl: "",
-  template: "bright",
+  template: "lakecumberland",
   shareFormat: "portrait",
-  background: "paper",
+  background: "sage-linen",
 };
 
-const APP_VERSION = "0.3.1";
+const APP_VERSION = "0.4.0";
 const STORAGE_KEY = "truckdash.state.v1";
 const VERSION_KEY = "truckdash.version";
-const ONBOARD_KEY = "truckdash.onboarded.v3";
+const ONBOARD_KEY = "truckdash.onboarded.v4";
 
 const SHARE_FORMATS: {
   id: ShareFormat;

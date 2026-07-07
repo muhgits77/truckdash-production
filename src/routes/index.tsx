@@ -595,12 +595,56 @@ function StatusCard({
   setState: (s: TruckState) => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const [gpsBusy, setGpsBusy] = useState(false);
+  const [gpsMsg, setGpsMsg] = useState<string | null>(null);
+
+  const useCurrentLocation = () => {
+    if (!("geolocation" in navigator)) {
+      setGpsMsg("GPS not available on this device");
+      return;
+    }
+    setGpsBusy(true);
+    setGpsMsg(null);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=16&addressdetails=1`,
+            { headers: { Accept: "application/json" } },
+          );
+          const data = await res.json();
+          const a = data?.address ?? {};
+          const parts = [
+            a.road || a.pedestrian || a.neighbourhood || a.hamlet,
+            a.city || a.town || a.village || a.county,
+          ].filter(Boolean);
+          const label = parts.join(", ") || data?.display_name || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+          setState({ ...state, location: label });
+          setGpsMsg("Location updated");
+        } catch {
+          setState({ ...state, location: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}` });
+          setGpsMsg("Set GPS coordinates");
+        } finally {
+          setGpsBusy(false);
+          setTimeout(() => setGpsMsg(null), 2400);
+        }
+      },
+      (err) => {
+        setGpsBusy(false);
+        setGpsMsg(err.code === 1 ? "Location permission blocked" : "Couldn't get location");
+        setTimeout(() => setGpsMsg(null), 2400);
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
+    );
+  };
+
   return (
     <section className="bg-brand-green text-white rounded-3xl p-6 shadow-xl shadow-brand-green/15">
-      <div className="flex justify-between items-start mb-5 gap-3">
+      <div className="flex justify-between items-start mb-4 gap-3">
         <div className="min-w-0 space-y-1 flex-1">
           <p className="text-brand-gold text-[10px] font-bold uppercase tracking-[0.2em]">
-            Current Spot
+            Today's Location
           </p>
           {editing ? (
             <input
@@ -626,6 +670,15 @@ function StatusCard({
           <PencilIcon className="size-4" />
         </button>
       </div>
+
+      <button
+        onClick={useCurrentLocation}
+        disabled={gpsBusy}
+        className="w-full mb-4 flex items-center justify-center gap-2 bg-brand-gold text-brand-green font-bold uppercase tracking-wider text-xs py-3 rounded-2xl shadow-lg shadow-brand-gold/20 active:scale-[0.98] transition disabled:opacity-70"
+      >
+        <PinIcon className="size-4" />
+        {gpsBusy ? "Getting GPS…" : gpsMsg ?? "Use my current location"}
+      </button>
 
       <div className="grid grid-cols-2 gap-3">
         <label className="bg-white/5 rounded-2xl p-4 border border-white/10 cursor-text block">

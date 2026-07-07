@@ -45,31 +45,34 @@
 :root {
   --radius: 0.75rem;
 
-  --brand-green: #1b4332;
-  --brand-orange: #e85d04;
-  --brand-sand: #f8f5ef;
-  --brand-gold: #ffb703;
-  --brand-paper: #fffdf9;
+  /* Bluegrass Digital Forge — Kentucky palette */
+  --brand-green: #1a3d2e;      /* deep bluegrass */
+  --brand-orange: #b8722c;     /* bourbon amber (primary accent) */
+  --brand-sand: #f5efe1;       /* warm cream */
+  --brand-gold: #d4a437;       /* bourbon gold */
+  --brand-paper: #fffdf6;
+  --brand-navy: #12283f;       /* deep Kentucky navy */
+  --brand-walnut: #4a2c1a;     /* barrel walnut */
 
-  --background: #f8f5ef;
-  --foreground: #1b4332;
+  --background: #f5efe1;
+  --foreground: #1a3d2e;
   --card: #ffffff;
-  --card-foreground: #1b4332;
+  --card-foreground: #1a3d2e;
   --popover: #ffffff;
-  --popover-foreground: #1b4332;
-  --primary: #e85d04;
+  --popover-foreground: #1a3d2e;
+  --primary: #b8722c;
   --primary-foreground: #ffffff;
-  --secondary: #1b4332;
+  --secondary: #1a3d2e;
   --secondary-foreground: #ffffff;
-  --muted: #efeae1;
-  --muted-foreground: #6b6558;
-  --accent: #ffb703;
-  --accent-foreground: #1b4332;
-  --destructive: #b3261e;
+  --muted: #ece5d2;
+  --muted-foreground: #6b5f4a;
+  --accent: #d4a437;
+  --accent-foreground: #1a3d2e;
+  --destructive: #a1281e;
   --destructive-foreground: #ffffff;
-  --border: rgba(27, 67, 50, 0.08);
-  --input: rgba(27, 67, 50, 0.12);
-  --ring: #e85d04;
+  --border: rgba(26, 61, 46, 0.1);
+  --input: rgba(26, 61, 46, 0.14);
+  --ring: #b8722c;
 }
 
 @layer base {

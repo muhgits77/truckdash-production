@@ -14,6 +14,9 @@ export const Route = createFileRoute("/")({
 type MenuItem = { id: string; name: string; price: string };
 
 type TemplateId =
+  | "lakecumberland"
+  | "festival"
+  | "bourbonbarrel"
   | "bright"
   | "bbq"
   | "moody"
@@ -48,29 +51,30 @@ type TruckState = {
 };
 
 const DEFAULT_STATE: TruckState = {
-  name: "Nacho Galley",
+  name: "Bluegrass Kitchen",
   live: true,
-  location: "Arts District Central",
-  hoursStart: "12:00 PM",
+  location: "Food Truck Friday · Russell Springs",
+  hoursStart: "5:00 PM",
   hoursEnd: "9:00 PM",
-  special: "Kimchi Loaded Nachos",
+  special: "Bourbon-Glazed Pulled Pork Nachos",
   menu: [
-    { id: "1", name: "Loaded Nachos", price: "12" },
-    { id: "2", name: "Al Pastor Tacos (3)", price: "11" },
-    { id: "3", name: "Elote Cup", price: "6" },
-    { id: "4", name: "Horchata", price: "5" },
+    { id: "1", name: "Pulled Pork Sandwich", price: "10" },
+    { id: "2", name: "Bourbon Nachos", price: "12" },
+    { id: "3", name: "Bluegrass Slaw", price: "4" },
+    { id: "4", name: "Kettle Chips", price: "3" },
+    { id: "5", name: "Sweet Tea", price: "3" },
   ],
-  orderUrl: "https://order.example.com/nacho-galley",
+  orderUrl: "https://order.example.com/bluegrass-kitchen",
   qrUrl: "",
-  template: "bright",
+  template: "lakecumberland",
   shareFormat: "portrait",
-  background: "paper",
+  background: "sage-linen",
 };
 
-const APP_VERSION = "0.3.1";
+const APP_VERSION = "0.4.0";
 const STORAGE_KEY = "truckdash.state.v1";
 const VERSION_KEY = "truckdash.version";
-const ONBOARD_KEY = "truckdash.onboarded.v3";
+const ONBOARD_KEY = "truckdash.onboarded.v4";
 
 const SHARE_FORMATS: {
   id: ShareFormat;
@@ -228,6 +232,48 @@ type TemplateTheme = {
 };
 
 const TEMPLATES: Record<TemplateId, TemplateTheme> = {
+  lakecumberland: {
+    id: "lakecumberland",
+    label: "Lake Cumberland",
+    frame: "#1a3d2e",
+    paper: "#f5efe1",
+    ink: "#1a3d2e",
+    inkSoft: "rgba(26,61,46,0.65)",
+    accent: "#b8722c",
+    accentText: "#fffdf6",
+    divider: "rgba(26,61,46,0.15)",
+    serif: '"Fraunces", Georgia, serif',
+    hero: "photo",
+    swatch: ["#1a3d2e", "#b8722c", "#f5efe1"],
+  },
+  festival: {
+    id: "festival",
+    label: "Festival Ready",
+    frame: "#12283f",
+    paper: "#fffdf6",
+    ink: "#12283f",
+    inkSoft: "rgba(18,40,63,0.65)",
+    accent: "#d4a437",
+    accentText: "#12283f",
+    divider: "rgba(18,40,63,0.15)",
+    serif: '"Fraunces", Georgia, serif',
+    hero: "photo",
+    swatch: ["#12283f", "#d4a437", "#fffdf6"],
+  },
+  bourbonbarrel: {
+    id: "bourbonbarrel",
+    label: "Bourbon Barrel",
+    frame: "#4a2c1a",
+    paper: "#f0dfb8",
+    ink: "#3a1d0e",
+    inkSoft: "rgba(58,29,14,0.7)",
+    accent: "#b8722c",
+    accentText: "#fffdf6",
+    divider: "rgba(58,29,14,0.2)",
+    serif: '"Fraunces", Georgia, serif',
+    hero: "photo",
+    swatch: ["#4a2c1a", "#b8722c", "#f0dfb8"],
+  },
   bright: {
     id: "bright",
     label: "Bright & Fresh",
@@ -444,23 +490,24 @@ function OnboardingModal({ onDone, onSkip }: { onDone: () => void; onSkip: () =>
         <div className="flex items-center gap-2">
           <span className="size-2 rounded-full bg-brand-orange" />
           <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-orange">
-            Welcome to TruckDash
+            Howdy, neighbor
           </span>
         </div>
         <h2 className="font-display text-2xl leading-tight">
-          Your daily flyer, ready in one tap.
+          Daily flyers that work as hard as you do.
         </h2>
         <p className="text-sm text-brand-green/70 leading-relaxed">
-          Head to the <span className="font-semibold text-brand-green">Flyer</span> tab to design
-          a beautiful post for today.
+          Built by a Monticello neighbor for the trucks running Lake Cumberland — ramps,
+          festivals, and Food Truck Friday. Update your spot, spin up a flyer, and get back to
+          cooking.
         </p>
         <ul className="space-y-2.5 text-sm">
           {[
-            ["🎨", "7 templates + 6 warm background textures"],
-            ["📐", "Post, Story & Square formats — one tap"],
-            ["📷", "Use your own food photo from your phone"],
-            ["🔗", "Real QR code with live URL validation"],
-            ["📤", "Share to Instagram & Facebook, ready-sized"],
+            ["📍", "One-tap “Today's Location” with GPS"],
+            ["🎨", "Kentucky-flavored flyer templates"],
+            ["📐", "Post, Story & Square — sized for Facebook & Instagram"],
+            ["📷", "Snap your own food photo, right from your phone"],
+            ["🔗", "Real QR code for order-ahead & tips"],
           ].map(([icon, text]) => (
             <li key={text} className="flex gap-3 items-start">
               <span className="text-lg leading-none pt-0.5">{icon}</span>
@@ -473,13 +520,13 @@ function OnboardingModal({ onDone, onSkip }: { onDone: () => void; onSkip: () =>
             onClick={onSkip}
             className="py-3.5 rounded-2xl text-sm font-bold text-brand-green/70 bg-white border border-brand-green/10"
           >
-            Explore first
+            Look around first
           </button>
           <button
             onClick={onDone}
             className="py-3.5 rounded-2xl text-sm font-bold text-white bg-brand-orange shadow-lg shadow-brand-orange/25"
           >
-            Open Flyer Studio
+            Make my first flyer
           </button>
         </div>
       </div>
@@ -548,12 +595,56 @@ function StatusCard({
   setState: (s: TruckState) => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const [gpsBusy, setGpsBusy] = useState(false);
+  const [gpsMsg, setGpsMsg] = useState<string | null>(null);
+
+  const useCurrentLocation = () => {
+    if (!("geolocation" in navigator)) {
+      setGpsMsg("GPS not available on this device");
+      return;
+    }
+    setGpsBusy(true);
+    setGpsMsg(null);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=16&addressdetails=1`,
+            { headers: { Accept: "application/json" } },
+          );
+          const data = await res.json();
+          const a = data?.address ?? {};
+          const parts = [
+            a.road || a.pedestrian || a.neighbourhood || a.hamlet,
+            a.city || a.town || a.village || a.county,
+          ].filter(Boolean);
+          const label = parts.join(", ") || data?.display_name || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+          setState({ ...state, location: label });
+          setGpsMsg("Location updated");
+        } catch {
+          setState({ ...state, location: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}` });
+          setGpsMsg("Set GPS coordinates");
+        } finally {
+          setGpsBusy(false);
+          setTimeout(() => setGpsMsg(null), 2400);
+        }
+      },
+      (err) => {
+        setGpsBusy(false);
+        setGpsMsg(err.code === 1 ? "Location permission blocked" : "Couldn't get location");
+        setTimeout(() => setGpsMsg(null), 2400);
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
+    );
+  };
+
   return (
     <section className="bg-brand-green text-white rounded-3xl p-6 shadow-xl shadow-brand-green/15">
-      <div className="flex justify-between items-start mb-5 gap-3">
+      <div className="flex justify-between items-start mb-4 gap-3">
         <div className="min-w-0 space-y-1 flex-1">
           <p className="text-brand-gold text-[10px] font-bold uppercase tracking-[0.2em]">
-            Current Spot
+            Today's Location
           </p>
           {editing ? (
             <input
@@ -579,6 +670,15 @@ function StatusCard({
           <PencilIcon className="size-4" />
         </button>
       </div>
+
+      <button
+        onClick={useCurrentLocation}
+        disabled={gpsBusy}
+        className="w-full mb-4 flex items-center justify-center gap-2 bg-brand-gold text-brand-green font-bold uppercase tracking-wider text-xs py-3 rounded-2xl shadow-lg shadow-brand-gold/20 active:scale-[0.98] transition disabled:opacity-70"
+      >
+        <PinIcon className="size-4" />
+        {gpsBusy ? "Getting GPS…" : gpsMsg ?? "Use my current location"}
+      </button>
 
       <div className="grid grid-cols-2 gap-3">
         <label className="bg-white/5 rounded-2xl p-4 border border-white/10 cursor-text block">
@@ -1022,7 +1122,7 @@ function TemplatePicker({
   value: TemplateId;
   onChange: (t: TemplateId) => void;
 }) {
-  const ids: TemplateId[] = ["bright", "boldbbq", "rustic", "clean", "bbq", "moody", "minimal"];
+  const ids: TemplateId[] = ["lakecumberland", "festival", "bourbonbarrel", "bright", "boldbbq", "rustic", "clean", "bbq", "moody", "minimal"];
   return (
     <div className="-mx-4 px-4 overflow-x-auto no-scrollbar">
       <div className="flex gap-2.5 pb-1">
@@ -1597,6 +1697,14 @@ async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text);
   } catch {}
+}
+function PinIcon(p: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M12 21s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12z" />
+      <circle cx="12" cy="9" r="2.5" />
+    </svg>
+  );
 }
 
 /* ---------- Icons ---------- */

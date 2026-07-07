@@ -1,14 +1,15 @@
 {
-  "name": "TruckDash — Food Truck Dashboard",
+  "name": "TruckDash — Kentucky Food Truck Dashboard",
   "short_name": "TruckDash",
-  "description": "Update location, hours, menu and share a beautiful daily flyer.",
+  "description": "Daily flyers that work as hard as you do. Built for Lake Cumberland food trucks.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f8f5ef",
-  "theme_color": "#e85d04",
+  "background_color": "#f5efe1",
+  "theme_color": "#b8722c",
   "icons": [
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }
+

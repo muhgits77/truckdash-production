@@ -1068,7 +1068,7 @@ function TemplatePicker({
   value: TemplateId;
   onChange: (t: TemplateId) => void;
 }) {
-  const ids: TemplateId[] = ["bright", "boldbbq", "rustic", "clean", "bbq", "moody", "minimal"];
+  const ids: TemplateId[] = ["lakecumberland", "festival", "bourbonbarrel", "bright", "boldbbq", "rustic", "clean", "bbq", "moody", "minimal"];
   return (
     <div className="-mx-4 px-4 overflow-x-auto no-scrollbar">
       <div className="flex gap-2.5 pb-1">

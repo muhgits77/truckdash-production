@@ -737,33 +737,45 @@ function StatusCard({
 function QuickActions({
   onOpenMenu,
   onOpenFlyer,
+  onOpenWeek,
 }: {
   onOpenMenu: () => void;
   onOpenFlyer: () => void;
+  onOpenWeek: () => void;
 }) {
   return (
-    <section className="grid grid-cols-2 gap-4">
+    <section className="grid grid-cols-3 gap-3">
+      <button
+        onClick={onOpenWeek}
+        className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-3xl border border-brand-green/5 shadow-sm active:scale-[0.98] transition"
+      >
+        <div className="size-11 rounded-2xl bg-brand-green/10 flex items-center justify-center text-brand-green">
+          <CalendarIcon className="size-5" />
+        </div>
+        <span className="text-xs font-semibold text-brand-green">This Week</span>
+      </button>
       <button
         onClick={onOpenMenu}
-        className="flex flex-col items-center justify-center gap-3 bg-white p-5 rounded-3xl border border-brand-green/5 shadow-sm active:scale-[0.98] transition"
+        className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-3xl border border-brand-green/5 shadow-sm active:scale-[0.98] transition"
       >
-        <div className="size-12 rounded-2xl bg-brand-orange/10 flex items-center justify-center text-brand-orange">
-          <ForkKnifeIcon className="size-6" />
+        <div className="size-11 rounded-2xl bg-brand-orange/10 flex items-center justify-center text-brand-orange">
+          <ForkKnifeIcon className="size-5" />
         </div>
-        <span className="text-sm font-semibold text-brand-green">Edit Menu</span>
+        <span className="text-xs font-semibold text-brand-green">Menu</span>
       </button>
       <button
         onClick={onOpenFlyer}
-        className="flex flex-col items-center justify-center gap-3 bg-white p-5 rounded-3xl border border-brand-green/5 shadow-sm active:scale-[0.98] transition"
+        className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-3xl border border-brand-green/5 shadow-sm active:scale-[0.98] transition"
       >
-        <div className="size-12 rounded-2xl bg-brand-gold/15 flex items-center justify-center text-brand-green">
-          <SparklesIcon className="size-6" />
+        <div className="size-11 rounded-2xl bg-brand-gold/15 flex items-center justify-center text-brand-green">
+          <SparklesIcon className="size-5" />
         </div>
-        <span className="text-sm font-semibold text-brand-green">Design Flyer</span>
+        <span className="text-xs font-semibold text-brand-green">Flyer</span>
       </button>
     </section>
   );
 }
+
 
 function MenuHighlightsCard({ items, onEdit }: { items: MenuItem[]; onEdit: () => void }) {
   return (

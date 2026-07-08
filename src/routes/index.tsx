@@ -97,10 +97,11 @@ const DEFAULT_STATE: TruckState = {
 };
 
 
-const APP_VERSION = "0.4.0";
+const APP_VERSION = "0.5.0";
 const STORAGE_KEY = "truckdash.state.v1";
 const VERSION_KEY = "truckdash.version";
-const ONBOARD_KEY = "truckdash.onboarded.v4";
+const ONBOARD_KEY = "truckdash.onboarded.v5";
+
 
 const SHARE_FORMATS: {
   id: ShareFormat;

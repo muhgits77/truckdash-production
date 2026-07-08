@@ -425,7 +425,7 @@ function useTruckState() {
 
 function Dashboard() {
   const [state, setState] = useTruckState();
-  const [tab, setTab] = useState<"home" | "menu" | "flyer">("home");
+  const [tab, setTab] = useState<"home" | "menu" | "week" | "flyer">("home");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showOnboard, setShowOnboard] = useState(false);
   const flyerRef = useRef<HTMLDivElement | null>(null);

@@ -1,6 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useTruckState, type CateringInquiry } from "@/lib/truck-state";
+import { useTruckState } from "@/lib/truck-state";
+import {
+  getProfile,
+  saveInquiry,
+  type CateringProfile,
+  type CateringInquiry,
+} from "@/lib/dataService";
 
 export const Route = createFileRoute("/catering")({
   head: () => ({
@@ -26,7 +32,7 @@ export const Route = createFileRoute("/catering")({
  */
 function CateringPublicPage() {
   const [state] = useTruckState();
-  const c = state.catering;
+  const [profile, setProfile] = useState<CateringProfile | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -45,6 +51,12 @@ function CateringPublicPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [inquiryId, setInquiryId] = useState<string | null>(null);
+  const [forwardedEmail, setForwardedEmail] = useState<string>("");
+
+  // Load profile from the data abstraction layer (localStorage for now)
+  useEffect(() => {
+    getProfile().then(setProfile);
+  }, []);
 
   const eventTypes = [
     "Corporate",
@@ -71,9 +83,7 @@ function CateringPublicPage() {
 
     setSubmitting(true);
 
-    const inquiry: CateringInquiry = {
-      id: crypto.randomUUID(),
-      submittedAt: new Date().toISOString(),
+    const inquiryData = {
       name: form.name.trim(),
       email: form.email.trim(),
       phone: form.phone.trim(),
@@ -85,28 +95,25 @@ function CateringPublicPage() {
       menuInterests: form.menuInterests.trim(),
       budget: form.budget,
       notes: form.notes.trim(),
-      status: "new",
     };
 
-    // Persist to shared storage so owner dashboard sees it immediately.
-    // (Simulates "sending to dashboard / email" for this demo.)
-    try {
-      const raw = localStorage.getItem("truckdash.catering.inquiries");
-      const list: CateringInquiry[] = raw ? JSON.parse(raw) : [];
-      list.unshift(inquiry); // newest first
-      localStorage.setItem("truckdash.catering.inquiries", JSON.stringify(list.slice(0, 50)));
-    } catch {
-      // non-fatal
-    }
+    // Use the data abstraction layer (easy to swap for Supabase later)
+    const savedInquiry = await saveInquiry(inquiryData);
 
-    // For real email later: could POST to a serverless endpoint.
-    // For now we log + store.
-    console.log("[Catering Inquiry received]", inquiry);
+    // Load the current profile so we can "send" the notification email
+    const currentProfile = profile ?? (await getProfile());
+    const targetEmail = currentProfile.notificationEmail;
+
+    // Simulate sending the email to the owner's notification address.
+    // In a real app this would be a serverless function / Supabase Edge Function / email service.
+    console.log("[Catering Inquiry received]", savedInquiry);
+    console.log(`Inquiry forwarded (simulated) to owner notification email: ${targetEmail}`);
 
     // Simulate short processing
     await new Promise((r) => setTimeout(r, 420));
 
-    setInquiryId(inquiry.id);
+    setInquiryId(savedInquiry.id);
+    setForwardedEmail(targetEmail);
     setSubmitted(true);
     setSubmitting(false);
   };
@@ -114,6 +121,7 @@ function CateringPublicPage() {
   const resetForm = () => {
     setSubmitted(false);
     setInquiryId(null);
+    setForwardedEmail("");
     setForm({
       name: "",
       email: "",
@@ -130,8 +138,11 @@ function CateringPublicPage() {
   };
 
   const truckName = state.name;
-  const contactPhone = c.contactPhone || state.phone;
-  const contactEmail = c.contactEmail;
+  const contactPhone = state.phone;
+  // Fall back gracefully while profile loads
+  const introMessage =
+    profile?.introMessage || "Bring authentic Bluegrass Kitchen flavors to your next gathering...";
+  const packages = profile?.signaturePackages || [];
 
   return (
     <div className="min-h-screen bg-brand-sand text-brand-green">
@@ -173,7 +184,7 @@ function CateringPublicPage() {
                 <br />
                 to your next event.
               </h1>
-              <p className="max-w-md mx-auto text-brand-green/70">{c.introMessage}</p>
+              <p className="max-w-md mx-auto text-brand-green/70">{introMessage}</p>
               <p className="mt-3 text-sm font-medium text-brand-green/60">
                 Weddings • Corporate • Festivals • Private Parties • Family Gatherings
               </p>
@@ -181,7 +192,7 @@ function CateringPublicPage() {
 
             {/* Signature packages preview (warm & honest) */}
             <div className="mb-8 grid gap-3 sm:grid-cols-3">
-              {c.signaturePackages.slice(0, 3).map((pkg) => (
+              {packages.slice(0, 3).map((pkg) => (
                 <div key={pkg.id} className="bg-white rounded-3xl p-4 border border-brand-green/10">
                   <div className="font-semibold text-base">{pkg.name}</div>
                   <div className="text-xs text-brand-orange font-medium mt-0.5">{pkg.serves}</div>
@@ -332,7 +343,8 @@ function CateringPublicPage() {
             </form>
 
             <div className="mt-6 text-center text-xs text-brand-green/50">
-              Serving the Lake Cumberland region with pride • {contactPhone} • {contactEmail}
+              Serving the Lake Cumberland region with pride • {contactPhone}
+              {profile?.notificationEmail ? ` • ${profile.notificationEmail}` : ""}
             </div>
           </>
         ) : (
@@ -348,6 +360,11 @@ function CateringPublicPage() {
               Your inquiry has been received. We’ll reach out within a day to talk through the
               details and lock in your date.
             </p>
+            {forwardedEmail && (
+              <p className="mt-2 text-sm font-medium text-brand-orange">
+                Inquiry forwarded to {forwardedEmail}
+              </p>
+            )}
 
             <div className="mt-8 bg-white rounded-3xl p-5 text-left border border-brand-green/10">
               <div className="uppercase text-[10px] tracking-widest text-brand-orange font-bold mb-1">

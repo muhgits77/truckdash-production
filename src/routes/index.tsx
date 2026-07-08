@@ -10,17 +10,22 @@ import {
   type TemplateId,
   type ShareFormat,
   type BackgroundId,
-  type CateringSettings,
-  type CateringInquiry,
   DEFAULT_SCHEDULE,
   DEFAULT_STATE,
-  DEFAULT_CATERING,
   APP_VERSION,
   STORAGE_KEY,
   VERSION_KEY,
   ONBOARD_KEY,
   useTruckState,
 } from "@/lib/truck-state";
+import {
+  getProfile,
+  saveProfile,
+  getInquiries,
+  markInquiryContacted,
+  type CateringProfile,
+  type CateringInquiry,
+} from "@/lib/dataService";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -1510,7 +1515,7 @@ function CateringOwnerView({
   setState: (s: TruckState) => void;
   onDone: () => void;
 }) {
-  const c = state.catering;
+  const [profile, setProfile] = useState<CateringProfile | null>(null);
   const [inquiries, setInquiries] = useState<CateringInquiry[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [socialOpen, setSocialOpen] = useState(false);
@@ -1524,14 +1529,10 @@ function CateringOwnerView({
 
   const socialRef = useRef<HTMLDivElement | null>(null);
 
-  // Load inquiries (shared with public /catering form)
+  // Load profile + inquiries via the clean dataService abstraction (localStorage demo)
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("truckdash.catering.inquiries");
-      if (raw) setInquiries(JSON.parse(raw));
-    } catch {
-      /* storage read failure is non-fatal */
-    }
+    getProfile().then(setProfile);
+    getInquiries().then(setInquiries);
   }, []);
 
   useEffect(() => {
@@ -1555,18 +1556,24 @@ function CateringOwnerView({
 
   const triggerPhotoUpload = () => photoInputRef.current?.click();
 
-  const updateCatering = (patch: Partial<CateringSettings>) => {
-    setState({ ...state, catering: { ...c, ...patch } });
+  // Profile editing via dataService (modular for future Supabase)
+  const updateProfile = async (patch: Partial<CateringProfile>) => {
+    if (!profile) return;
+    const updated = { ...profile, ...patch };
+    setProfile(updated);
+    await saveProfile(updated);
   };
 
-  const updatePackage = (id: string, patch: Partial<CateringSettings["signaturePackages"][0]>) => {
-    const next = c.signaturePackages.map((p) => (p.id === id ? { ...p, ...patch } : p));
-    updateCatering({ signaturePackages: next });
+  const updatePackage = (id: string, patch: Partial<CateringProfile["signaturePackages"][0]>) => {
+    if (!profile) return;
+    const next = profile.signaturePackages.map((p) => (p.id === id ? { ...p, ...patch } : p));
+    updateProfile({ signaturePackages: next });
   };
 
   const addPackage = () => {
+    if (!profile) return;
     const next = [
-      ...c.signaturePackages,
+      ...profile.signaturePackages,
       {
         id: crypto.randomUUID(),
         name: "New Package",
@@ -1574,23 +1581,20 @@ function CateringOwnerView({
         serves: "Serves 20–30",
       },
     ];
-    updateCatering({ signaturePackages: next });
+    updateProfile({ signaturePackages: next });
   };
 
   const removePackage = (id: string) => {
-    updateCatering({ signaturePackages: c.signaturePackages.filter((p) => p.id !== id) });
+    if (!profile) return;
+    updateProfile({
+      signaturePackages: profile.signaturePackages.filter((p) => p.id !== id),
+    });
   };
 
-  const markContacted = (id: string) => {
-    const next = inquiries.map((inq) =>
-      inq.id === id ? { ...inq, status: "contacted" as const } : inq,
-    );
-    setInquiries(next);
-    try {
-      localStorage.setItem("truckdash.catering.inquiries", JSON.stringify(next));
-    } catch {
-      /* storage write failure — non-fatal for demo */
-    }
+  const markContacted = async (id: string) => {
+    await markInquiryContacted(id);
+    const updated = await getInquiries();
+    setInquiries(updated);
   };
 
   const copyPublicLink = async () => {
@@ -1693,82 +1697,94 @@ function CateringOwnerView({
         </button>
       </div>
 
-      {/* Settings */}
+      {/* Settings — now driven by the dataService profile (scalable) */}
       <div className="bg-white rounded-3xl border border-brand-green/10 p-5 space-y-4">
         <div className="font-semibold">Your Catering Profile</div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="Contact Email">
-            <input
-              value={c.contactEmail}
-              onChange={(e) => updateCatering({ contactEmail: e.target.value })}
-              className="w-full bg-brand-sand rounded-2xl px-3 py-2.5 text-sm border border-brand-green/10"
-            />
-          </Field>
-          <Field label="Contact Phone">
-            <input
-              value={c.contactPhone}
-              onChange={(e) => updateCatering({ contactPhone: e.target.value })}
-              className="w-full bg-brand-sand rounded-2xl px-3 py-2.5 text-sm border border-brand-green/10"
-            />
-          </Field>
-        </div>
-
-        <Field label="Service Area">
-          <input
-            value={c.serviceArea}
-            onChange={(e) => updateCatering({ serviceArea: e.target.value })}
-            className="w-full bg-brand-sand rounded-2xl px-3 py-2.5 text-sm border border-brand-green/10"
-          />
-        </Field>
-
-        <Field label="Public Intro Message (shown on form)">
-          <textarea
-            value={c.introMessage}
-            onChange={(e) => updateCatering({ introMessage: e.target.value })}
-            rows={3}
-            className="w-full bg-brand-sand rounded-2xl px-3 py-2.5 text-sm border border-brand-green/10"
-          />
-        </Field>
-
-        {/* Signature packages */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-xs font-bold uppercase tracking-wider text-brand-green/60">
-              Signature Packages
+        {!profile ? (
+          <div className="text-sm text-brand-green/60">Loading profile…</div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field label="Owner Notification Email">
+                <input
+                  type="email"
+                  value={profile.notificationEmail}
+                  onChange={(e) => updateProfile({ notificationEmail: e.target.value })}
+                  className="w-full bg-brand-sand rounded-2xl px-3 py-2.5 text-sm border border-brand-green/10"
+                  placeholder="you@yourtruck.com"
+                />
+              </Field>
+              {/* Phone kept for convenience / display in public form but not part of core profile service yet */}
+              <Field label="Contact Phone (display)">
+                <input
+                  value={state.phone}
+                  onChange={(e) => setState({ ...state, phone: e.target.value })}
+                  className="w-full bg-brand-sand rounded-2xl px-3 py-2.5 text-sm border border-brand-green/10"
+                />
+              </Field>
             </div>
-            <button onClick={addPackage} className="text-xs text-brand-orange font-bold">
-              + Add
-            </button>
-          </div>
-          <div className="space-y-2">
-            {c.signaturePackages.map((pkg) => (
-              <div
-                key={pkg.id}
-                className="grid grid-cols-[1fr,1fr,auto] gap-2 items-center bg-brand-sand rounded-2xl p-2"
-              >
-                <input
-                  value={pkg.name}
-                  onChange={(e) => updatePackage(pkg.id, { name: e.target.value })}
-                  className="bg-white rounded-xl px-2 py-1 text-sm"
-                />
-                <input
-                  value={pkg.serves}
-                  onChange={(e) => updatePackage(pkg.id, { serves: e.target.value })}
-                  className="bg-white rounded-xl px-2 py-1 text-xs"
-                />
-                <button onClick={() => removePackage(pkg.id)} className="text-brand-green/40 px-2">
-                  ×
+
+            <Field label="Service Area">
+              <input
+                value={profile.serviceArea}
+                onChange={(e) => updateProfile({ serviceArea: e.target.value })}
+                className="w-full bg-brand-sand rounded-2xl px-3 py-2.5 text-sm border border-brand-green/10"
+              />
+            </Field>
+
+            <Field label="Public Intro Message (shown on form)">
+              <textarea
+                value={profile.introMessage}
+                onChange={(e) => updateProfile({ introMessage: e.target.value })}
+                rows={3}
+                className="w-full bg-brand-sand rounded-2xl px-3 py-2.5 text-sm border border-brand-green/10"
+              />
+            </Field>
+
+            {/* Signature packages */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs font-bold uppercase tracking-wider text-brand-green/60">
+                  Signature Packages
+                </div>
+                <button onClick={addPackage} className="text-xs text-brand-orange font-bold">
+                  + Add
                 </button>
-                <input
-                  value={pkg.description}
-                  onChange={(e) => updatePackage(pkg.id, { description: e.target.value })}
-                  className="col-span-3 bg-white rounded-xl px-2 py-1 text-xs mt-1"
-                />
               </div>
-            ))}
-          </div>
-        </div>
+              <div className="space-y-2">
+                {profile.signaturePackages.map((pkg) => (
+                  <div
+                    key={pkg.id}
+                    className="grid grid-cols-[1fr,1fr,auto] gap-2 items-center bg-brand-sand rounded-2xl p-2"
+                  >
+                    <input
+                      value={pkg.name}
+                      onChange={(e) => updatePackage(pkg.id, { name: e.target.value })}
+                      className="bg-white rounded-xl px-2 py-1 text-sm"
+                    />
+                    <input
+                      value={pkg.serves}
+                      onChange={(e) => updatePackage(pkg.id, { serves: e.target.value })}
+                      className="bg-white rounded-xl px-2 py-1 text-xs"
+                    />
+                    <button
+                      onClick={() => removePackage(pkg.id)}
+                      className="text-brand-green/40 px-2"
+                    >
+                      ×
+                    </button>
+                    <input
+                      value={pkg.description}
+                      onChange={(e) => updatePackage(pkg.id, { description: e.target.value })}
+                      className="col-span-3 bg-white rounded-xl px-2 py-1 text-xs mt-1"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Quick actions */}
@@ -1871,7 +1887,9 @@ function CateringOwnerView({
             {/* Simple visual representation */}
             <div className="space-y-3 text-sm">
               <div className="font-display text-xl">{state.name} Catering</div>
-              <p className="text-brand-green/70 text-sm">{c.introMessage}</p>
+              <p className="text-brand-green/70 text-sm">
+                {profile?.introMessage || "Bring authentic flavors to your next event..."}
+              </p>
               <div className="bg-brand-sand rounded-2xl p-3 text-xs">
                 Name, Email, Phone, Date/Time, Guests, Location, Event Type, Menu/Dietary, Budget,
                 Notes

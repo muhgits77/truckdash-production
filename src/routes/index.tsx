@@ -1518,6 +1518,10 @@ function CateringOwnerView({
   const [busy, setBusy] = useState<null | "png" | "share">(null);
   const [toast, setToast] = useState<string | null>(null);
 
+  // Photo for the social graphic (local to this session; allows owner to use their own realistic food/event photo)
+  const [socialPhoto, setSocialPhoto] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
   const socialRef = useRef<HTMLDivElement | null>(null);
 
   // Load inquiries (shared with public /catering form)
@@ -1535,6 +1539,21 @@ function CateringOwnerView({
     const t = setTimeout(() => setToast(null), 2400);
     return () => clearTimeout(t);
   }, [toast]);
+
+  const handleSocialPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSocialPhoto(typeof reader.result === "string" ? reader.result : null);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = ""; // reset for re-upload
+  };
+
+  const resetSocialPhoto = () => setSocialPhoto(null);
+
+  const triggerPhotoUpload = () => photoInputRef.current?.click();
 
   const updateCatering = (patch: Partial<CateringSettings>) => {
     setState({ ...state, catering: { ...c, ...patch } });
@@ -1589,19 +1608,34 @@ function CateringOwnerView({
   const openSocial = () => setSocialOpen(true);
   const closeSocial = () => setSocialOpen(false);
 
+  // Robust capture helpers (modeled after the proven flyer tool)
+  const captureCateringBlob = async () => {
+    if (!socialRef.current) return null;
+    // pixelRatio 3 on a 380px base → ~1140px wide output — perfect for IG/FB (1080+)
+    return await toBlob(socialRef.current, {
+      pixelRatio: 3,
+      cacheBust: true,
+      backgroundColor: "#f5efe1",
+    });
+  };
+
   const downloadCateringImage = async () => {
     if (!socialRef.current) return;
     setBusy("png");
     try {
-      const dataUrl = await toPng(socialRef.current, { pixelRatio: 3, backgroundColor: "#f5efe1" });
+      const dataUrl = await toPng(socialRef.current, {
+        pixelRatio: 3,
+        cacheBust: true,
+        backgroundColor: "#f5efe1",
+      });
       const a = document.createElement("a");
       a.href = dataUrl;
       a.download = `${slug(state.name)}-catering.png`;
       a.click();
-      setToast("Image downloaded — ready to post");
+      setToast("Image downloaded — ready to post on Instagram or Facebook");
     } catch (e) {
       console.error(e);
-      setToast("Export failed");
+      setToast("Couldn't export image. Try again.");
     } finally {
       setBusy(null);
     }
@@ -1610,24 +1644,35 @@ function CateringOwnerView({
   const shareCatering = async () => {
     setBusy("share");
     try {
-      const blob = await toBlob(socialRef.current!, { pixelRatio: 3, backgroundColor: "#f5efe1" });
+      const blob = await captureCateringBlob();
       const caption = buildCateringCaption(state);
-      if (
-        blob &&
-        navigator.canShare?.({ files: [new File([blob], "catering.png", { type: "image/png" })] })
-      ) {
-        await navigator.share({
-          files: [new File([blob], "catering.png", { type: "image/png" })],
-          title: `${state.name} Catering`,
-          text: caption,
-        });
+
+      if (blob && navigator.canShare) {
+        const file = new File([blob], `${slug(state.name)}-catering.png`, { type: "image/png" });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: `${state.name} Catering`,
+            text: caption,
+          });
+          setToast("Shared!");
+          closeSocial();
+          return;
+        }
+      }
+      if (navigator.share) {
+        await navigator.share({ title: `${state.name} Catering`, text: caption });
         closeSocial();
         return;
       }
+
       await navigator.clipboard.writeText(caption);
-      setToast("Caption copied. Download the image too.");
+      setToast("Caption copied. Use Download for the image.");
     } catch (e: unknown) {
-      if ((e as { name?: string })?.name !== "AbortError") console.error(e);
+      if ((e as { name?: string })?.name !== "AbortError") {
+        console.error(e);
+        setToast("Share not available — caption copied instead.");
+      }
     } finally {
       setBusy(null);
     }
@@ -1868,8 +1913,39 @@ function CateringOwnerView({
               ))}
             </div>
 
-            <div className="rounded-3xl overflow-hidden ring-1 ring-brand-green/10 bg-white p-2 mb-4">
-              <CateringSocialCard ref={socialRef} state={state} format={socialFormat} />
+            {/* Photo chooser for the social graphic - allows realistic local food photo */}
+            <div className="flex items-center gap-2 mb-2 text-xs">
+              <span className="font-bold uppercase tracking-wider text-brand-green/60">Photo</span>
+              <button
+                onClick={triggerPhotoUpload}
+                className="px-2.5 py-1 rounded-full border border-brand-green/15 bg-white text-brand-green hover:bg-brand-sand"
+              >
+                Upload own photo
+              </button>
+              {socialPhoto && (
+                <button onClick={resetSocialPhoto} className="text-brand-green/60 underline">
+                  Reset
+                </button>
+              )}
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleSocialPhotoUpload}
+              />
+            </div>
+
+            {/* Larger, fixed-base-size preview so export is ~1080px and not zoomed/cropped */}
+            <div className="mx-auto mb-4" style={{ width: 380 }}>
+              <div className="overflow-hidden rounded-3xl ring-1 ring-brand-green/10 bg-white">
+                <CateringSocialCard
+                  ref={socialRef}
+                  state={state}
+                  format={socialFormat}
+                  photo={socialPhoto}
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
@@ -1910,36 +1986,95 @@ function CateringOwnerView({
   );
 }
 
-/* Small reusable social card for catering promos */
+/* Reusable high-quality social card for catering promos.
+ * Designed for ~1080px output (base render ~360-380px * pixelRatio 3).
+ * Warm Kentucky aesthetic, prominent realistic photo placeholder + upload support,
+ * clear hierarchy, conversion-focused CTA. Matches flyer tool quality.
+ */
 const CateringSocialCard = React.forwardRef<
   HTMLDivElement,
-  { state: TruckState; format: ShareFormat }
->(({ state, format }, ref) => {
+  { state: TruckState; format: ShareFormat; photo?: string | null }
+>(({ state, format, photo }, ref) => {
   const aspect =
     format === "portrait" ? "aspect-[4/5]" : format === "story" ? "aspect-[9/16]" : "aspect-square";
+
+  // Use provided upload or the project's food photo asset (realistic, on-brand)
+  const heroSrc = photo || flyerFood;
+
+  // Keep service area friendly and short for the graphic
+  const areaLabel = "Lake Cumberland & Central Kentucky";
+
   return (
     <div
       ref={ref}
-      className={`${aspect} relative overflow-hidden rounded-2xl p-5 flex flex-col`}
-      style={{ background: "linear-gradient(160deg, #f5efe1, #f0e7d4)", color: "#1a3d2e" }}
+      className={`${aspect} relative overflow-hidden flex flex-col`}
+      style={{
+        background: "#f5efe1",
+        color: "#1a3d2e",
+        width: "100%", // controlled by parent fixed-width wrapper
+        fontFamily: "var(--font-sans, system-ui)",
+      }}
     >
-      <div className="text-[10px] font-bold tracking-[0.2em] text-brand-orange">
-        BLUEGRASS KITCHEN
-      </div>
-      <div className="font-display text-3xl leading-none mt-2 tracking-tight">
-        Catering
-        <br />
-        available
-      </div>
-      <div className="mt-auto text-sm">
-        <div className="font-semibold">{state.name}</div>
-        <div className="text-xs opacity-70">Lake Cumberland &amp; Central Kentucky</div>
-        <div className="mt-3 inline-block bg-brand-orange text-white text-xs px-3 py-1 rounded-full">
-          Inquire → /catering
+      {/* Prominent hero photo section (top ~52%) */}
+      <div className="relative" style={{ height: "52%" }}>
+        <img
+          src={heroSrc}
+          alt="Catering food spread - Bluegrass Kitchen"
+          className="absolute inset-0 w-full h-full object-cover"
+          crossOrigin="anonymous"
+        />
+        {/* Subtle vignette for premium feel */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.25) 70%, rgba(0,0,0,0.45) 100%)",
+          }}
+        />
+        {/* Badge over photo */}
+        <div
+          className="absolute top-3 left-3 px-3 py-1 rounded-full text-[10px] font-bold tracking-[0.2em] shadow"
+          style={{ background: "#b8722c", color: "#fffdf6" }}
+        >
+          CATERING AVAILABLE
         </div>
       </div>
-      <div className="absolute bottom-3 right-3 text-[10px] opacity-50">
-        Honest food. Local roots.
+
+      {/* Text + CTA area */}
+      <div className="flex-1 px-5 pt-4 pb-5 flex flex-col items-center text-center justify-between">
+        {/* Truck name + headline */}
+        <div>
+          <div
+            className="font-display text-[27px] leading-[1.05] font-bold tracking-[-0.4px]"
+            style={{ color: "#1a3d2e" }}
+          >
+            {state.name}
+          </div>
+          <div
+            className="mt-0.5 text-[17px] font-semibold tracking-tight"
+            style={{ color: "#b8722c" }}
+          >
+            Catering Available
+          </div>
+        </div>
+
+        {/* Service area */}
+        <div className="text-[11px] font-medium tracking-wide text-[#4a4a4a] -mt-1">
+          {areaLabel}
+        </div>
+
+        {/* Prominent CTA "button" - looks clickable in the post */}
+        <div
+          className="inline-flex items-center justify-center px-5 py-[7px] rounded-[14px] text-xs font-extrabold tracking-[0.15em] shadow-sm"
+          style={{ background: "#1a3d2e", color: "#f5efe1" }}
+        >
+          INQUIRE → /CATERING
+        </div>
+
+        {/* Warm tagline */}
+        <div className="text-[10px] opacity-70 tracking-[0.5px] -mt-1">
+          Honest food. Local roots.
+        </div>
       </div>
     </div>
   );

@@ -95,3 +95,101 @@
   font-family: var(--font-serif);
   font-optical-sizing: auto;
 }
+
+/* ---------- Printable schedule ---------- */
+.printable-schedule {
+  color: #1a1a1a;
+  background: #ffffff;
+  padding: 0.5in;
+  font-family: var(--font-sans);
+}
+.printable-schedule .print-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: 3px solid #1a3d2e;
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+}
+.printable-schedule .print-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: #b8722c;
+  margin: 0;
+}
+.printable-schedule .print-title {
+  font-family: var(--font-serif);
+  font-size: 34px;
+  font-weight: 700;
+  color: #1a3d2e;
+  margin: 4px 0 2px;
+  line-height: 1.05;
+}
+.printable-schedule .print-sub {
+  font-size: 12px;
+  color: #4a4a4a;
+  margin: 0;
+}
+.printable-schedule .print-brand {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 13px;
+  color: #1a3d2e;
+}
+.printable-schedule .print-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.printable-schedule .print-table th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #ffffff;
+  background: #1a3d2e;
+  padding: 10px 12px;
+}
+.printable-schedule .print-table td {
+  padding: 12px;
+  border-bottom: 1px solid #e5e0d0;
+  vertical-align: middle;
+}
+.printable-schedule .cell-day {
+  font-weight: 800;
+  color: #b8722c;
+  letter-spacing: 0.12em;
+}
+.printable-schedule .row-closed td {
+  color: #8a8a8a;
+  font-style: italic;
+}
+.printable-schedule .print-footer {
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 2px solid #1a3d2e;
+  font-size: 12px;
+  color: #4a4a4a;
+}
+.printable-schedule .print-footer p {
+  margin: 2px 0;
+}
+.printable-schedule .print-order {
+  color: #b8722c;
+  font-weight: 600;
+}
+
+@media print {
+  @page { margin: 0.4in; }
+  html, body {
+    background: #ffffff !important;
+    color: #1a1a1a !important;
+  }
+  body.printing-schedule .printable-schedule {
+    display: block !important;
+  }
+}
+

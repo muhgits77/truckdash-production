@@ -34,6 +34,17 @@ type BackgroundId =
   | "sage-linen"
   | "charcoal-grain";
 
+type ScheduleDay = {
+  id: string;
+  day: string; // MON, TUE, ...
+  neighborhood: string;
+  spot: string; // address / venue
+  hoursStart: string;
+  hoursEnd: string;
+  closed?: boolean;
+  note?: string; // e.g. "Prep day"
+};
+
 type TruckState = {
   name: string;
   live: boolean;
@@ -48,7 +59,19 @@ type TruckState = {
   heroPhoto?: string; // data URL of user-uploaded flyer photo
   shareFormat: ShareFormat;
   background: BackgroundId;
+  phone: string;
+  schedule: ScheduleDay[];
 };
+
+const DEFAULT_SCHEDULE: ScheduleDay[] = [
+  { id: "d1", day: "MON", neighborhood: "Prep Day", spot: "—", hoursStart: "", hoursEnd: "", closed: true, note: "Kitchen prep" },
+  { id: "d2", day: "TUE", neighborhood: "Downtown Monticello", spot: "Courthouse Square", hoursStart: "11:00 AM", hoursEnd: "2:00 PM" },
+  { id: "d3", day: "WED", neighborhood: "Russell Springs", spot: "Main St. Lot (by the bank)", hoursStart: "11:00 AM", hoursEnd: "2:00 PM" },
+  { id: "d4", day: "THU", neighborhood: "Jamestown", spot: "Lakeway Shopping Center", hoursStart: "11:00 AM", hoursEnd: "2:00 PM" },
+  { id: "d5", day: "FRI", neighborhood: "Food Truck Friday", spot: "Russell Springs · Downtown", hoursStart: "5:00 PM", hoursEnd: "9:00 PM" },
+  { id: "d6", day: "SAT", neighborhood: "Lake Cumberland", spot: "State Dock · Main Ramp", hoursStart: "12:00 PM", hoursEnd: "8:00 PM" },
+  { id: "d7", day: "SUN", neighborhood: "Off", spot: "—", hoursStart: "", hoursEnd: "", closed: true, note: "Family day" },
+];
 
 const DEFAULT_STATE: TruckState = {
   name: "Bluegrass Kitchen",
@@ -69,12 +92,16 @@ const DEFAULT_STATE: TruckState = {
   template: "lakecumberland",
   shareFormat: "portrait",
   background: "sage-linen",
+  phone: "(555) 123-4567",
+  schedule: DEFAULT_SCHEDULE,
 };
 
-const APP_VERSION = "0.4.0";
+
+const APP_VERSION = "0.5.0";
 const STORAGE_KEY = "truckdash.state.v1";
 const VERSION_KEY = "truckdash.version";
-const ONBOARD_KEY = "truckdash.onboarded.v4";
+const ONBOARD_KEY = "truckdash.onboarded.v5";
+
 
 const SHARE_FORMATS: {
   id: ShareFormat;
@@ -398,7 +425,7 @@ function useTruckState() {
 
 function Dashboard() {
   const [state, setState] = useTruckState();
-  const [tab, setTab] = useState<"home" | "menu" | "flyer">("home");
+  const [tab, setTab] = useState<"home" | "menu" | "week" | "flyer">("home");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showOnboard, setShowOnboard] = useState(false);
   const flyerRef = useRef<HTMLDivElement | null>(null);
@@ -429,16 +456,20 @@ function Dashboard() {
 
   return (
     <div className="min-h-screen bg-brand-sand text-brand-green pb-28">
-      <Header state={state} setState={setState} onOpenSettings={() => setSettingsOpen(true)} />
+      <div className="print:hidden">
+        <Header state={state} setState={setState} onOpenSettings={() => setSettingsOpen(true)} />
+      </div>
 
-      <main className="mx-auto max-w-md px-4 pt-4 space-y-6">
+      <main className="mx-auto max-w-md px-4 pt-4 space-y-6 print:hidden">
         {tab === "home" && (
           <>
             <StatusCard state={state} setState={setState} />
             <QuickActions
               onOpenMenu={() => setTab("menu")}
               onOpenFlyer={() => setTab("flyer")}
+              onOpenWeek={() => setTab("week")}
             />
+            <WeekPreviewCard schedule={state.schedule} onOpen={() => setTab("week")} />
             <MenuHighlightsCard items={menuHighlights} onEdit={() => setTab("menu")} />
             <FlyerSection state={state} setState={setState} flyerRef={flyerRef} />
           </>
@@ -448,9 +479,14 @@ function Dashboard() {
           <MenuManager state={state} setState={setState} onDone={() => setTab("home")} />
         )}
 
+        {tab === "week" && (
+          <WeekSchedule state={state} setState={setState} />
+        )}
+
         {tab === "flyer" && (
           <FlyerSection state={state} setState={setState} flyerRef={flyerRef} standalone />
         )}
+
 
         <footer className="pt-6 pb-2 text-center">
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-green/40">
@@ -459,7 +495,10 @@ function Dashboard() {
         </footer>
       </main>
 
+      <PrintableSchedule state={state} />
+
       <BottomNav tab={tab} setTab={setTab} />
+
 
       {settingsOpen && (
         <SettingsSheet state={state} setState={setState} onClose={() => setSettingsOpen(false)} />
@@ -703,33 +742,45 @@ function StatusCard({
 function QuickActions({
   onOpenMenu,
   onOpenFlyer,
+  onOpenWeek,
 }: {
   onOpenMenu: () => void;
   onOpenFlyer: () => void;
+  onOpenWeek: () => void;
 }) {
   return (
-    <section className="grid grid-cols-2 gap-4">
+    <section className="grid grid-cols-3 gap-3">
+      <button
+        onClick={onOpenWeek}
+        className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-3xl border border-brand-green/5 shadow-sm active:scale-[0.98] transition"
+      >
+        <div className="size-11 rounded-2xl bg-brand-green/10 flex items-center justify-center text-brand-green">
+          <CalendarIcon className="size-5" />
+        </div>
+        <span className="text-xs font-semibold text-brand-green">This Week</span>
+      </button>
       <button
         onClick={onOpenMenu}
-        className="flex flex-col items-center justify-center gap-3 bg-white p-5 rounded-3xl border border-brand-green/5 shadow-sm active:scale-[0.98] transition"
+        className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-3xl border border-brand-green/5 shadow-sm active:scale-[0.98] transition"
       >
-        <div className="size-12 rounded-2xl bg-brand-orange/10 flex items-center justify-center text-brand-orange">
-          <ForkKnifeIcon className="size-6" />
+        <div className="size-11 rounded-2xl bg-brand-orange/10 flex items-center justify-center text-brand-orange">
+          <ForkKnifeIcon className="size-5" />
         </div>
-        <span className="text-sm font-semibold text-brand-green">Edit Menu</span>
+        <span className="text-xs font-semibold text-brand-green">Menu</span>
       </button>
       <button
         onClick={onOpenFlyer}
-        className="flex flex-col items-center justify-center gap-3 bg-white p-5 rounded-3xl border border-brand-green/5 shadow-sm active:scale-[0.98] transition"
+        className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-3xl border border-brand-green/5 shadow-sm active:scale-[0.98] transition"
       >
-        <div className="size-12 rounded-2xl bg-brand-gold/15 flex items-center justify-center text-brand-green">
-          <SparklesIcon className="size-6" />
+        <div className="size-11 rounded-2xl bg-brand-gold/15 flex items-center justify-center text-brand-green">
+          <SparklesIcon className="size-5" />
         </div>
-        <span className="text-sm font-semibold text-brand-green">Design Flyer</span>
+        <span className="text-xs font-semibold text-brand-green">Flyer</span>
       </button>
     </section>
   );
 }
+
 
 function MenuHighlightsCard({ items, onEdit }: { items: MenuItem[]; onEdit: () => void }) {
   return (
@@ -1617,20 +1668,22 @@ function Field({
   );
 }
 
+type TabKey = "home" | "menu" | "week" | "flyer";
 function BottomNav({
   tab,
   setTab,
 }: {
-  tab: "home" | "menu" | "flyer";
-  setTab: (t: "home" | "menu" | "flyer") => void;
+  tab: TabKey;
+  setTab: (t: TabKey) => void;
 }) {
-  const items: { key: typeof tab; label: string; icon: React.ReactNode }[] = [
+  const items: { key: TabKey; label: string; icon: React.ReactNode }[] = [
     { key: "home", label: "Home", icon: <HomeIcon className="size-5" /> },
+    { key: "week", label: "Week", icon: <CalendarIcon className="size-5" /> },
     { key: "menu", label: "Menu", icon: <ForkKnifeIcon className="size-5" /> },
     { key: "flyer", label: "Flyer", icon: <SparklesIcon className="size-5" /> },
   ];
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/85 backdrop-blur-xl border-t border-brand-green/5 px-6 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] print:hidden">
+    <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/85 backdrop-blur-xl border-t border-brand-green/5 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] print:hidden">
       <div className="max-w-md mx-auto flex justify-around items-center">
         {items.map((it) => {
           const active = tab === it.key;
@@ -1638,7 +1691,7 @@ function BottomNav({
             <button
               key={it.key}
               onClick={() => setTab(it.key)}
-              className={`flex flex-col items-center gap-1 py-1.5 px-4 rounded-2xl transition ${
+              className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-2xl transition ${
                 active ? "text-brand-orange" : "text-brand-green/40"
               }`}
             >
@@ -1651,6 +1704,209 @@ function BottomNav({
     </nav>
   );
 }
+
+function CalendarIcon(p: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18M8 3v4M16 3v4" />
+    </svg>
+  );
+}
+
+function PrinterIcon(p: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M6 9V3h12v6" />
+      <rect x="4" y="9" width="16" height="8" rx="2" />
+      <path d="M6 17h12v4H6z" />
+    </svg>
+  );
+}
+
+function WeekPreviewCard({ schedule, onOpen }: { schedule: ScheduleDay[]; onOpen: () => void }) {
+  const upcoming = schedule.filter((d) => !d.closed).slice(0, 3);
+  return (
+    <section className="bg-white rounded-3xl p-5 border border-brand-green/5 shadow-sm">
+      <div className="flex justify-between items-baseline mb-3">
+        <h3 className="font-display text-lg">This Week</h3>
+        <button onClick={onOpen} className="text-[11px] text-brand-orange font-bold uppercase tracking-wider">
+          View & Print
+        </button>
+      </div>
+      <ul className="space-y-2">
+        {upcoming.map((d) => (
+          <li key={d.id} className="flex items-center gap-3">
+            <span className="shrink-0 min-w-11 text-center px-2 py-1 rounded-lg bg-brand-orange text-white text-[11px] font-bold tracking-wider">
+              {d.day}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-brand-green truncate">{d.neighborhood}</p>
+              <p className="text-[11px] text-brand-green/60 truncate">{d.spot} · {d.hoursStart}–{d.hoursEnd}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function WeekSchedule({
+  state,
+  setState,
+}: {
+  state: TruckState;
+  setState: (s: TruckState) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const updateDay = (id: string, patch: Partial<ScheduleDay>) => {
+    setState({ ...state, schedule: state.schedule.map((d) => (d.id === id ? { ...d, ...patch } : d)) });
+  };
+  const doPrint = () => {
+    document.body.classList.add("printing-schedule");
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => document.body.classList.remove("printing-schedule"), 300);
+    }, 50);
+  };
+
+  return (
+    <section className="space-y-4 print:hidden">
+      <div className="flex justify-between items-baseline">
+        <div>
+          <h2 className="font-display text-2xl leading-tight">This Week</h2>
+          <p className="text-[11px] text-brand-green/60">Auto-updates from your dashboard</p>
+        </div>
+        <button
+          onClick={() => setEditing((e) => !e)}
+          className="text-xs font-bold uppercase tracking-wider text-brand-orange"
+        >
+          {editing ? "Done" : "Edit"}
+        </button>
+      </div>
+
+      <div className="space-y-2.5">
+        {state.schedule.map((d) => (
+          <article
+            key={d.id}
+            className={`bg-white rounded-2xl border border-brand-green/5 shadow-sm overflow-hidden ${d.closed ? "opacity-70" : ""}`}
+          >
+            <div className="flex items-stretch">
+              <div className="shrink-0 w-16 bg-brand-orange text-white flex flex-col items-center justify-center py-3">
+                <span className="text-lg font-bold tracking-wider leading-none">{d.day}</span>
+                {d.closed && <span className="text-[9px] uppercase tracking-wider mt-1 opacity-80">Closed</span>}
+              </div>
+              <div className="flex-1 min-w-0 p-3 space-y-1">
+                {editing ? (
+                  <div className="space-y-1.5">
+                    <input
+                      value={d.neighborhood}
+                      onChange={(e) => updateDay(d.id, { neighborhood: e.target.value })}
+                      placeholder="Neighborhood"
+                      className="w-full text-sm font-semibold bg-brand-sand rounded-lg px-2 py-1.5 outline-none"
+                    />
+                    <input
+                      value={d.spot}
+                      onChange={(e) => updateDay(d.id, { spot: e.target.value })}
+                      placeholder="Spot / address"
+                      className="w-full text-xs bg-brand-sand rounded-lg px-2 py-1.5 outline-none"
+                    />
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <input
+                        value={d.hoursStart}
+                        onChange={(e) => updateDay(d.id, { hoursStart: e.target.value })}
+                        placeholder="Start"
+                        className="text-xs bg-brand-sand rounded-lg px-2 py-1.5 outline-none"
+                      />
+                      <input
+                        value={d.hoursEnd}
+                        onChange={(e) => updateDay(d.id, { hoursEnd: e.target.value })}
+                        placeholder="End"
+                        className="text-xs bg-brand-sand rounded-lg px-2 py-1.5 outline-none"
+                      />
+                    </div>
+                    <label className="flex items-center gap-2 text-[11px] text-brand-green/70">
+                      <input
+                        type="checkbox"
+                        checked={!!d.closed}
+                        onChange={(e) => updateDay(d.id, { closed: e.target.checked })}
+                      />
+                      Closed / prep day
+                    </label>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm font-bold text-brand-green truncate">{d.neighborhood}</p>
+                    <p className="text-xs text-brand-green/70 truncate">{d.spot}</p>
+                    <p className="text-[11px] text-brand-orange font-semibold">
+                      {d.closed ? d.note || "Closed" : `${d.hoursStart} – ${d.hoursEnd}`}
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <button
+        onClick={doPrint}
+        className="w-full flex items-center justify-center gap-2 bg-brand-green text-white font-bold py-4 rounded-2xl shadow-lg shadow-brand-green/20 active:scale-[0.98] transition"
+      >
+        <PrinterIcon className="size-5" />
+        Print Schedule
+      </button>
+
+      <p className="text-[11px] text-brand-green/50 text-center leading-relaxed">
+        The printed schedule pulls straight from this list — update once, print anytime.
+      </p>
+    </section>
+  );
+}
+
+function PrintableSchedule({ state }: { state: TruckState }) {
+  const now = new Date();
+  const dateLabel = now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  return (
+    <div className="printable-schedule hidden print:block">
+      <header className="print-header">
+        <div>
+          <p className="print-eyebrow">Weekly Schedule</p>
+          <h1 className="print-title">{state.name}</h1>
+          <p className="print-sub">Week of {dateLabel}</p>
+        </div>
+        <div className="print-brand">Bluegrass · Kentucky</div>
+      </header>
+
+      <table className="print-table">
+        <thead>
+          <tr>
+            <th style={{ width: "12%" }}>Day</th>
+            <th style={{ width: "28%" }}>Neighborhood</th>
+            <th style={{ width: "38%" }}>Spot</th>
+            <th style={{ width: "22%" }}>Hours</th>
+          </tr>
+        </thead>
+        <tbody>
+          {state.schedule.map((d) => (
+            <tr key={d.id} className={d.closed ? "row-closed" : ""}>
+              <td className="cell-day">{d.day}</td>
+              <td>{d.closed ? (d.note || "Closed") : d.neighborhood}</td>
+              <td>{d.closed ? "—" : d.spot}</td>
+              <td>{d.closed ? "—" : `${d.hoursStart} – ${d.hoursEnd}`}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <footer className="print-footer">
+        <p>Hours may shift for weather &amp; events. Call {state.phone}</p>
+        {state.orderUrl && <p className="print-order">Order ahead: {state.orderUrl}</p>}
+      </footer>
+    </div>
+  );
+}
+
 
 /* ------------------------------- Helpers ------------------------------- */
 

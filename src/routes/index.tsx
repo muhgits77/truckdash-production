@@ -465,7 +465,9 @@ function Dashboard() {
             <QuickActions
               onOpenMenu={() => setTab("menu")}
               onOpenFlyer={() => setTab("flyer")}
+              onOpenWeek={() => setTab("week")}
             />
+            <WeekPreviewCard schedule={state.schedule} onOpen={() => setTab("week")} />
             <MenuHighlightsCard items={menuHighlights} onEdit={() => setTab("menu")} />
             <FlyerSection state={state} setState={setState} flyerRef={flyerRef} />
           </>
@@ -475,9 +477,14 @@ function Dashboard() {
           <MenuManager state={state} setState={setState} onDone={() => setTab("home")} />
         )}
 
+        {tab === "week" && (
+          <WeekSchedule state={state} setState={setState} />
+        )}
+
         {tab === "flyer" && (
           <FlyerSection state={state} setState={setState} flyerRef={flyerRef} standalone />
         )}
+
 
         <footer className="pt-6 pb-2 text-center">
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-green/40">

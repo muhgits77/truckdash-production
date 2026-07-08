@@ -34,6 +34,17 @@ type BackgroundId =
   | "sage-linen"
   | "charcoal-grain";
 
+type ScheduleDay = {
+  id: string;
+  day: string; // MON, TUE, ...
+  neighborhood: string;
+  spot: string; // address / venue
+  hoursStart: string;
+  hoursEnd: string;
+  closed?: boolean;
+  note?: string; // e.g. "Prep day"
+};
+
 type TruckState = {
   name: string;
   live: boolean;
@@ -48,7 +59,19 @@ type TruckState = {
   heroPhoto?: string; // data URL of user-uploaded flyer photo
   shareFormat: ShareFormat;
   background: BackgroundId;
+  phone: string;
+  schedule: ScheduleDay[];
 };
+
+const DEFAULT_SCHEDULE: ScheduleDay[] = [
+  { id: "d1", day: "MON", neighborhood: "Prep Day", spot: "—", hoursStart: "", hoursEnd: "", closed: true, note: "Kitchen prep" },
+  { id: "d2", day: "TUE", neighborhood: "Downtown Monticello", spot: "Courthouse Square", hoursStart: "11:00 AM", hoursEnd: "2:00 PM" },
+  { id: "d3", day: "WED", neighborhood: "Russell Springs", spot: "Main St. Lot (by the bank)", hoursStart: "11:00 AM", hoursEnd: "2:00 PM" },
+  { id: "d4", day: "THU", neighborhood: "Jamestown", spot: "Lakeway Shopping Center", hoursStart: "11:00 AM", hoursEnd: "2:00 PM" },
+  { id: "d5", day: "FRI", neighborhood: "Food Truck Friday", spot: "Russell Springs · Downtown", hoursStart: "5:00 PM", hoursEnd: "9:00 PM" },
+  { id: "d6", day: "SAT", neighborhood: "Lake Cumberland", spot: "State Dock · Main Ramp", hoursStart: "12:00 PM", hoursEnd: "8:00 PM" },
+  { id: "d7", day: "SUN", neighborhood: "Off", spot: "—", hoursStart: "", hoursEnd: "", closed: true, note: "Family day" },
+];
 
 const DEFAULT_STATE: TruckState = {
   name: "Bluegrass Kitchen",
@@ -69,7 +92,10 @@ const DEFAULT_STATE: TruckState = {
   template: "lakecumberland",
   shareFormat: "portrait",
   background: "sage-linen",
+  phone: "(555) 123-4567",
+  schedule: DEFAULT_SCHEDULE,
 };
+
 
 const APP_VERSION = "0.4.0";
 const STORAGE_KEY = "truckdash.state.v1";

@@ -1,18 +1,21 @@
 /**
- * Publish Service — "Publish to My Website" for TruckDash.
+ * Publish Service — TruckDash → website via Supabase Storage.
  *
- * Shared data between TruckDash (owner dashboard) and public website views
- * (/website, /menu, /schedule — Cluckin Chaos style, monticelloeatsandfinds.live, etc.).
- *
- * Dual mode:
- *   1. localStorage always (fast, offline-friendly for truck owners on the road)
- *   2. Supabase when "Use Supabase Sync" is on + env keys + (for writes) owner signed in
- *
- * Offline: publish always hits localStorage; failed cloud pushes queue and sync on reconnect.
+ * On Publish:
+ *   1. Save to localStorage (offline-friendly)
+ *   2. Upload food photos → menu-images bucket
+ *   3. Upload menu.json (menu + schedule + specials) → menu-data bucket
  */
 
 import type { MenuItem, ScheduleDay, TruckState } from "./truck-state";
 import { getSupabase, isSupabaseConfigured } from "./supabase";
+import {
+  fetchMenuJson,
+  menuJsonFullPath,
+  type StoredMenuJson,
+  uploadMenuImages,
+  uploadMenuJson,
+} from "./menuStorage";
 
 export interface PublishedPayload {
   truckName: string;
@@ -24,27 +27,8 @@ export interface PublishedPayload {
   special: string;
   menu: MenuItem[];
   schedule: ScheduleDay[];
-  lastPublished: string; // ISO timestamp
+  lastPublished: string;
   version: number;
-}
-
-/** Row shape returned from published_trucks (snake_case columns). */
-export interface PublishedTruckRow {
-  id: string;
-  truck_id: string;
-  user_id: string | null;
-  truck_name: string;
-  phone: string;
-  order_url: string;
-  location: string;
-  hours_start: string;
-  hours_end: string;
-  special: string;
-  menu: MenuItem[];
-  schedule: ScheduleDay[];
-  last_published: string;
-  version: number;
-  payload: PublishedPayload | Record<string, unknown>;
 }
 
 const PUBLISHED_KEY = "truckdash.published.v1";
@@ -54,7 +38,7 @@ const PENDING_SYNC_KEY = "truckdash.supabase.pendingSync";
 const PUBLISHED_VERSION = 1;
 
 export const DEFAULT_TRUCK_ID =
-  (import.meta.env.VITE_DEFAULT_TRUCK_ID as string | undefined)?.trim() || "bluegrass-kitchen";
+  (import.meta.env.VITE_DEFAULT_TRUCK_ID as string | undefined)?.trim() || "cluckin-chaos";
 
 export const DEFAULT_PUBLISHED: PublishedPayload = {
   truckName: "",
@@ -70,9 +54,7 @@ export const DEFAULT_PUBLISHED: PublishedPayload = {
   version: PUBLISHED_VERSION,
 };
 
-// ---------------------------------------------------------------------------
-// Settings helpers (localStorage)
-// ---------------------------------------------------------------------------
+// ── Settings ─────────────────────────────────────────────────────────────────
 
 export function isSupabaseSyncEnabled(): boolean {
   try {
@@ -108,70 +90,18 @@ export function setConfiguredTruckId(truckId: string): void {
   }
 }
 
-/** Whether cloud publish/read should be attempted. */
 export function canUseSupabaseSync(): boolean {
   return isSupabaseConfigured() && isSupabaseSyncEnabled();
 }
 
-// ---------------------------------------------------------------------------
-// Row ↔ payload mapping
-// ---------------------------------------------------------------------------
-
-function rowToPayload(row: PublishedTruckRow): PublishedPayload {
-  const fromPayload =
-    row.payload && typeof row.payload === "object" && "menu" in row.payload
-      ? (row.payload as Partial<PublishedPayload>)
-      : {};
-
-  return {
-    ...DEFAULT_PUBLISHED,
-    ...fromPayload,
-    truckName: row.truck_name || fromPayload.truckName || "",
-    phone: row.phone || fromPayload.phone || "",
-    orderUrl: row.order_url || fromPayload.orderUrl || "",
-    location: row.location || fromPayload.location || "",
-    hoursStart: row.hours_start || fromPayload.hoursStart || "",
-    hoursEnd: row.hours_end || fromPayload.hoursEnd || "",
-    special: row.special || fromPayload.special || "",
-    menu: (Array.isArray(row.menu) ? row.menu : fromPayload.menu) || [],
-    schedule: (Array.isArray(row.schedule) ? row.schedule : fromPayload.schedule) || [],
-    lastPublished: row.last_published || fromPayload.lastPublished || "",
-    version: row.version ?? fromPayload.version ?? PUBLISHED_VERSION,
-  };
-}
-
-function payloadToRowFields(truckId: string, userId: string | null, payload: PublishedPayload) {
-  return {
-    truck_id: truckId,
-    user_id: userId,
-    truck_name: payload.truckName,
-    phone: payload.phone,
-    order_url: payload.orderUrl,
-    location: payload.location,
-    hours_start: payload.hoursStart,
-    hours_end: payload.hoursEnd,
-    special: payload.special,
-    menu: payload.menu,
-    schedule: payload.schedule,
-    last_published: payload.lastPublished,
-    version: payload.version,
-    payload,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// localStorage core
-// ---------------------------------------------------------------------------
+// ── localStorage ─────────────────────────────────────────────────────────────
 
 function readLocalPublished(): PublishedPayload {
   try {
     const raw = localStorage.getItem(PUBLISHED_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as PublishedPayload;
-      return { ...DEFAULT_PUBLISHED, ...parsed };
-    }
+    if (raw) return { ...DEFAULT_PUBLISHED, ...JSON.parse(raw) };
   } catch (err) {
-    console.warn("[publishService] Failed to read published data", err);
+    console.warn("[publishService] local read failed", err);
   }
   return { ...DEFAULT_PUBLISHED };
 }
@@ -180,9 +110,40 @@ function writeLocalPublished(published: PublishedPayload): void {
   localStorage.setItem(PUBLISHED_KEY, JSON.stringify(published));
 }
 
-// ---------------------------------------------------------------------------
-// Offline pending queue
-// ---------------------------------------------------------------------------
+function storedJsonFromPayload(truckId: string, published: PublishedPayload): StoredMenuJson {
+  return {
+    truckId: truckId.trim() || DEFAULT_TRUCK_ID,
+    truckName: published.truckName,
+    phone: published.phone,
+    orderUrl: published.orderUrl,
+    location: published.location,
+    hoursStart: published.hoursStart,
+    hoursEnd: published.hoursEnd,
+    special: published.special,
+    menu: published.menu,
+    schedule: published.schedule,
+    lastPublished: published.lastPublished,
+    version: published.version,
+  };
+}
+
+function storedJsonToPayload(json: StoredMenuJson): PublishedPayload {
+  return {
+    truckName: json.truckName || "",
+    phone: json.phone || "",
+    orderUrl: json.orderUrl || "",
+    location: json.location || "",
+    hoursStart: json.hoursStart || "",
+    hoursEnd: json.hoursEnd || "",
+    special: json.special || "",
+    menu: Array.isArray(json.menu) ? json.menu : [],
+    schedule: Array.isArray(json.schedule) ? json.schedule : [],
+    lastPublished: json.lastPublished || "",
+    version: json.version || PUBLISHED_VERSION,
+  };
+}
+
+// ── Pending sync queue ───────────────────────────────────────────────────────
 
 type PendingSync = { truckId: string; payload: PublishedPayload; queuedAt: string };
 
@@ -208,54 +169,26 @@ export function hasPendingCloudSync(): boolean {
   return !!getPendingSync();
 }
 
-/**
- * Push any queued publish to Supabase (call on online / after login / after publish).
- */
-export async function flushPendingCloudSync(): Promise<{ ok: boolean; message?: string }> {
-  const pending = getPendingSync();
-  if (!pending) return { ok: true, message: "Nothing pending" };
-  if (!canUseSupabaseSync()) {
-    return { ok: false, message: "Supabase sync is off or not configured" };
-  }
-
-  try {
-    await publishToSupabase(pending.truckId, pending.payload);
-    setPendingSync(null);
-    return { ok: true, message: "Offline publish synced to Supabase" };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Sync failed";
-    console.warn("[publishService] flushPendingCloudSync", err);
-    return { ok: false, message };
-  }
-}
-
-// Wire online listener once (browser only)
 let onlineHooked = false;
 function ensureOnlineHook() {
   if (onlineHooked || typeof window === "undefined") return;
   onlineHooked = true;
-  window.addEventListener("online", () => {
-    void flushPendingCloudSync();
-  });
+  window.addEventListener("online", () => void flushPendingCloudSync());
 }
 
-// ---------------------------------------------------------------------------
-// Supabase API
-// ---------------------------------------------------------------------------
+// ── Storage publish ──────────────────────────────────────────────────────────
 
 /**
- * Upsert the latest published snapshot for a truck.
- * Requires authenticated session; RLS enforces user_id = auth.uid().
+ * Upload images + menu.json to Supabase Storage.
+ * Requires owner sign-in (RLS on storage.objects).
  */
-export async function publishToSupabase(
+export async function publishToStorage(
   truckId: string,
   payload: PublishedPayload | Omit<PublishedPayload, "lastPublished" | "version">,
 ): Promise<PublishedPayload> {
   const supabase = getSupabase();
   if (!supabase) {
-    throw new Error(
-      "Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.",
-    );
+    throw new Error("Supabase not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
   }
 
   const {
@@ -263,15 +196,12 @@ export async function publishToSupabase(
     error: userErr,
   } = await supabase.auth.getUser();
   if (userErr || !user) {
-    throw new Error("Sign in as the truck owner in Settings to publish to Supabase.");
+    throw new Error("Sign in as the truck owner in Settings to publish to Supabase Storage.");
   }
 
   const published: PublishedPayload =
     "lastPublished" in payload && payload.lastPublished
-      ? {
-          ...payload,
-          version: (payload as PublishedPayload).version || PUBLISHED_VERSION,
-        }
+      ? { ...payload, version: (payload as PublishedPayload).version || PUBLISHED_VERSION }
       : {
           ...(payload as Omit<PublishedPayload, "lastPublished" | "version">),
           lastPublished: new Date().toISOString(),
@@ -279,94 +209,146 @@ export async function publishToSupabase(
         };
 
   const id = truckId.trim() || DEFAULT_TRUCK_ID;
-  const row = payloadToRowFields(id, user.id, published);
+  const targetPath = menuJsonFullPath(id);
 
-  const { error } = await supabase.from("published_trucks").upsert(row, {
-    onConflict: "truck_id",
+  console.info("[publishService] publish START", {
+    truckId: id,
+    targetPath,
+    menuItems: published.menu.length,
+    scheduleDays: published.schedule.length,
   });
 
-  if (error) {
-    console.error("[publishService] publishToSupabase", error);
-    throw new Error(error.message || "Failed to publish to Supabase");
+  // 1) menu.json first — must land at menu-data/{truckId}/menu.json before images
+  const initialJson = storedJsonFromPayload(id, published);
+  let upload = await uploadMenuJson(id, initialJson);
+
+  console.info("[publishService] menu.json uploaded (initial)", {
+    truckId: id,
+    fullPath: upload.fullPath,
+    publicUrl: upload.publicUrl,
+    verified: upload.verified,
+    listedInBucket: upload.listedInBucket,
+  });
+
+  // 2) Images (non-fatal) then re-publish JSON if any URLs changed
+  let menuWithImages = published.menu;
+  try {
+    menuWithImages = await uploadMenuImages(id, published.menu);
+    const hasNewImageUrls = menuWithImages.some(
+      (item, i) => item.image && item.image !== published.menu[i]?.image,
+    );
+    if (hasNewImageUrls) {
+      const jsonWithImages = storedJsonFromPayload(id, { ...published, menu: menuWithImages });
+      upload = await uploadMenuJson(id, jsonWithImages);
+      console.info("[publishService] menu.json re-uploaded with image URLs", {
+        fullPath: upload.fullPath,
+        publicUrl: upload.publicUrl,
+      });
+    }
+  } catch (imgErr) {
+    console.warn("[publishService] image upload failed (menu.json already saved)", imgErr);
   }
 
-  return published;
+  if (!upload.listedInBucket) {
+    throw new Error(`menu.json missing from bucket after publish (${targetPath})`);
+  }
+
+  if (!upload.verified) {
+    console.warn(
+      "[publishService] menu.json in bucket but public URL not verified — run storage_buckets.sql",
+      upload.publicUrl,
+    );
+  }
+
+  console.info("[publishService] publish SUCCESS", {
+    truckId: id,
+    fullPath: upload.fullPath,
+    publicUrl: upload.publicUrl,
+    verified: upload.verified,
+  });
+
+  return { ...published, menu: menuWithImages };
 }
 
-/**
- * Fetch the latest published record for a truck (public / anon OK via RLS).
- * Returns null if none found or Supabase unavailable.
- */
 export async function getLatestPublished(truckId: string): Promise<PublishedPayload | null> {
-  const supabase = getSupabase();
-  if (!supabase) return null;
-
   const id = truckId.trim() || DEFAULT_TRUCK_ID;
-
-  const { data, error } = await supabase
-    .from("published_trucks")
-    .select(
-      "id, truck_id, user_id, truck_name, phone, order_url, location, hours_start, hours_end, special, menu, schedule, last_published, version, payload",
-    )
-    .eq("truck_id", id)
-    .order("last_published", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    console.warn("[publishService] getLatestPublished", error.message);
-    return null;
-  }
-  if (!data) return null;
-
-  return rowToPayload(data as PublishedTruckRow);
+  const json = await fetchMenuJson(id);
+  if (!json?.lastPublished) return null;
+  return storedJsonToPayload(json);
 }
 
-// ---------------------------------------------------------------------------
-// Public service API (local + cloud)
-// ---------------------------------------------------------------------------
+export async function flushPendingCloudSync(): Promise<{ ok: boolean; message?: string }> {
+  const pending = getPendingSync();
+  if (!pending) return { ok: true, message: "Nothing pending" };
+  if (!isSupabaseConfigured()) {
+    return { ok: false, message: "Supabase is not configured" };
+  }
+  try {
+    await publishToStorage(pending.truckId, pending.payload);
+    setPendingSync(null);
+    return { ok: true, message: "Offline publish synced to Supabase Storage" };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Sync failed";
+    console.warn("[publishService] flushPendingCloudSync", err);
+    return { ok: false, message };
+  }
+}
+
+// ── Public API ───────────────────────────────────────────────────────────────
 
 export type PublishResult = {
   published: PublishedPayload;
-  source: "local" | "supabase" | "local+queued";
+  source: "local" | "storage" | "local+queued";
   message?: string;
 };
 
-/**
- * Read published data.
- * Prefer Supabase when configured+enabled (or always try cloud for public pages
- * when env is set); fall back to localStorage.
- */
+export type WebsiteMenuJson = StoredMenuJson;
+
+export function buildWebsiteMenuJson(
+  published: PublishedPayload,
+  truckId?: string,
+): WebsiteMenuJson {
+  return storedJsonFromPayload(truckId || getConfiguredTruckId(), published);
+}
+
+/** @deprecated Use storage buckets — kept for manual export backup */
+export function downloadWebsiteMenuJson(
+  published: PublishedPayload,
+  truckId?: string,
+  filename = "menu.json",
+): void {
+  if (typeof document === "undefined") return;
+  const json = buildWebsiteMenuJson(published, truckId);
+  const blob = new Blob([JSON.stringify(json, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
 export async function getPublishedData(truckId?: string): Promise<PublishedPayload> {
   ensureOnlineHook();
   const id = truckId?.trim() || getConfiguredTruckId();
 
-  // Public pages / owners with env keys: try cloud even if owner toggle is off,
-  // so /website works for customers. Toggle mainly gates *writes*.
   if (isSupabaseConfigured()) {
     try {
       const remote = await getLatestPublished(id);
       if (remote?.lastPublished) {
-        // Cache for offline visitors on this device
-        try {
-          writeLocalPublished(remote);
-        } catch {
-          /* ignore */
-        }
+        writeLocalPublished(remote);
         return remote;
       }
     } catch (err) {
-      console.warn("[publishService] remote read failed, using local", err);
+      console.warn("[publishService] storage read failed, using local", err);
     }
   }
 
   return readLocalPublished();
 }
 
-/**
- * Publish: always write localStorage, then optionally push to Supabase.
- * Offline / auth failures queue a pending cloud sync.
- */
 export async function publishData(
   data: Omit<PublishedPayload, "lastPublished" | "version">,
   options?: { truckId?: string; skipCloud?: boolean },
@@ -379,24 +361,21 @@ export async function publishData(
     version: PUBLISHED_VERSION,
   };
 
-  try {
-    writeLocalPublished(published);
-  } catch (err) {
-    console.error("[publishService] Failed to publish data locally", err);
-    throw err;
-  }
-
+  writeLocalPublished(published);
   const truckId = options?.truckId?.trim() || getConfiguredTruckId();
-  const wantCloud = !options?.skipCloud && canUseSupabaseSync();
 
-  if (!wantCloud) {
+  if (!isSupabaseConfigured() || options?.skipCloud) {
     return {
       published,
       source: "local",
-      message: isSupabaseSyncEnabled()
-        ? "Saved on this device (Supabase env not configured)"
-        : "Saved on this device",
+      message: "Saved locally. Add VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY to push to menu-data.",
     };
+  }
+
+  if (!isSupabaseSyncEnabled()) {
+    console.warn(
+      "[publishService] Supabase Sync toggle is off — still uploading menu.json (sign in as owner required)",
+    );
   }
 
   if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -404,47 +383,41 @@ export async function publishData(
     return {
       published,
       source: "local+queued",
-      message: "Saved offline — will sync to Supabase when you're back online",
+      message: "Saved offline — will upload to Supabase Storage when back online",
     };
   }
 
   try {
-    await publishToSupabase(truckId, published);
+    const uploaded = await publishToStorage(truckId, published);
+    writeLocalPublished(uploaded);
     setPendingSync(null);
+    const fullPath = menuJsonFullPath(truckId);
     return {
-      published,
-      source: "supabase",
-      message: "Published to your website (Supabase)",
+      published: uploaded,
+      source: "storage",
+      message: `Published! ${fullPath} is live (public read).`,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Cloud publish failed";
     setPendingSync({ truckId, payload: published, queuedAt: new Date().toISOString() });
-    console.warn("[publishService] cloud publish queued:", message);
+    console.error("[publishService] cloud publish FAILED", {
+      truckId,
+      targetPath: menuJsonFullPath(truckId),
+      error: message,
+      err,
+    });
     return {
       published,
       source: "local+queued",
-      message: `${message} — saved on this device; will retry when ready`,
+      message: `Storage upload failed: ${message}`,
     };
   }
 }
 
-/**
- * Export the currently published data as a clean JSON file.
- */
 export async function exportPublishedJSON(): Promise<void> {
   const data = await getPublishedData();
-  if (!data.lastPublished) {
-    throw new Error("No published data to export yet. Publish first.");
-  }
-
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const safeName = (data.truckName || "truck").toLowerCase().replace(/[^a-z0-9]+/g, "-");
-  a.href = url;
-  a.download = `${safeName}-published-menu-schedule.json`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  if (!data.lastPublished) throw new Error("Publish first.");
+  downloadWebsiteMenuJson(data, getConfiguredTruckId());
 }
 
 export async function clearPublishedData(): Promise<void> {
@@ -472,9 +445,7 @@ export function buildPublishPayloadFromState(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Lightweight owner auth helpers (used by Settings)
-// ---------------------------------------------------------------------------
+// ── Owner auth ───────────────────────────────────────────────────────────────
 
 export async function getOwnerSessionEmail(): Promise<string | null> {
   const supabase = getSupabase();

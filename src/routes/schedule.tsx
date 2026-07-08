@@ -155,7 +155,10 @@ function PublicSchedulePage() {
 
             {/* Subtle last updated */}
             {lastUpdated && (
-              <div className="mt-6 text-center text-[10px] text-brand-green/40">
+              <div
+                className="mt-6 text-center text-[10px] text-brand-green/40"
+                suppressHydrationWarning
+              >
                 Last updated from TruckDash:{" "}
                 <span className="font-medium text-brand-green/60">{lastUpdated}</span>
               </div>

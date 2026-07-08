@@ -9,6 +9,7 @@ import {
 } from "@/lib/truck-state";
 import { publishData, getPublishedData, buildPublishPayloadFromState } from "@/lib/publishService";
 import { formatPublishedShort, formatPublishedTime, formatWeekOf } from "@/lib/format-local";
+import { useHydrated } from "@/hooks/use-hydrated";
 
 export const Route = createFileRoute("/this-week")({
   head: () => ({
@@ -61,25 +62,53 @@ const SOCIAL_FORMATS: {
  * - Social image generation with multiple aspect ratios (like flyer)
  */
 function ThisWeekPage() {
+  // ---- Hooks only (always top-level, never conditional) ----
+  const hydrated = useHydrated();
   const [state, setState] = useTruckState();
-  const schedule = state.schedule;
-
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [socialOpen, setSocialOpen] = useState(false);
   const [socialFormat, setSocialFormat] = useState<SocialFormat>("portrait");
   const [busy, setBusy] = useState<null | "print" | "png" | "share">(null);
   const [toast, setToast] = useState<string | null>(null);
-
-  // Publish to website integration (same shared data)
-  // Formatted labels only — never set from SSR so first paint stays empty
+  // Publish labels: empty on SSR + first paint (timezone-safe after mount)
   const [lastPubLabel, setLastPubLabel] = useState<string | null>(null);
   const [pubBusy, setPubBusy] = useState(false);
+  // Locale dates for print + social export — set only after hydrate
+  const [weekOfLabel, setWeekOfLabel] = useState("");
+  const [weekOfShortLabel, setWeekOfShortLabel] = useState("This Week");
+  const socialRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    getPublishedData().then((p) => {
-      if (p.lastPublished) setLastPubLabel(formatPublishedShort(p.lastPublished));
-    });
-  }, []);
+    if (!hydrated) return;
+    let mounted = true;
+    getPublishedData()
+      .then((p) => {
+        if (!mounted) return;
+        if (p.lastPublished) setLastPubLabel(formatPublishedShort(p.lastPublished));
+      })
+      .catch(() => {
+        /* non-fatal — local board still works */
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const full = formatWeekOf();
+    setWeekOfLabel(full);
+    setWeekOfShortLabel(full.replace(/,\s*\d{4}$/, ""));
+  }, [hydrated]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2600);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  // ---- Derived (not hooks) ----
+  const schedule = state.schedule;
 
   const handlePublishFromWeek = async () => {
     setPubBusy(true);
@@ -88,26 +117,19 @@ function ThisWeekPage() {
       const result = await publishData(payload);
       setLastPubLabel(formatPublishedShort(result.published.lastPublished));
       const t = formatPublishedTime(result.published.lastPublished);
-      if (result.source === "supabase") setToast(`Published to Supabase at ${t}`);
+      if (result.source === "supabase")
+        setToast(result.message || `Published to Supabase at ${t} + menu.json`);
       else if (result.source === "local+queued")
         setToast(result.message || `Saved at ${t} — cloud pending`);
-      else setToast(`Published to website at ${t}`);
+      else if (result.source === "json")
+        setToast(result.message || `Published at ${t} — menu.json downloaded`);
+      else setToast(result.message || `Published to website at ${t}`);
     } catch {
       setToast("Publish failed");
     } finally {
       setPubBusy(false);
     }
   };
-
-  // Ref for the social image preview (what we export)
-  const socialRef = useRef<HTMLDivElement | null>(null);
-
-  // Auto-clear toasts
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 2600);
-    return () => clearTimeout(t);
-  }, [toast]);
 
   // Update a single day's fields. Live edit + persist via the hook.
   const updateDay = (id: string, patch: Partial<ScheduleDay>) => {
@@ -284,7 +306,7 @@ function ThisWeekPage() {
               this device. Perfect for printing or posting on social each Monday.
             </p>
             {lastPubLabel && (
-              <p className="text-[11px] text-brand-orange mt-1">
+              <p className="text-[11px] text-brand-orange mt-1" suppressHydrationWarning>
                 Last published to website: {lastPubLabel}
               </p>
             )}
@@ -318,12 +340,11 @@ function ThisWeekPage() {
 
         {/* Editable schedule — warm premium card layout, mobile + desktop friendly */}
         <div className="space-y-3">
-          {schedule.map((day, idx) => (
+          {schedule.map((day) => (
             <ScheduleDayCard
               key={day.id}
               day={day}
               onChange={(patch) => updateDay(day.id, patch)}
-              index={idx}
             />
           ))}
         </div>
@@ -378,104 +399,134 @@ function ThisWeekPage() {
         </div>
 
         {/* Dedicated print-only content for this page (beautiful header + table) */}
-        <PrintableWeeklySchedule state={state} />
+        <PrintableWeeklySchedule state={state} weekOfLabel={weekOfLabel} />
       </main>
 
-      {/* Social Share Modal / Studio — mirrors the quality of the existing flyer tool */}
-      {socialOpen && (
-        <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
+      {/*
+        Social export card always mounted (off-screen when closed) so ref + capture
+        stay stable and no child-only hooks mount/unmount with the modal.
+      */}
+      <div
+        className={
+          socialOpen
+            ? "fixed inset-0 z-[70] flex items-end sm:items-center justify-center"
+            : "fixed left-[-9999px] top-0 w-[380px] pointer-events-none opacity-0"
+        }
+        aria-hidden={!socialOpen}
+      >
+        {socialOpen && (
           <button
             aria-label="Close social studio"
             onClick={closeSocial}
             className="absolute inset-0 bg-black/40 backdrop-blur"
           />
-          <div className="relative w-full max-w-xl bg-brand-sand rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-auto">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <div className="uppercase tracking-[0.2em] text-[10px] font-bold text-brand-orange">
-                  Bluegrass Kitchen
+        )}
+        <div
+          className={
+            socialOpen
+              ? "relative w-full max-w-xl bg-brand-sand rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-auto"
+              : "relative w-[380px]"
+          }
+        >
+          {socialOpen && (
+            <>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <div className="uppercase tracking-[0.2em] text-[10px] font-bold text-brand-orange">
+                    Bluegrass Kitchen
+                  </div>
+                  <h3 className="font-display text-2xl">Share This Week</h3>
                 </div>
-                <h3 className="font-display text-2xl">Share This Week</h3>
+                <button onClick={closeSocial} className="text-brand-green/60 font-bold px-2">
+                  Done
+                </button>
               </div>
-              <button onClick={closeSocial} className="text-brand-green/60 font-bold px-2">
-                Done
-              </button>
-            </div>
 
-            {/* Format picker — same ratios as flyer */}
-            <div className="mb-4">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-brand-green/60 mb-1.5">
-                Image size
+              <div className="mb-4">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-brand-green/60 mb-1.5">
+                  Image size
+                </div>
+                <div className="flex gap-2">
+                  {SOCIAL_FORMATS.map((fmt) => {
+                    const active = socialFormat === fmt.id;
+                    return (
+                      <button
+                        key={fmt.id}
+                        onClick={() => setSocialFormat(fmt.id)}
+                        className={`flex-1 py-2.5 rounded-2xl border text-sm font-bold transition ${
+                          active
+                            ? "bg-brand-green text-white border-brand-green"
+                            : "bg-white text-brand-green border-brand-green/10"
+                        }`}
+                      >
+                        {fmt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-brand-green/50 mt-1.5">
+                  {SOCIAL_FORMATS.find((f) => f.id === socialFormat)?.description}
+                </p>
               </div>
-              <div className="flex gap-2">
-                {SOCIAL_FORMATS.map((fmt) => {
-                  const active = socialFormat === fmt.id;
-                  return (
-                    <button
-                      key={fmt.id}
-                      onClick={() => setSocialFormat(fmt.id)}
-                      className={`flex-1 py-2.5 rounded-2xl border text-sm font-bold transition ${
-                        active
-                          ? "bg-brand-green text-white border-brand-green"
-                          : "bg-white text-brand-green border-brand-green/10"
-                      }`}
-                    >
-                      {fmt.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="text-[11px] text-brand-green/50 mt-1.5">
-                {SOCIAL_FORMATS.find((f) => f.id === socialFormat)?.description}
-              </p>
-            </div>
+            </>
+          )}
 
-            {/* Live preview of the exportable card — warm, local, premium */}
-            <div className="mb-4">
+          <div className={socialOpen ? "mb-4" : ""}>
+            {socialOpen && (
               <div className="text-[10px] font-bold uppercase tracking-wider text-brand-green/60 mb-2">
                 Preview
               </div>
-              <div className="rounded-3xl overflow-hidden ring-1 ring-brand-green/10 bg-white p-1.5">
-                <SocialScheduleCard
-                  ref={socialRef}
-                  state={state}
-                  schedule={schedule}
-                  format={socialFormat}
-                />
-              </div>
+            )}
+            <div
+              className={
+                socialOpen
+                  ? "rounded-3xl overflow-hidden ring-1 ring-brand-green/10 bg-white p-1.5"
+                  : ""
+              }
+            >
+              <SocialScheduleCard
+                ref={socialRef}
+                state={state}
+                schedule={schedule}
+                format={socialFormat}
+                weekLabel={weekOfShortLabel}
+              />
             </div>
-
-            {/* Action buttons for social output */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <button
-                onClick={downloadSocialPng}
-                disabled={busy !== null}
-                className="w-full bg-brand-green text-white font-semibold py-3 rounded-2xl active:scale-[0.985] disabled:opacity-60"
-              >
-                {busy === "png" ? "Rendering…" : "Download PNG"}
-              </button>
-              <button
-                onClick={shareSocialNative}
-                disabled={busy !== null}
-                className="w-full bg-brand-orange text-white font-semibold py-3 rounded-2xl active:scale-[0.985] disabled:opacity-60"
-              >
-                {busy === "share" ? "Preparing…" : "Share Image"}
-              </button>
-              <button
-                onClick={copyTextSchedule}
-                className="w-full border border-brand-green/20 text-brand-green font-semibold py-3 rounded-2xl active:scale-[0.985]"
-              >
-                Copy Caption
-              </button>
-            </div>
-
-            <p className="text-center text-[10px] text-brand-green/50 pt-4">
-              High-resolution export. Use on Instagram, Facebook, or stories. Looks great printed
-              too.
-            </p>
           </div>
+
+          {socialOpen && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <button
+                  onClick={downloadSocialPng}
+                  disabled={busy !== null}
+                  className="w-full bg-brand-green text-white font-semibold py-3 rounded-2xl active:scale-[0.985] disabled:opacity-60"
+                >
+                  {busy === "png" ? "Rendering…" : "Download PNG"}
+                </button>
+                <button
+                  onClick={shareSocialNative}
+                  disabled={busy !== null}
+                  className="w-full bg-brand-orange text-white font-semibold py-3 rounded-2xl active:scale-[0.985] disabled:opacity-60"
+                >
+                  {busy === "share" ? "Preparing…" : "Share Image"}
+                </button>
+                <button
+                  onClick={copyTextSchedule}
+                  className="w-full border border-brand-green/20 text-brand-green font-semibold py-3 rounded-2xl active:scale-[0.985]"
+                >
+                  Copy Caption
+                </button>
+              </div>
+
+              <p className="text-center text-[10px] text-brand-green/50 pt-4">
+                High-resolution export. Use on Instagram, Facebook, or stories. Looks great printed
+                too.
+              </p>
+            </>
+          )}
         </div>
-      )}
+      </div>
 
       {toast && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-brand-green text-white text-sm font-medium px-5 py-2.5 rounded-full shadow-xl z-[80]">
@@ -496,11 +547,9 @@ function ThisWeekPage() {
 function ScheduleDayCard({
   day,
   onChange,
-  index,
 }: {
   day: ScheduleDay;
   onChange: (patch: Partial<ScheduleDay>) => void;
-  index: number;
 }) {
   const isClosed = !!day.closed;
 
@@ -610,23 +659,20 @@ function ScheduleDayCard({
  * Designed to feel premium + warm Kentucky: clean typography, bourbon/cream palette,
  * honest layout. Matches the "elevated but never cold" brand direction.
  */
+/**
+ * Pure presentational export card — no hooks.
+ * weekLabel is prepared by the parent after hydrate so SSR/client first paint match.
+ */
 const SocialScheduleCard = React.forwardRef<
   HTMLDivElement,
   {
     state: TruckState;
     schedule: ScheduleDay[];
     format: SocialFormat;
+    weekLabel: string;
   }
->(({ state, schedule, format }, ref) => {
-  const fmt = SOCIAL_FORMATS.find((f) => f.id === format)!;
-  // Fixed en-US month/day; still set after first paint via parent if needed.
-  // Social cards are export previews — use stable placeholder on SSR.
-  const [weekLabel, setWeekLabel] = React.useState("This Week");
-  React.useEffect(() => {
-    setWeekLabel(formatWeekOf().replace(/,\s*\d{4}$/, ""));
-  }, []);
-
-  // Filter or show all; show notes when present
+>(({ state, schedule, format, weekLabel }, ref) => {
+  const fmt = SOCIAL_FORMATS.find((f) => f.id === format) ?? SOCIAL_FORMATS[0];
   const rows = schedule;
 
   return (
@@ -661,7 +707,9 @@ const SocialScheduleCard = React.forwardRef<
             <div className="font-display text-[22px] sm:text-[26px] leading-none font-bold tracking-[-0.3px] mt-1.5">
               This Week
             </div>
-            <div className="text-sm text-[#1a3d2e]/70 mt-0.5">Week of {weekLabel}</div>
+            <div className="text-sm text-[#1a3d2e]/70 mt-0.5" suppressHydrationWarning>
+              Week of {weekLabel}
+            </div>
           </div>
           <div className="text-right text-xs leading-tight text-[#1a3d2e]/60 font-medium">
             Kentucky
@@ -722,13 +770,14 @@ const SocialScheduleCard = React.forwardRef<
 });
 
 /* ---------------- Print-optimized professional table (page-specific) ---------------- */
-/** This block is only visible when printing from /this-week. */
-function PrintableWeeklySchedule({ state }: { state: TruckState }) {
-  const [dateLabel, setDateLabel] = useState("");
-  useEffect(() => {
-    setDateLabel(formatWeekOf());
-  }, []);
-
+/** This block is only visible when printing from /this-week. No hooks — date from parent. */
+function PrintableWeeklySchedule({
+  state,
+  weekOfLabel,
+}: {
+  state: TruckState;
+  weekOfLabel: string;
+}) {
   return (
     <div className="print-only-schedule hidden print:block mt-8 text-[#111] bg-white p-8 rounded-none">
       <div className="max-w-[7.5in] mx-auto">
@@ -741,7 +790,9 @@ function PrintableWeeklySchedule({ state }: { state: TruckState }) {
             <div className="font-display text-4xl font-bold tracking-[-0.4px] text-[#1a3d2e] mt-1">
               Weekly Schedule
             </div>
-            <div className="text-[#4a4a4a] mt-0.5">Week of {dateLabel || "…"}</div>
+            <div className="text-[#4a4a4a] mt-0.5" suppressHydrationWarning>
+              Week of {weekOfLabel || "…"}
+            </div>
           </div>
           <div className="font-display text-xl italic text-[#1a3d2e]">
             Honest food. Local roots.

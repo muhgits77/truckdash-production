@@ -1,0 +1,101 @@
+{
+  "truckId": "cluckin-chaos",
+  "truckName": "Bluegrass Kitchen",
+  "phone": "(555) 123-4567",
+  "orderUrl": "https://order.example.com/bluegrass-kitchen",
+  "location": "Food Truck Friday \u00b7 Russell Springs",
+  "hoursStart": "5:00 PM",
+  "hoursEnd": "9:00 PM",
+  "special": "Bourbon-Glazed Pulled Pork Nachos",
+  "menu": [
+    {
+      "id": "1",
+      "name": "Pulled Pork Sandwich",
+      "price": "10"
+    },
+    {
+      "id": "2",
+      "name": "Bourbon Nachos",
+      "price": "12"
+    },
+    {
+      "id": "3",
+      "name": "Bluegrass Slaw",
+      "price": "4"
+    },
+    {
+      "id": "4",
+      "name": "Kettle Chips",
+      "price": "3"
+    },
+    {
+      "id": "5",
+      "name": "Sweet Tea",
+      "price": "3"
+    }
+  ],
+  "schedule": [
+    {
+      "id": "d1",
+      "day": "MON",
+      "note": "Kitchen prep",
+      "spot": "\u2014",
+      "closed": true,
+      "hoursEnd": "",
+      "hoursStart": "",
+      "neighborhood": "Prep Day"
+    },
+    {
+      "id": "d2",
+      "day": "TUE",
+      "spot": "Boat Ramp",
+      "hoursEnd": "2:00 PM",
+      "hoursStart": "11:00 AM",
+      "neighborhood": "Old Fall Creek"
+    },
+    {
+      "id": "d3",
+      "day": "WED",
+      "spot": "Main St. Lot (by the bank)",
+      "hoursEnd": "2:00 PM",
+      "hoursStart": "11:00 AM",
+      "neighborhood": "Russell Springs"
+    },
+    {
+      "id": "d4",
+      "day": "THU",
+      "spot": "Lakeway Shopping Center",
+      "hoursEnd": "2:00 PM",
+      "hoursStart": "11:00 AM",
+      "neighborhood": "Jamestown"
+    },
+    {
+      "id": "d5",
+      "day": "FRI",
+      "spot": "Monticello \u00b7 Downtown",
+      "hoursEnd": "9:00 PM",
+      "hoursStart": "5:00 PM",
+      "neighborhood": "Food Truck Friday"
+    },
+    {
+      "id": "d6",
+      "day": "SAT",
+      "spot": "State Dock \u00b7 Main Ramp",
+      "hoursEnd": "8:00 PM",
+      "hoursStart": "12:00 PM",
+      "neighborhood": "Lake Cumberland"
+    },
+    {
+      "id": "d7",
+      "day": "SUN",
+      "note": "Family day",
+      "spot": "\u2014",
+      "closed": true,
+      "hoursEnd": "",
+      "hoursStart": "",
+      "neighborhood": "Off"
+    }
+  ],
+  "lastPublished": "2026-07-08T20:22:39.739+00:00",
+  "version": 1
+}

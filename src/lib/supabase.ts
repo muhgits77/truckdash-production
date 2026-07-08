@@ -19,6 +19,14 @@ export function isSupabaseConfigured(): boolean {
   return Boolean(url && anonKey && url.startsWith("http"));
 }
 
+export function getSupabaseUrl(): string {
+  return url.replace(/\/+$/, "");
+}
+
+export function getSupabaseAnonKey(): string {
+  return anonKey;
+}
+
 let client: SupabaseClient | null = null;
 
 export function getSupabase(): SupabaseClient | null {

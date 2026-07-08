@@ -55,15 +55,16 @@ function PublicWebsitePreview() {
   const [error, setError] = useState<string | null>(null);
   const [source, setSource] = useState<"supabase" | "local" | null>(null);
 
-  // Client-only: localStorage truck id + local weekday (timezone-safe after mount)
+  // Client-only: localStorage truck id + local weekday (timezone-safe after hydrate)
   useEffect(() => {
+    if (!hydrated) return;
     if (!searchTruck) {
       setTruckId(getConfiguredTruckId() || DEFAULT_TRUCK_ID);
     } else {
       setTruckId(searchTruck);
     }
     setToday(getTodayWeekdayAbbr());
-  }, [searchTruck]);
+  }, [hydrated, searchTruck]);
 
   useEffect(() => {
     if (!hydrated) return;

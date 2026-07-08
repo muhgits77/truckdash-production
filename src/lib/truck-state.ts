@@ -17,7 +17,14 @@ export type ScheduleDay = {
   note?: string; // e.g. "Festival", "Prep day", "Closed", "Family day"
 };
 
-export type MenuItem = { id: string; name: string; price: string };
+export type MenuItem = {
+  id: string;
+  name: string;
+  price: string;
+  description?: string;
+  /** Local data/blob URL before publish; public storage URL after publish. */
+  image?: string;
+};
 
 export type TemplateId =
   | "lakecumberland"

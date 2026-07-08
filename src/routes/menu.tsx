@@ -194,7 +194,10 @@ function PublicMenuPage() {
             {/* Subtle Last Updated footer on the menu page (as requested) */}
             {lastUpdated && (
               <div className="mt-8 text-center">
-                <p className="text-[10px] text-brand-green/40 tracking-[0.5px]">
+                <p
+                  className="text-[10px] text-brand-green/40 tracking-[0.5px]"
+                  suppressHydrationWarning
+                >
                   Last updated from TruckDash:{" "}
                   <span className="font-medium text-brand-green/60">{lastUpdated}</span>
                 </p>

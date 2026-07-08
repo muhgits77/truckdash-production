@@ -398,13 +398,15 @@ function Dashboard() {
       setCloudPending(hasPendingCloudSync() || result.source === "local+queued");
 
       const time = formatPublishedTime(result.published.lastPublished);
-      if (result.source === "supabase") {
-        setPublishToast(`Published at ${time}! Live on Supabase.`);
+      if (result.source === "storage") {
+        setPublishToast(
+          result.message || `Published at ${time}! menu-data + menu-images buckets updated.`,
+        );
         setCloudPending(false);
       } else if (result.source === "local+queued") {
-        setPublishToast(result.message || `Saved at ${time} — cloud sync pending`);
+        setPublishToast(result.message || `Saved at ${time} — storage upload pending`);
       } else {
-        setPublishToast(`Published at ${time}! Live on your website.`);
+        setPublishToast(result.message || `Saved locally at ${time}. Add Supabase env vars to push to menu-data.`);
       }
       setTimeout(() => setPublishToast(null), 3600);
     } catch (e) {
@@ -843,14 +845,14 @@ function PublishToWebsiteCard({
           </div>
           <h3 className="font-display text-xl mt-1">Publish Updates to My Website</h3>
           <p className="text-sm text-brand-green/70 mt-1 pr-2">
-            Menu, specials, schedule &amp; location appear on your public site at /website, /menu
-            and /schedule.{" "}
+            Uploads your menu + schedule JSON to the <strong>menu-data</strong> bucket and food
+            photos to <strong>menu-images</strong>. Cluckin Chaos pulls from there automatically.{" "}
             {cloudEnabled
-              ? "Pushes to Supabase when online."
-              : "Saved on this device — turn on Supabase Sync in Settings for the cloud."}
+              ? "Supabase Storage sync is on."
+              : "Turn on Supabase Sync in Settings to push live."}
           </p>
           {formatted && (
-            <p className="text-[11px] text-brand-green/50 mt-2">
+            <p className="text-[11px] text-brand-green/50 mt-2" suppressHydrationWarning>
               Last published: {formatted}
               {cloudEnabled && (
                 <span className="ml-1 text-brand-orange/80">· Supabase sync on</span>
@@ -978,10 +980,10 @@ function MenuManager({
             const result = await publishData(payload);
             const t = formatPublishedTime(result.published.lastPublished);
             const extra =
-              result.source === "supabase"
-                ? " (Supabase)"
+              result.source === "storage"
+                ? " (Supabase Storage)"
                 : result.source === "local+queued"
-                  ? " — cloud pending"
+                  ? " — upload pending"
                   : "";
             alert(`Published! Menu + schedule live as of ${t}${extra}`);
           } catch {
@@ -995,33 +997,77 @@ function MenuManager({
 
       <div className="bg-white rounded-3xl border border-brand-green/5 shadow-sm divide-y divide-brand-green/5">
         {state.menu.map((item) => (
-          <div
-            key={item.id}
-            className="grid grid-cols-[minmax(0,1fr)_5rem_auto] items-center gap-2 p-3"
-          >
-            <input
-              value={item.name}
-              onChange={(e) => updateItem(item.id, { name: e.target.value })}
-              className="min-w-0 bg-transparent text-sm font-medium outline-none px-2 py-2 rounded-lg focus:bg-brand-sand"
-            />
-            <div className="flex items-center gap-1 rounded-lg focus-within:bg-brand-sand px-2">
-              <span className="text-brand-green/40 text-sm">$</span>
+          <div key={item.id} className="p-3 space-y-2">
+            <div className="grid grid-cols-[minmax(0,1fr)_5rem_auto] items-center gap-2">
               <input
-                value={item.price}
-                onChange={(e) =>
-                  updateItem(item.id, { price: e.target.value.replace(/[^\d.]/g, "") })
-                }
-                inputMode="decimal"
-                className="w-full bg-transparent text-sm font-semibold outline-none py-2 text-right"
+                value={item.name}
+                onChange={(e) => updateItem(item.id, { name: e.target.value })}
+                placeholder="Item name"
+                className="min-w-0 bg-transparent text-sm font-medium outline-none px-2 py-2 rounded-lg focus:bg-brand-sand"
               />
+              <div className="flex items-center gap-1 rounded-lg focus-within:bg-brand-sand px-2">
+                <span className="text-brand-green/40 text-sm">$</span>
+                <input
+                  value={item.price}
+                  onChange={(e) =>
+                    updateItem(item.id, { price: e.target.value.replace(/[^\d.]/g, "") })
+                  }
+                  inputMode="decimal"
+                  className="w-full bg-transparent text-sm font-semibold outline-none py-2 text-right"
+                />
+              </div>
+              <button
+                onClick={() => removeItem(item.id)}
+                aria-label="Remove item"
+                className="size-8 shrink-0 rounded-full text-brand-green/40 hover:text-destructive hover:bg-destructive/5 grid place-items-center"
+              >
+                <XIcon className="size-4" />
+              </button>
             </div>
-            <button
-              onClick={() => removeItem(item.id)}
-              aria-label="Remove item"
-              className="size-8 shrink-0 rounded-full text-brand-green/40 hover:text-destructive hover:bg-destructive/5 grid place-items-center"
-            >
-              <XIcon className="size-4" />
-            </button>
+            <input
+              value={item.description || ""}
+              onChange={(e) => updateItem(item.id, { description: e.target.value })}
+              placeholder="Short description (optional)"
+              className="w-full text-xs text-brand-green/80 outline-none px-2 py-1.5 rounded-lg focus:bg-brand-sand"
+            />
+            <div className="flex items-center gap-3 px-1">
+              {item.image && (
+                <img
+                  src={item.image}
+                  alt=""
+                  className="size-10 rounded-lg object-cover border border-brand-green/10"
+                />
+              )}
+              <label className="text-xs font-semibold text-brand-orange cursor-pointer">
+                {item.image ? "Change photo" : "Add photo"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      if (typeof reader.result === "string") {
+                        updateItem(item.id, { image: reader.result });
+                      }
+                    };
+                    reader.readAsDataURL(file);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              {item.image && (
+                <button
+                  type="button"
+                  onClick={() => updateItem(item.id, { image: undefined })}
+                  className="text-[10px] text-brand-green/50 hover:text-destructive"
+                >
+                  Remove photo
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>
@@ -2570,8 +2616,9 @@ function SettingsSheet({
               <li>
                 SQL Editor → paste &amp; run{" "}
                 <code className="text-[10px] bg-brand-sand px-1 rounded">
-                  supabase/published_trucks.sql
-                </code>
+                  supabase/storage_buckets.sql
+                </code>{" "}
+                (creates menu-data + menu-images buckets)
               </li>
               <li>
                 Project Settings → API → copy <strong>Project URL</strong> and{" "}
@@ -2766,17 +2813,21 @@ function WeekPreviewCard({ schedule }: { schedule: ScheduleDay[] }) {
 
 function PrintableSchedule({ state }: { state: TruckState }) {
   // Date is client-timezone sensitive — set after mount so SSR HTML matches first paint
+  const hydrated = useHydrated();
   const [dateLabel, setDateLabel] = useState("");
   useEffect(() => {
+    if (!hydrated) return;
     setDateLabel(formatWeekOf());
-  }, []);
+  }, [hydrated]);
   return (
     <div className="printable-schedule hidden print:block print-hidden">
       <header className="print-header">
         <div>
           <p className="print-eyebrow">Weekly Schedule</p>
           <h1 className="print-title">{state.name}</h1>
-          <p className="print-sub">Week of {dateLabel || "…"}</p>
+          <p className="print-sub" suppressHydrationWarning>
+            Week of {dateLabel || "…"}
+          </p>
         </div>
         <div className="print-brand">Bluegrass · Kentucky</div>
       </header>

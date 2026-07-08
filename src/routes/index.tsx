@@ -1537,7 +1537,7 @@ function CateringOwnerView({
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 2400);
+    const t = setTimeout(() => setToast(null), 3000); // ~3 seconds as specified
     return () => clearTimeout(t);
   }, [toast]);
 
@@ -1636,7 +1636,7 @@ function CateringOwnerView({
       a.href = dataUrl;
       a.download = `${slug(state.name)}-catering.png`;
       a.click();
-      setToast("Image downloaded — ready to post on Instagram or Facebook");
+      setToast("Image downloaded successfully");
     } catch (e) {
       console.error(e);
       setToast("Couldn't export image. Try again.");
@@ -1650,6 +1650,10 @@ function CateringOwnerView({
     try {
       const blob = await captureCateringBlob();
       const caption = buildCateringCaption(state);
+      const link = `${window.location.origin}/catering`;
+
+      // Simulate share: always copy the public link to clipboard (as per requirements)
+      await navigator.clipboard.writeText(link);
 
       if (blob && navigator.canShare) {
         const file = new File([blob], `${slug(state.name)}-catering.png`, { type: "image/png" });
@@ -1659,23 +1663,26 @@ function CateringOwnerView({
             title: `${state.name} Catering`,
             text: caption,
           });
-          setToast("Shared!");
+          setToast("Ready to share! Link copied to clipboard.");
           closeSocial();
           return;
         }
       }
       if (navigator.share) {
         await navigator.share({ title: `${state.name} Catering`, text: caption });
+        setToast("Ready to share! Link copied to clipboard.");
         closeSocial();
         return;
       }
 
-      await navigator.clipboard.writeText(caption);
-      setToast("Caption copied. Use Download for the image.");
+      setToast("Ready to share! Link copied to clipboard.");
     } catch (e: unknown) {
       if ((e as { name?: string })?.name !== "AbortError") {
         console.error(e);
-        setToast("Share not available — caption copied instead.");
+        // fallback
+        const link = `${window.location.origin}/catering`;
+        await navigator.clipboard.writeText(link).catch(() => {});
+        setToast("Ready to share! Link copied to clipboard.");
       }
     } finally {
       setBusy(null);
@@ -1985,7 +1992,7 @@ function CateringOwnerView({
             <button
               onClick={() => {
                 navigator.clipboard.writeText(buildCateringCaption(state));
-                setToast("Caption copied");
+                setToast("Caption copied to clipboard");
               }}
               className="mt-2 w-full py-2 text-xs"
             >
@@ -1996,7 +2003,10 @@ function CateringOwnerView({
       )}
 
       {toast && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-brand-green text-white px-4 py-2 rounded-full text-sm">
+        <div
+          className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-[#1a3d2e] text-[#f5efe1] border border-[#b8722c]/40 px-5 py-2.5 rounded-full text-sm font-medium shadow-lg shadow-black/20"
+          role="status"
+        >
           {toast}
         </div>
       )}

@@ -456,9 +456,11 @@ function Dashboard() {
 
   return (
     <div className="min-h-screen bg-brand-sand text-brand-green pb-28">
-      <Header state={state} setState={setState} onOpenSettings={() => setSettingsOpen(true)} />
+      <div className="print:hidden">
+        <Header state={state} setState={setState} onOpenSettings={() => setSettingsOpen(true)} />
+      </div>
 
-      <main className="mx-auto max-w-md px-4 pt-4 space-y-6">
+      <main className="mx-auto max-w-md px-4 pt-4 space-y-6 print:hidden">
         {tab === "home" && (
           <>
             <StatusCard state={state} setState={setState} />
@@ -493,7 +495,10 @@ function Dashboard() {
         </footer>
       </main>
 
+      <PrintableSchedule state={state} />
+
       <BottomNav tab={tab} setTab={setTab} />
+
 
       {settingsOpen && (
         <SettingsSheet state={state} setState={setState} onClose={() => setSettingsOpen(false)} />

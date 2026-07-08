@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { toBlob, toPng } from "html-to-image";
 import flyerFood from "@/assets/flyer-food.jpg";
@@ -10,8 +10,11 @@ import {
   type TemplateId,
   type ShareFormat,
   type BackgroundId,
+  type CateringSettings,
+  type CateringInquiry,
   DEFAULT_SCHEDULE,
   DEFAULT_STATE,
+  DEFAULT_CATERING,
   APP_VERSION,
   STORAGE_KEY,
   VERSION_KEY,
@@ -331,7 +334,7 @@ const TEMPLATES: Record<TemplateId, TemplateTheme> = {
 
 function Dashboard() {
   const [state, setState] = useTruckState();
-  const [tab, setTab] = useState<"home" | "menu" | "flyer">("home");
+  const [tab, setTab] = useState<"home" | "menu" | "flyer" | "catering">("home");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showOnboard, setShowOnboard] = useState(false);
   const flyerRef = useRef<HTMLDivElement | null>(null);
@@ -376,7 +379,11 @@ function Dashboard() {
         {tab === "home" && (
           <>
             <StatusCard state={state} setState={setState} />
-            <QuickActions onOpenMenu={() => setTab("menu")} onOpenFlyer={() => setTab("flyer")} />
+            <QuickActions
+              onOpenMenu={() => setTab("menu")}
+              onOpenFlyer={() => setTab("flyer")}
+              onOpenCatering={() => setTab("catering")}
+            />
             <WeekPreviewCard schedule={state.schedule} />
             <MenuHighlightsCard items={menuHighlights} onEdit={() => setTab("menu")} />
             <FlyerSection state={state} setState={setState} flyerRef={flyerRef} />
@@ -389,6 +396,10 @@ function Dashboard() {
 
         {tab === "flyer" && (
           <FlyerSection state={state} setState={setState} flyerRef={flyerRef} standalone />
+        )}
+
+        {tab === "catering" && (
+          <CateringOwnerView state={state} setState={setState} onDone={() => setTab("home")} />
         )}
 
         <footer className="pt-6 pb-2 text-center">
@@ -648,12 +659,14 @@ function StatusCard({ state, setState }: { state: TruckState; setState: (s: Truc
 function QuickActions({
   onOpenMenu,
   onOpenFlyer,
+  onOpenCatering,
 }: {
   onOpenMenu: () => void;
   onOpenFlyer: () => void;
+  onOpenCatering: () => void;
 }) {
   return (
-    <section className="grid grid-cols-3 gap-3">
+    <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
       <Link
         to="/this-week"
         className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-3xl border border-brand-green/5 shadow-sm active:scale-[0.98] transition"
@@ -663,6 +676,15 @@ function QuickActions({
         </div>
         <span className="text-xs font-semibold text-brand-green">This Week</span>
       </Link>
+      <button
+        onClick={onOpenCatering}
+        className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-3xl border border-brand-green/5 shadow-sm active:scale-[0.98] transition"
+      >
+        <div className="size-11 rounded-2xl bg-brand-orange/10 flex items-center justify-center text-brand-orange">
+          <CateringIcon className="size-5" />
+        </div>
+        <span className="text-xs font-semibold text-brand-green">Catering</span>
+      </button>
       <button
         onClick={onOpenMenu}
         className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-3xl border border-brand-green/5 shadow-sm active:scale-[0.98] transition"
@@ -1470,6 +1492,459 @@ const Flyer = ({
   );
 };
 
+/* ------------------------------- Catering Owner View ------------------------------- */
+
+/**
+ * Owner Dashboard View for Catering.
+ * - Editable settings that power the public /catering form
+ * - Preview + link to public customer form
+ * - List of received inquiries (from localStorage)
+ * - Social post generator (images + captions) like the flyer tool
+ */
+function CateringOwnerView({
+  state,
+  setState,
+  onDone,
+}: {
+  state: TruckState;
+  setState: (s: TruckState) => void;
+  onDone: () => void;
+}) {
+  const c = state.catering;
+  const [inquiries, setInquiries] = useState<CateringInquiry[]>([]);
+  const [showPreview, setShowPreview] = useState(false);
+  const [socialOpen, setSocialOpen] = useState(false);
+  const [socialFormat, setSocialFormat] = useState<ShareFormat>("portrait");
+  const [busy, setBusy] = useState<null | "png" | "share">(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const socialRef = useRef<HTMLDivElement | null>(null);
+
+  // Load inquiries (shared with public /catering form)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("truckdash.catering.inquiries");
+      if (raw) setInquiries(JSON.parse(raw));
+    } catch {
+      /* storage read failure is non-fatal */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2400);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const updateCatering = (patch: Partial<CateringSettings>) => {
+    setState({ ...state, catering: { ...c, ...patch } });
+  };
+
+  const updatePackage = (id: string, patch: Partial<CateringSettings["signaturePackages"][0]>) => {
+    const next = c.signaturePackages.map((p) => (p.id === id ? { ...p, ...patch } : p));
+    updateCatering({ signaturePackages: next });
+  };
+
+  const addPackage = () => {
+    const next = [
+      ...c.signaturePackages,
+      {
+        id: crypto.randomUUID(),
+        name: "New Package",
+        description: "Describe the offering",
+        serves: "Serves 20–30",
+      },
+    ];
+    updateCatering({ signaturePackages: next });
+  };
+
+  const removePackage = (id: string) => {
+    updateCatering({ signaturePackages: c.signaturePackages.filter((p) => p.id !== id) });
+  };
+
+  const markContacted = (id: string) => {
+    const next = inquiries.map((inq) =>
+      inq.id === id ? { ...inq, status: "contacted" as const } : inq,
+    );
+    setInquiries(next);
+    try {
+      localStorage.setItem("truckdash.catering.inquiries", JSON.stringify(next));
+    } catch {
+      /* storage write failure — non-fatal for demo */
+    }
+  };
+
+  const copyPublicLink = async () => {
+    const url = `${window.location.origin}/catering`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setToast("Public form link copied");
+    } catch {
+      setToast("Link: " + url);
+    }
+  };
+
+  /* ---------- Social generator for catering promos (re-uses patterns from flyer & this-week) ---------- */
+
+  const openSocial = () => setSocialOpen(true);
+  const closeSocial = () => setSocialOpen(false);
+
+  const downloadCateringImage = async () => {
+    if (!socialRef.current) return;
+    setBusy("png");
+    try {
+      const dataUrl = await toPng(socialRef.current, { pixelRatio: 3, backgroundColor: "#f5efe1" });
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `${slug(state.name)}-catering.png`;
+      a.click();
+      setToast("Image downloaded — ready to post");
+    } catch (e) {
+      console.error(e);
+      setToast("Export failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const shareCatering = async () => {
+    setBusy("share");
+    try {
+      const blob = await toBlob(socialRef.current!, { pixelRatio: 3, backgroundColor: "#f5efe1" });
+      const caption = buildCateringCaption(state);
+      if (
+        blob &&
+        navigator.canShare?.({ files: [new File([blob], "catering.png", { type: "image/png" })] })
+      ) {
+        await navigator.share({
+          files: [new File([blob], "catering.png", { type: "image/png" })],
+          title: `${state.name} Catering`,
+          text: caption,
+        });
+        closeSocial();
+        return;
+      }
+      await navigator.clipboard.writeText(caption);
+      setToast("Caption copied. Download the image too.");
+    } catch (e: unknown) {
+      if ((e as { name?: string })?.name !== "AbortError") console.error(e);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <section className="space-y-6 pb-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-display text-2xl">Catering</h2>
+          <p className="text-xs text-brand-green/60">Manage inquiries, settings &amp; promotion</p>
+        </div>
+        <button
+          onClick={onDone}
+          className="text-xs font-bold uppercase tracking-wider text-brand-orange"
+        >
+          Done
+        </button>
+      </div>
+
+      {/* Settings */}
+      <div className="bg-white rounded-3xl border border-brand-green/10 p-5 space-y-4">
+        <div className="font-semibold">Your Catering Profile</div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Field label="Contact Email">
+            <input
+              value={c.contactEmail}
+              onChange={(e) => updateCatering({ contactEmail: e.target.value })}
+              className="w-full bg-brand-sand rounded-2xl px-3 py-2.5 text-sm border border-brand-green/10"
+            />
+          </Field>
+          <Field label="Contact Phone">
+            <input
+              value={c.contactPhone}
+              onChange={(e) => updateCatering({ contactPhone: e.target.value })}
+              className="w-full bg-brand-sand rounded-2xl px-3 py-2.5 text-sm border border-brand-green/10"
+            />
+          </Field>
+        </div>
+
+        <Field label="Service Area">
+          <input
+            value={c.serviceArea}
+            onChange={(e) => updateCatering({ serviceArea: e.target.value })}
+            className="w-full bg-brand-sand rounded-2xl px-3 py-2.5 text-sm border border-brand-green/10"
+          />
+        </Field>
+
+        <Field label="Public Intro Message (shown on form)">
+          <textarea
+            value={c.introMessage}
+            onChange={(e) => updateCatering({ introMessage: e.target.value })}
+            rows={3}
+            className="w-full bg-brand-sand rounded-2xl px-3 py-2.5 text-sm border border-brand-green/10"
+          />
+        </Field>
+
+        {/* Signature packages */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs font-bold uppercase tracking-wider text-brand-green/60">
+              Signature Packages
+            </div>
+            <button onClick={addPackage} className="text-xs text-brand-orange font-bold">
+              + Add
+            </button>
+          </div>
+          <div className="space-y-2">
+            {c.signaturePackages.map((pkg) => (
+              <div
+                key={pkg.id}
+                className="grid grid-cols-[1fr,1fr,auto] gap-2 items-center bg-brand-sand rounded-2xl p-2"
+              >
+                <input
+                  value={pkg.name}
+                  onChange={(e) => updatePackage(pkg.id, { name: e.target.value })}
+                  className="bg-white rounded-xl px-2 py-1 text-sm"
+                />
+                <input
+                  value={pkg.serves}
+                  onChange={(e) => updatePackage(pkg.id, { serves: e.target.value })}
+                  className="bg-white rounded-xl px-2 py-1 text-xs"
+                />
+                <button onClick={() => removePackage(pkg.id)} className="text-brand-green/40 px-2">
+                  ×
+                </button>
+                <input
+                  value={pkg.description}
+                  onChange={(e) => updatePackage(pkg.id, { description: e.target.value })}
+                  className="col-span-3 bg-white rounded-xl px-2 py-1 text-xs mt-1"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Quick actions */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setShowPreview(true)}
+          className="px-4 py-2 rounded-2xl border border-brand-green/15 bg-white text-sm font-semibold"
+        >
+          Preview Public Form
+        </button>
+        <button
+          onClick={copyPublicLink}
+          className="px-4 py-2 rounded-2xl border border-brand-green/15 bg-white text-sm font-semibold"
+        >
+          Copy Public Link
+        </button>
+        <button
+          onClick={openSocial}
+          className="px-4 py-2 rounded-2xl bg-brand-orange text-white text-sm font-bold"
+        >
+          Generate Social Post
+        </button>
+        <a
+          href="/catering"
+          target="_blank"
+          rel="noopener"
+          className="px-4 py-2 rounded-2xl border border-brand-green/15 bg-white text-sm font-semibold"
+        >
+          Open Public Page ↗
+        </a>
+      </div>
+
+      {/* Inquiries */}
+      <div>
+        <div className="flex items-baseline justify-between mb-2 px-1">
+          <div className="font-semibold">Recent Inquiries</div>
+          <div className="text-[10px] text-brand-green/50">{inquiries.length} total</div>
+        </div>
+
+        {inquiries.length === 0 ? (
+          <div className="bg-white rounded-3xl border border-brand-green/10 p-6 text-sm text-brand-green/60">
+            No inquiries yet. Share your public link from above or the This Week page to start
+            receiving requests.
+          </div>
+        ) : (
+          <div className="bg-white rounded-3xl border border-brand-green/10 overflow-hidden text-sm divide-y divide-brand-green/10">
+            {inquiries.slice(0, 8).map((inq) => (
+              <div key={inq.id} className="p-3 flex flex-col sm:flex-row sm:items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold">
+                    {inq.name}{" "}
+                    <span className="text-xs text-brand-green/50">· {inq.eventType}</span>
+                  </div>
+                  <div className="text-xs text-brand-green/70 truncate">
+                    {inq.eventDate} {inq.eventTime} • {inq.guests} guests • {inq.location}
+                  </div>
+                  <div className="text-[10px] text-brand-green/50 truncate mt-0.5">
+                    {inq.email} {inq.phone ? `· ${inq.phone}` : ""}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span
+                    className={`px-2 py-0.5 rounded ${inq.status === "new" ? "bg-brand-orange/10 text-brand-orange" : "bg-brand-green/10 text-brand-green"}`}
+                  >
+                    {inq.status}
+                  </span>
+                  {inq.status === "new" && (
+                    <button
+                      onClick={() => markContacted(inq.id)}
+                      className="underline text-brand-green/70"
+                    >
+                      Mark contacted
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <p className="text-[11px] text-center text-brand-green/50">
+        Inquiries are stored on this device and sync with the public form.
+      </p>
+
+      {/* Public form preview modal */}
+      {showPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div onClick={() => setShowPreview(false)} className="absolute inset-0 bg-black/40" />
+          <div className="relative bg-white rounded-3xl max-w-md w-full max-h-[85vh] overflow-auto p-5 shadow-2xl">
+            <div className="flex justify-between mb-3">
+              <div className="font-semibold">Public Form Preview</div>
+              <button onClick={() => setShowPreview(false)} className="text-brand-orange text-sm">
+                Close
+              </button>
+            </div>
+            <div className="text-xs text-brand-green/60 mb-3 border-b pb-2">
+              This is what customers see at /catering
+            </div>
+            {/* Simple visual representation */}
+            <div className="space-y-3 text-sm">
+              <div className="font-display text-xl">{state.name} Catering</div>
+              <p className="text-brand-green/70 text-sm">{c.introMessage}</p>
+              <div className="bg-brand-sand rounded-2xl p-3 text-xs">
+                Name, Email, Phone, Date/Time, Guests, Location, Event Type, Menu/Dietary, Budget,
+                Notes
+              </div>
+              <div className="pt-2 text-[10px] text-brand-green/50">
+                Full interactive form available on the live public page.
+              </div>
+            </div>
+            <a
+              href="/catering"
+              target="_blank"
+              className="mt-4 block text-center py-2 rounded-2xl bg-brand-orange text-white text-sm font-bold"
+            >
+              Open Full Public Form
+            </a>
+          </div>
+        </div>
+      )}
+
+      {/* Social post studio modal (catering promo) */}
+      {socialOpen && (
+        <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
+          <button onClick={closeSocial} className="absolute inset-0 bg-black/40" />
+          <div className="relative bg-brand-sand w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-5">
+            <div className="flex justify-between mb-3">
+              <div className="font-semibold">Generate Catering Post</div>
+              <button onClick={closeSocial}>Done</button>
+            </div>
+
+            <div className="flex gap-2 mb-3">
+              {(["portrait", "story", "square"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setSocialFormat(f)}
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-2xl border ${socialFormat === f ? "bg-brand-green text-white border-brand-green" : "bg-white"}`}
+                >
+                  {f === "portrait" ? "4:5 Post" : f === "story" ? "9:16 Story" : "1:1 Square"}
+                </button>
+              ))}
+            </div>
+
+            <div className="rounded-3xl overflow-hidden ring-1 ring-brand-green/10 bg-white p-2 mb-4">
+              <CateringSocialCard ref={socialRef} state={state} format={socialFormat} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={downloadCateringImage}
+                disabled={busy !== null}
+                className="py-3 rounded-2xl bg-brand-green text-white font-bold text-sm"
+              >
+                {busy === "png" ? "Rendering..." : "Download Image"}
+              </button>
+              <button
+                onClick={shareCatering}
+                disabled={busy !== null}
+                className="py-3 rounded-2xl bg-brand-orange text-white font-bold text-sm"
+              >
+                {busy === "share" ? "..." : "Share"}
+              </button>
+            </div>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(buildCateringCaption(state));
+                setToast("Caption copied");
+              }}
+              className="mt-2 w-full py-2 text-xs"
+            >
+              Copy Caption
+            </button>
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-brand-green text-white px-4 py-2 rounded-full text-sm">
+          {toast}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/* Small reusable social card for catering promos */
+const CateringSocialCard = React.forwardRef<
+  HTMLDivElement,
+  { state: TruckState; format: ShareFormat }
+>(({ state, format }, ref) => {
+  const aspect =
+    format === "portrait" ? "aspect-[4/5]" : format === "story" ? "aspect-[9/16]" : "aspect-square";
+  return (
+    <div
+      ref={ref}
+      className={`${aspect} relative overflow-hidden rounded-2xl p-5 flex flex-col`}
+      style={{ background: "linear-gradient(160deg, #f5efe1, #f0e7d4)", color: "#1a3d2e" }}
+    >
+      <div className="text-[10px] font-bold tracking-[0.2em] text-brand-orange">
+        BLUEGRASS KITCHEN
+      </div>
+      <div className="font-display text-3xl leading-none mt-2 tracking-tight">
+        Catering
+        <br />
+        available
+      </div>
+      <div className="mt-auto text-sm">
+        <div className="font-semibold">{state.name}</div>
+        <div className="text-xs opacity-70">Lake Cumberland &amp; Central Kentucky</div>
+        <div className="mt-3 inline-block bg-brand-orange text-white text-xs px-3 py-1 rounded-full">
+          Inquire → /catering
+        </div>
+      </div>
+      <div className="absolute bottom-3 right-3 text-[10px] opacity-50">
+        Honest food. Local roots.
+      </div>
+    </div>
+  );
+});
+
 /* ------------------------------- Settings ------------------------------- */
 
 function SettingsSheet({
@@ -1567,7 +2042,7 @@ function Field({
   );
 }
 
-type TabKey = "home" | "menu" | "flyer"; // "week" is now a dedicated route at /this-week
+type TabKey = "home" | "menu" | "flyer" | "catering"; // "week" moved to dedicated route, catering has owner tools + public form at /catering
 
 function BottomNav({ tab, setTab }: { tab: TabKey; setTab: (t: TabKey) => void }) {
   const items: { key: TabKey | "week"; label: string; icon: React.ReactNode; to?: string }[] = [
@@ -1578,6 +2053,7 @@ function BottomNav({ tab, setTab }: { tab: TabKey; setTab: (t: TabKey) => void }
       icon: <CalendarIcon className="size-5" />,
       to: "/this-week",
     },
+    { key: "catering", label: "Catering", icon: <CateringIcon className="size-5" /> },
     { key: "menu", label: "Menu", icon: <ForkKnifeIcon className="size-5" /> },
     { key: "flyer", label: "Flyer", icon: <SparklesIcon className="size-5" /> },
   ];
@@ -1630,6 +2106,26 @@ function CalendarIcon(p: React.SVGProps<SVGSVGElement>) {
     >
       <rect x="3" y="5" width="18" height="16" rx="2" />
       <path d="M3 10h18M8 3v4M16 3v4" />
+    </svg>
+  );
+}
+
+function CateringIcon(p: React.SVGProps<SVGSVGElement>) {
+  // Simple warm plate + event icon for catering
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...p}
+    >
+      <path d="M12 2v20" />
+      <path d="M2 7h20" />
+      <path d="M5 12c0 3.87 3.13 7 7 7s7-3.13 7-7" />
+      <path d="M19 7v2" />
     </svg>
   );
 }
@@ -1784,6 +2280,15 @@ async function copyText(text: string) {
   } catch {
     /* clipboard may be unavailable */
   }
+}
+
+function buildCateringCaption(state: TruckState) {
+  return [
+    `🍽️ ${state.name} now taking catering bookings!`,
+    `Perfect for weddings, corporate events, festivals & private parties.`,
+    `Lake Cumberland area — authentic Kentucky flavors.`,
+    `Inquire here: ${window.location.origin}/catering`,
+  ].join("\n");
 }
 function PinIcon(p: React.SVGProps<SVGSVGElement>) {
   return (

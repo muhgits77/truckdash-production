@@ -318,6 +318,22 @@ function ThisWeekPage() {
           etc.). Add festival or event names in the Notes field.
         </div>
 
+        {/* Integration: Link from This Week to Catering (per spec) */}
+        <div className="mt-2 bg-white border border-brand-green/10 rounded-3xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex-1">
+            <div className="font-semibold">Hosting an event?</div>
+            <p className="text-sm text-brand-green/70">
+              Book {state.name} for private catering or a full truck experience.
+            </p>
+          </div>
+          <Link
+            to="/catering"
+            className="shrink-0 inline-flex items-center px-4 py-2 rounded-2xl bg-brand-orange text-white text-sm font-bold"
+          >
+            Inquire about catering →
+          </Link>
+        </div>
+
         {/* Dedicated print-only content for this page (beautiful header + table) */}
         <PrintableWeeklySchedule state={state} />
       </main>

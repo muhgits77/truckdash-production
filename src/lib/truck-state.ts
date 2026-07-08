@@ -51,6 +51,39 @@ export type TruckState = {
   background: BackgroundId;
   phone: string;
   schedule: ScheduleDay[];
+  // Catering feature (owner-configurable, used by public form + dashboard)
+  catering: CateringSettings;
+};
+
+export type CateringSettings = {
+  enabled: boolean;
+  contactEmail: string;
+  contactPhone: string;
+  serviceArea: string;
+  introMessage: string;
+  signaturePackages: Array<{
+    id: string;
+    name: string;
+    description: string;
+    serves: string; // e.g. "Serves 25-40"
+  }>;
+};
+
+export type CateringInquiry = {
+  id: string;
+  submittedAt: string; // ISO
+  name: string;
+  email: string;
+  phone: string;
+  eventDate: string;
+  eventTime: string;
+  guests: number;
+  location: string;
+  eventType: string;
+  menuInterests: string;
+  budget: string;
+  notes: string;
+  status: "new" | "contacted";
 };
 
 export const DEFAULT_SCHEDULE: ScheduleDay[] = [
@@ -116,6 +149,36 @@ export const DEFAULT_SCHEDULE: ScheduleDay[] = [
   },
 ];
 
+export const DEFAULT_CATERING: CateringSettings = {
+  enabled: true,
+  contactEmail: "hello@bluegrasskitchen.example.com",
+  contactPhone: "(555) 123-4567",
+  serviceArea:
+    "Lake Cumberland, Russell Springs, Monticello, Jamestown & surrounding Central Kentucky",
+  introMessage:
+    "Bring authentic Bluegrass Kitchen flavors to your next gathering. From intimate private parties to large corporate events and festivals — we handle the food so you can enjoy the moment.",
+  signaturePackages: [
+    {
+      id: "p1",
+      name: "Bourbon BBQ Spread",
+      description: "Pulled pork, brisket sliders, slaw, baked beans & sweet tea",
+      serves: "Serves 25–40",
+    },
+    {
+      id: "p2",
+      name: "Southern Feast",
+      description: "Fried chicken, mac & cheese, greens, cornbread & desserts",
+      serves: "Serves 30–60",
+    },
+    {
+      id: "p3",
+      name: "Festival Package",
+      description: "Build-your-own nachos & taco bar with all the fixings",
+      serves: "Serves 50+",
+    },
+  ],
+};
+
 export const DEFAULT_STATE: TruckState = {
   name: "Bluegrass Kitchen",
   live: true,
@@ -137,6 +200,7 @@ export const DEFAULT_STATE: TruckState = {
   background: "sage-linen",
   phone: "(555) 123-4567",
   schedule: DEFAULT_SCHEDULE,
+  catering: DEFAULT_CATERING,
 };
 
 export const APP_VERSION = "0.5.0";
@@ -163,6 +227,7 @@ export function useTruckState() {
           ...DEFAULT_STATE,
           ...parsed,
           schedule: parsed.schedule ?? DEFAULT_STATE.schedule,
+          catering: parsed.catering ?? DEFAULT_STATE.catering,
         });
       }
     } catch {

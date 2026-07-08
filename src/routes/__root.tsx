@@ -82,15 +82,35 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },
       { name: "apple-mobile-web-app-title", content: "TruckDash" },
       { title: "TruckDash — Food Truck Dashboard & Flyer Studio" },
-      { name: "description", content: "The mobile HQ for food truck owners. Update location, hours & menu, then design and share a beautiful flyer with a real QR code." },
+      {
+        name: "description",
+        content:
+          "The mobile HQ for food truck owners. Update location, hours & menu, then design and share a beautiful flyer with a real QR code.",
+      },
       { property: "og:title", content: "TruckDash — Food Truck Dashboard & Flyer Studio" },
-      { property: "og:description", content: "The mobile HQ for food truck owners. Update location, hours & menu, then design and share a beautiful flyer with a real QR code." },
+      {
+        property: "og:description",
+        content:
+          "The mobile HQ for food truck owners. Update location, hours & menu, then design and share a beautiful flyer with a real QR code.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "TruckDash — Food Truck Dashboard & Flyer Studio" },
-      { name: "twitter:description", content: "The mobile HQ for food truck owners. Update location, hours & menu, then design and share a beautiful flyer with a real QR code." },
-      { property: "og:image", content: "https://id-preview--58991d74-931b-4bef-bb57-6e09504e9fbb.lovable.app/icon-512.png" },
-      { name: "twitter:image", content: "https://id-preview--58991d74-931b-4bef-bb57-6e09504e9fbb.lovable.app/icon-512.png" },
+      {
+        name: "twitter:description",
+        content:
+          "The mobile HQ for food truck owners. Update location, hours & menu, then design and share a beautiful flyer with a real QR code.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://id-preview--58991d74-931b-4bef-bb57-6e09504e9fbb.lovable.app/icon-512.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://id-preview--58991d74-931b-4bef-bb57-6e09504e9fbb.lovable.app/icon-512.png",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -99,7 +119,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,600;1,9..144,700&family=Inter:wght@400;500;600;700&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,600;1,9..144,700&family=Inter:wght@400;500;600;700&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,

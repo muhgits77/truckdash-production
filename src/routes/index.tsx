@@ -1,8 +1,23 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { toBlob, toPng } from "html-to-image";
 import flyerFood from "@/assets/flyer-food.jpg";
+import {
+  type MenuItem,
+  type ScheduleDay,
+  type TruckState,
+  type TemplateId,
+  type ShareFormat,
+  type BackgroundId,
+  DEFAULT_SCHEDULE,
+  DEFAULT_STATE,
+  APP_VERSION,
+  STORAGE_KEY,
+  VERSION_KEY,
+  ONBOARD_KEY,
+  useTruckState,
+} from "@/lib/truck-state";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -11,97 +26,8 @@ export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
-type MenuItem = { id: string; name: string; price: string };
-
-type TemplateId =
-  | "lakecumberland"
-  | "festival"
-  | "bourbonbarrel"
-  | "bright"
-  | "bbq"
-  | "moody"
-  | "minimal"
-  | "boldbbq"
-  | "rustic"
-  | "clean";
-
-type ShareFormat = "portrait" | "story" | "square";
-type BackgroundId =
-  | "paper"
-  | "cream-grid"
-  | "kraft"
-  | "sunset-gradient"
-  | "sage-linen"
-  | "charcoal-grain";
-
-type ScheduleDay = {
-  id: string;
-  day: string; // MON, TUE, ...
-  neighborhood: string;
-  spot: string; // address / venue
-  hoursStart: string;
-  hoursEnd: string;
-  closed?: boolean;
-  note?: string; // e.g. "Prep day"
-};
-
-type TruckState = {
-  name: string;
-  live: boolean;
-  location: string;
-  hoursStart: string;
-  hoursEnd: string;
-  special: string;
-  menu: MenuItem[];
-  orderUrl: string;
-  qrUrl: string;
-  template: TemplateId;
-  heroPhoto?: string; // data URL of user-uploaded flyer photo
-  shareFormat: ShareFormat;
-  background: BackgroundId;
-  phone: string;
-  schedule: ScheduleDay[];
-};
-
-const DEFAULT_SCHEDULE: ScheduleDay[] = [
-  { id: "d1", day: "MON", neighborhood: "Prep Day", spot: "—", hoursStart: "", hoursEnd: "", closed: true, note: "Kitchen prep" },
-  { id: "d2", day: "TUE", neighborhood: "Downtown Monticello", spot: "Courthouse Square", hoursStart: "11:00 AM", hoursEnd: "2:00 PM" },
-  { id: "d3", day: "WED", neighborhood: "Russell Springs", spot: "Main St. Lot (by the bank)", hoursStart: "11:00 AM", hoursEnd: "2:00 PM" },
-  { id: "d4", day: "THU", neighborhood: "Jamestown", spot: "Lakeway Shopping Center", hoursStart: "11:00 AM", hoursEnd: "2:00 PM" },
-  { id: "d5", day: "FRI", neighborhood: "Food Truck Friday", spot: "Russell Springs · Downtown", hoursStart: "5:00 PM", hoursEnd: "9:00 PM" },
-  { id: "d6", day: "SAT", neighborhood: "Lake Cumberland", spot: "State Dock · Main Ramp", hoursStart: "12:00 PM", hoursEnd: "8:00 PM" },
-  { id: "d7", day: "SUN", neighborhood: "Off", spot: "—", hoursStart: "", hoursEnd: "", closed: true, note: "Family day" },
-];
-
-const DEFAULT_STATE: TruckState = {
-  name: "Bluegrass Kitchen",
-  live: true,
-  location: "Food Truck Friday · Russell Springs",
-  hoursStart: "5:00 PM",
-  hoursEnd: "9:00 PM",
-  special: "Bourbon-Glazed Pulled Pork Nachos",
-  menu: [
-    { id: "1", name: "Pulled Pork Sandwich", price: "10" },
-    { id: "2", name: "Bourbon Nachos", price: "12" },
-    { id: "3", name: "Bluegrass Slaw", price: "4" },
-    { id: "4", name: "Kettle Chips", price: "3" },
-    { id: "5", name: "Sweet Tea", price: "3" },
-  ],
-  orderUrl: "https://order.example.com/bluegrass-kitchen",
-  qrUrl: "",
-  template: "lakecumberland",
-  shareFormat: "portrait",
-  background: "sage-linen",
-  phone: "(555) 123-4567",
-  schedule: DEFAULT_SCHEDULE,
-};
-
-
-const APP_VERSION = "0.5.0";
-const STORAGE_KEY = "truckdash.state.v1";
-const VERSION_KEY = "truckdash.version";
-const ONBOARD_KEY = "truckdash.onboarded.v5";
-
+// Types, defaults, and persistence are imported from @/lib/truck-state
+// This keeps schedule in sync between dashboard and the dedicated /this-week page.
 
 const SHARE_FORMATS: {
   id: ShareFormat;
@@ -401,31 +327,11 @@ const TEMPLATES: Record<TemplateId, TemplateTheme> = {
   },
 };
 
-function useTruckState() {
-  const [state, setState] = useState<TruckState>(DEFAULT_STATE);
-  const hydrated = useRef(false);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setState({ ...DEFAULT_STATE, ...JSON.parse(raw) });
-    } catch {}
-    hydrated.current = true;
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated.current) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {}
-  }, [state]);
-
-  return [state, setState] as const;
-}
+// useTruckState is now imported from @/lib/truck-state (single source of truth for schedule persistence)
 
 function Dashboard() {
   const [state, setState] = useTruckState();
-  const [tab, setTab] = useState<"home" | "menu" | "week" | "flyer">("home");
+  const [tab, setTab] = useState<"home" | "menu" | "flyer">("home");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showOnboard, setShowOnboard] = useState(false);
   const flyerRef = useRef<HTMLDivElement | null>(null);
@@ -441,16 +347,22 @@ function Dashboard() {
         return;
       }
       if (!prev) localStorage.setItem(VERSION_KEY, APP_VERSION);
-    } catch {}
+    } catch {
+      /* non-fatal: version or onboarding flag storage */
+    }
     try {
       if (!localStorage.getItem(ONBOARD_KEY)) setShowOnboard(true);
-    } catch {}
+    } catch {
+      /* non-fatal: version or onboarding flag storage */
+    }
   }, []);
 
   const dismissOnboard = () => {
     try {
       localStorage.setItem(ONBOARD_KEY, "1");
-    } catch {}
+    } catch {
+      /* non-fatal: version or onboarding flag storage */
+    }
     setShowOnboard(false);
   };
 
@@ -464,12 +376,8 @@ function Dashboard() {
         {tab === "home" && (
           <>
             <StatusCard state={state} setState={setState} />
-            <QuickActions
-              onOpenMenu={() => setTab("menu")}
-              onOpenFlyer={() => setTab("flyer")}
-              onOpenWeek={() => setTab("week")}
-            />
-            <WeekPreviewCard schedule={state.schedule} onOpen={() => setTab("week")} />
+            <QuickActions onOpenMenu={() => setTab("menu")} onOpenFlyer={() => setTab("flyer")} />
+            <WeekPreviewCard schedule={state.schedule} />
             <MenuHighlightsCard items={menuHighlights} onEdit={() => setTab("menu")} />
             <FlyerSection state={state} setState={setState} flyerRef={flyerRef} />
           </>
@@ -479,14 +387,9 @@ function Dashboard() {
           <MenuManager state={state} setState={setState} onDone={() => setTab("home")} />
         )}
 
-        {tab === "week" && (
-          <WeekSchedule state={state} setState={setState} />
-        )}
-
         {tab === "flyer" && (
           <FlyerSection state={state} setState={setState} flyerRef={flyerRef} standalone />
         )}
-
 
         <footer className="pt-6 pb-2 text-center">
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-green/40">
@@ -498,7 +401,6 @@ function Dashboard() {
       <PrintableSchedule state={state} />
 
       <BottomNav tab={tab} setTab={setTab} />
-
 
       {settingsOpen && (
         <SettingsSheet state={state} setState={setState} onClose={() => setSettingsOpen(false)} />
@@ -536,9 +438,8 @@ function OnboardingModal({ onDone, onSkip }: { onDone: () => void; onSkip: () =>
           Daily flyers that work as hard as you do.
         </h2>
         <p className="text-sm text-brand-green/70 leading-relaxed">
-          Built by a Monticello neighbor for the trucks running Lake Cumberland — ramps,
-          festivals, and Food Truck Friday. Update your spot, spin up a flyer, and get back to
-          cooking.
+          Built by a Monticello neighbor for the trucks running Lake Cumberland — ramps, festivals,
+          and Food Truck Friday. Update your spot, spin up a flyer, and get back to cooking.
         </p>
         <ul className="space-y-2.5 text-sm">
           {[
@@ -591,14 +492,22 @@ function Header({
             TruckDash
           </span>
         </div>
-        <h1 className="font-display text-xl font-bold tracking-tight truncate leading-tight">
-          {state.name}
-        </h1>
+        <div className="flex items-baseline gap-2">
+          <h1 className="font-display text-xl font-bold tracking-tight truncate leading-tight">
+            {state.name}
+          </h1>
+          <Link
+            to="/this-week"
+            className="text-[9px] font-bold uppercase tracking-[0.18em] text-brand-orange hover:underline shrink-0"
+          >
+            This Week →
+          </Link>
+        </div>
         <p className="text-[9px] font-semibold text-brand-green/60 uppercase tracking-[0.2em]">
           {state.live ? "Active Session" : "Off the clock"}
         </p>
       </div>
-      
+
       <button
         onClick={() => setState({ ...state, live: !state.live })}
         aria-pressed={state.live}
@@ -626,13 +535,7 @@ function Header({
   );
 }
 
-function StatusCard({
-  state,
-  setState,
-}: {
-  state: TruckState;
-  setState: (s: TruckState) => void;
-}) {
+function StatusCard({ state, setState }: { state: TruckState; setState: (s: TruckState) => void }) {
   const [editing, setEditing] = useState(false);
   const [gpsBusy, setGpsBusy] = useState(false);
   const [gpsMsg, setGpsMsg] = useState<string | null>(null);
@@ -658,7 +561,10 @@ function StatusCard({
             a.road || a.pedestrian || a.neighbourhood || a.hamlet,
             a.city || a.town || a.village || a.county,
           ].filter(Boolean);
-          const label = parts.join(", ") || data?.display_name || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+          const label =
+            parts.join(", ") ||
+            data?.display_name ||
+            `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
           setState({ ...state, location: label });
           setGpsMsg("Location updated");
         } catch {
@@ -716,7 +622,7 @@ function StatusCard({
         className="w-full mb-4 flex items-center justify-center gap-2 bg-brand-gold text-brand-green font-bold uppercase tracking-wider text-xs py-3 rounded-2xl shadow-lg shadow-brand-gold/20 active:scale-[0.98] transition disabled:opacity-70"
       >
         <PinIcon className="size-4" />
-        {gpsBusy ? "Getting GPS…" : gpsMsg ?? "Use my current location"}
+        {gpsBusy ? "Getting GPS…" : (gpsMsg ?? "Use my current location")}
       </button>
 
       <div className="grid grid-cols-2 gap-3">
@@ -742,23 +648,21 @@ function StatusCard({
 function QuickActions({
   onOpenMenu,
   onOpenFlyer,
-  onOpenWeek,
 }: {
   onOpenMenu: () => void;
   onOpenFlyer: () => void;
-  onOpenWeek: () => void;
 }) {
   return (
     <section className="grid grid-cols-3 gap-3">
-      <button
-        onClick={onOpenWeek}
+      <Link
+        to="/this-week"
         className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-3xl border border-brand-green/5 shadow-sm active:scale-[0.98] transition"
       >
         <div className="size-11 rounded-2xl bg-brand-green/10 flex items-center justify-center text-brand-green">
           <CalendarIcon className="size-5" />
         </div>
         <span className="text-xs font-semibold text-brand-green">This Week</span>
-      </button>
+      </Link>
       <button
         onClick={onOpenMenu}
         className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-3xl border border-brand-green/5 shadow-sm active:scale-[0.98] transition"
@@ -781,7 +685,6 @@ function QuickActions({
   );
 }
 
-
 function MenuHighlightsCard({ items, onEdit }: { items: MenuItem[]; onEdit: () => void }) {
   return (
     <section className="bg-white rounded-3xl p-5 border border-brand-green/5 shadow-sm">
@@ -796,14 +699,9 @@ function MenuHighlightsCard({ items, onEdit }: { items: MenuItem[]; onEdit: () =
       </div>
       <ul className="divide-y divide-brand-green/5">
         {items.map((item) => (
-          <li
-            key={item.id}
-            className="flex justify-between items-center py-3 first:pt-0 last:pb-0"
-          >
+          <li key={item.id} className="flex justify-between items-center py-3 first:pt-0 last:pb-0">
             <span className="text-sm font-medium truncate pr-3">{item.name}</span>
-            <span className="text-sm font-semibold text-brand-orange shrink-0">
-              ${item.price}
-            </span>
+            <span className="text-sm font-semibold text-brand-orange shrink-0">${item.price}</span>
           </li>
         ))}
       </ul>
@@ -823,10 +721,7 @@ function MenuManager({
   const addItem = () => {
     setState({
       ...state,
-      menu: [
-        ...state.menu,
-        { id: crypto.randomUUID(), name: "New item", price: "0" },
-      ],
+      menu: [...state.menu, { id: crypto.randomUUID(), name: "New item", price: "0" }],
     });
   };
   const updateItem = (id: string, patch: Partial<MenuItem>) => {
@@ -892,8 +787,8 @@ function MenuManager({
       </button>
 
       <div className="rounded-2xl bg-brand-green/5 border border-brand-green/10 p-4 text-xs text-brand-green/70 leading-relaxed">
-        <span className="font-semibold text-brand-green">Coming soon:</span> pull your menu
-        straight from Square and add an order-ahead link to every flyer.
+        <span className="font-semibold text-brand-green">Coming soon:</span> pull your menu straight
+        from Square and add an order-ahead link to every flyer.
       </div>
     </section>
   );
@@ -997,9 +892,6 @@ function FlyerSection({
     }
   };
 
-
-
-
   return (
     <section className="space-y-4">
       <div className="flex justify-between items-baseline">
@@ -1038,7 +930,9 @@ function FlyerSection({
         disabled={busy !== null}
         className="w-full bg-brand-orange text-white font-bold py-4 rounded-2xl shadow-lg shadow-brand-orange/25 active:scale-[0.98] transition disabled:opacity-60"
       >
-        {busy === "share" ? "Preparing flyer…" : `Share ${SHARE_FORMATS.find((f) => f.id === state.shareFormat)?.label ?? "Flyer"}`}
+        {busy === "share"
+          ? "Preparing flyer…"
+          : `Share ${SHARE_FORMATS.find((f) => f.id === state.shareFormat)?.label ?? "Flyer"}`}
       </button>
 
       <div className="grid grid-cols-3 gap-2">
@@ -1106,11 +1000,7 @@ function FlyerCustomizer({
       {/* Photo */}
       <div className="flex items-center gap-3">
         <div className="size-14 rounded-xl overflow-hidden bg-brand-sand border border-brand-green/10 shrink-0">
-          <img
-            src={state.heroPhoto || flyerFood}
-            alt=""
-            className="size-full object-cover"
-          />
+          <img src={state.heroPhoto || flyerFood} alt="" className="size-full object-cover" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-brand-green">Food photo</p>
@@ -1161,7 +1051,6 @@ function FlyerCustomizer({
           Used on the flyer button and QR code.
         </span>
       </label>
-
     </section>
   );
 }
@@ -1173,7 +1062,18 @@ function TemplatePicker({
   value: TemplateId;
   onChange: (t: TemplateId) => void;
 }) {
-  const ids: TemplateId[] = ["lakecumberland", "festival", "bourbonbarrel", "bright", "boldbbq", "rustic", "clean", "bbq", "moody", "minimal"];
+  const ids: TemplateId[] = [
+    "lakecumberland",
+    "festival",
+    "bourbonbarrel",
+    "bright",
+    "boldbbq",
+    "rustic",
+    "clean",
+    "bbq",
+    "moody",
+    "minimal",
+  ];
   return (
     <div className="-mx-4 px-4 overflow-x-auto no-scrollbar">
       <div className="flex gap-2.5 pb-1">
@@ -1446,7 +1346,10 @@ const Flyer = ({
           )}
           <div
             className="absolute top-4 left-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur"
-            style={{ backgroundColor: bg.darkText ? "rgba(20,18,16,0.75)" : `${t.paper}ee`, color: paperInk }}
+            style={{
+              backgroundColor: bg.darkText ? "rgba(20,18,16,0.75)" : `${t.paper}ee`,
+              color: paperInk,
+            }}
           >
             <span
               className="size-1.5 rounded-full animate-pulse"
@@ -1505,15 +1408,11 @@ const Flyer = ({
                     className={`flex justify-between items-baseline gap-2 ${format.menuItemClass}`}
                     style={{
                       color: paperInk,
-                      borderBottom:
-                        i < arr.length - 1 ? `1px dashed ${paperDivider}` : "none",
+                      borderBottom: i < arr.length - 1 ? `1px dashed ${paperDivider}` : "none",
                     }}
                   >
                     <span className="truncate font-medium">{item.name}</span>
-                    <span
-                      className="font-bold shrink-0"
-                      style={{ color: t.accent }}
-                    >
+                    <span className="font-bold shrink-0" style={{ color: t.accent }}>
                       ${item.price}
                     </span>
                   </li>
@@ -1640,8 +1539,8 @@ function SettingsSheet({
         </Field>
 
         <div className="rounded-2xl bg-brand-green/5 border border-brand-green/10 p-4 text-xs text-brand-green/70 leading-relaxed">
-          <span className="font-semibold text-brand-green">Coming soon:</span> Square integration
-          to sync menu & orders automatically.
+          <span className="font-semibold text-brand-green">Coming soon:</span> Square integration to
+          sync menu & orders automatically.
         </div>
       </div>
     </div>
@@ -1668,17 +1567,17 @@ function Field({
   );
 }
 
-type TabKey = "home" | "menu" | "week" | "flyer";
-function BottomNav({
-  tab,
-  setTab,
-}: {
-  tab: TabKey;
-  setTab: (t: TabKey) => void;
-}) {
-  const items: { key: TabKey; label: string; icon: React.ReactNode }[] = [
+type TabKey = "home" | "menu" | "flyer"; // "week" is now a dedicated route at /this-week
+
+function BottomNav({ tab, setTab }: { tab: TabKey; setTab: (t: TabKey) => void }) {
+  const items: { key: TabKey | "week"; label: string; icon: React.ReactNode; to?: string }[] = [
     { key: "home", label: "Home", icon: <HomeIcon className="size-5" /> },
-    { key: "week", label: "Week", icon: <CalendarIcon className="size-5" /> },
+    {
+      key: "week",
+      label: "This Week",
+      icon: <CalendarIcon className="size-5" />,
+      to: "/this-week",
+    },
     { key: "menu", label: "Menu", icon: <ForkKnifeIcon className="size-5" /> },
     { key: "flyer", label: "Flyer", icon: <SparklesIcon className="size-5" /> },
   ];
@@ -1686,11 +1585,24 @@ function BottomNav({
     <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/85 backdrop-blur-xl border-t border-brand-green/5 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] print:hidden">
       <div className="max-w-md mx-auto flex justify-around items-center">
         {items.map((it) => {
+          if (it.to) {
+            // Dedicated route for This Week — always navigates (no internal tab)
+            return (
+              <Link
+                key={it.key}
+                to={it.to}
+                className="flex flex-col items-center gap-1 py-1.5 px-3 rounded-2xl transition text-brand-green/40 hover:text-brand-orange"
+              >
+                {it.icon}
+                <span className="text-[10px] font-bold uppercase tracking-wider">{it.label}</span>
+              </Link>
+            );
+          }
           const active = tab === it.key;
           return (
             <button
               key={it.key}
-              onClick={() => setTab(it.key)}
+              onClick={() => setTab(it.key as TabKey)}
               className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-2xl transition ${
                 active ? "text-brand-orange" : "text-brand-green/40"
               }`}
@@ -1707,7 +1619,15 @@ function BottomNav({
 
 function CalendarIcon(p: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...p}
+    >
       <rect x="3" y="5" width="18" height="16" rx="2" />
       <path d="M3 10h18M8 3v4M16 3v4" />
     </svg>
@@ -1716,7 +1636,15 @@ function CalendarIcon(p: React.SVGProps<SVGSVGElement>) {
 
 function PrinterIcon(p: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...p}
+    >
       <path d="M6 9V3h12v6" />
       <rect x="4" y="9" width="16" height="8" rx="2" />
       <path d="M6 17h12v4H6z" />
@@ -1724,15 +1652,18 @@ function PrinterIcon(p: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-function WeekPreviewCard({ schedule, onOpen }: { schedule: ScheduleDay[]; onOpen: () => void }) {
+function WeekPreviewCard({ schedule }: { schedule: ScheduleDay[] }) {
   const upcoming = schedule.filter((d) => !d.closed).slice(0, 3);
   return (
     <section className="bg-white rounded-3xl p-5 border border-brand-green/5 shadow-sm">
       <div className="flex justify-between items-baseline mb-3">
         <h3 className="font-display text-lg">This Week</h3>
-        <button onClick={onOpen} className="text-[11px] text-brand-orange font-bold uppercase tracking-wider">
-          View & Print
-        </button>
+        <Link
+          to="/this-week"
+          className="text-[11px] text-brand-orange font-bold uppercase tracking-wider"
+        >
+          View &amp; Edit
+        </Link>
       </div>
       <ul className="space-y-2">
         {upcoming.map((d) => (
@@ -1742,7 +1673,9 @@ function WeekPreviewCard({ schedule, onOpen }: { schedule: ScheduleDay[]; onOpen
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-brand-green truncate">{d.neighborhood}</p>
-              <p className="text-[11px] text-brand-green/60 truncate">{d.spot} · {d.hoursStart}–{d.hoursEnd}</p>
+              <p className="text-[11px] text-brand-green/60 truncate">
+                {d.spot} · {d.hoursStart}–{d.hoursEnd}
+              </p>
             </div>
           </li>
         ))}
@@ -1751,124 +1684,21 @@ function WeekPreviewCard({ schedule, onOpen }: { schedule: ScheduleDay[]; onOpen
   );
 }
 
-function WeekSchedule({
-  state,
-  setState,
-}: {
-  state: TruckState;
-  setState: (s: TruckState) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const updateDay = (id: string, patch: Partial<ScheduleDay>) => {
-    setState({ ...state, schedule: state.schedule.map((d) => (d.id === id ? { ...d, ...patch } : d)) });
-  };
-  const doPrint = () => {
-    document.body.classList.add("printing-schedule");
-    setTimeout(() => {
-      window.print();
-      setTimeout(() => document.body.classList.remove("printing-schedule"), 300);
-    }, 50);
-  };
-
-  return (
-    <section className="space-y-4 print:hidden">
-      <div className="flex justify-between items-baseline">
-        <div>
-          <h2 className="font-display text-2xl leading-tight">This Week</h2>
-          <p className="text-[11px] text-brand-green/60">Auto-updates from your dashboard</p>
-        </div>
-        <button
-          onClick={() => setEditing((e) => !e)}
-          className="text-xs font-bold uppercase tracking-wider text-brand-orange"
-        >
-          {editing ? "Done" : "Edit"}
-        </button>
-      </div>
-
-      <div className="space-y-2.5">
-        {state.schedule.map((d) => (
-          <article
-            key={d.id}
-            className={`bg-white rounded-2xl border border-brand-green/5 shadow-sm overflow-hidden ${d.closed ? "opacity-70" : ""}`}
-          >
-            <div className="flex items-stretch">
-              <div className="shrink-0 w-16 bg-brand-orange text-white flex flex-col items-center justify-center py-3">
-                <span className="text-lg font-bold tracking-wider leading-none">{d.day}</span>
-                {d.closed && <span className="text-[9px] uppercase tracking-wider mt-1 opacity-80">Closed</span>}
-              </div>
-              <div className="flex-1 min-w-0 p-3 space-y-1">
-                {editing ? (
-                  <div className="space-y-1.5">
-                    <input
-                      value={d.neighborhood}
-                      onChange={(e) => updateDay(d.id, { neighborhood: e.target.value })}
-                      placeholder="Neighborhood"
-                      className="w-full text-sm font-semibold bg-brand-sand rounded-lg px-2 py-1.5 outline-none"
-                    />
-                    <input
-                      value={d.spot}
-                      onChange={(e) => updateDay(d.id, { spot: e.target.value })}
-                      placeholder="Spot / address"
-                      className="w-full text-xs bg-brand-sand rounded-lg px-2 py-1.5 outline-none"
-                    />
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <input
-                        value={d.hoursStart}
-                        onChange={(e) => updateDay(d.id, { hoursStart: e.target.value })}
-                        placeholder="Start"
-                        className="text-xs bg-brand-sand rounded-lg px-2 py-1.5 outline-none"
-                      />
-                      <input
-                        value={d.hoursEnd}
-                        onChange={(e) => updateDay(d.id, { hoursEnd: e.target.value })}
-                        placeholder="End"
-                        className="text-xs bg-brand-sand rounded-lg px-2 py-1.5 outline-none"
-                      />
-                    </div>
-                    <label className="flex items-center gap-2 text-[11px] text-brand-green/70">
-                      <input
-                        type="checkbox"
-                        checked={!!d.closed}
-                        onChange={(e) => updateDay(d.id, { closed: e.target.checked })}
-                      />
-                      Closed / prep day
-                    </label>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-sm font-bold text-brand-green truncate">{d.neighborhood}</p>
-                    <p className="text-xs text-brand-green/70 truncate">{d.spot}</p>
-                    <p className="text-[11px] text-brand-orange font-semibold">
-                      {d.closed ? d.note || "Closed" : `${d.hoursStart} – ${d.hoursEnd}`}
-                    </p>
-                  </>
-                )}
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
-
-      <button
-        onClick={doPrint}
-        className="w-full flex items-center justify-center gap-2 bg-brand-green text-white font-bold py-4 rounded-2xl shadow-lg shadow-brand-green/20 active:scale-[0.98] transition"
-      >
-        <PrinterIcon className="size-5" />
-        Print Schedule
-      </button>
-
-      <p className="text-[11px] text-brand-green/50 text-center leading-relaxed">
-        The printed schedule pulls straight from this list — update once, print anytime.
-      </p>
-    </section>
-  );
-}
+/* 
+  Note: The full "This Week" editor with print + rich social image export now lives
+  at the dedicated /this-week route. The preview card on Home still links there.
+  Old tab-based editor removed to keep a single source of truth for schedule editing.
+*/
 
 function PrintableSchedule({ state }: { state: TruckState }) {
   const now = new Date();
-  const dateLabel = now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const dateLabel = now.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
   return (
-    <div className="printable-schedule hidden print:block">
+    <div className="printable-schedule hidden print:block print-hidden">
       <header className="print-header">
         <div>
           <p className="print-eyebrow">Weekly Schedule</p>
@@ -1891,7 +1721,7 @@ function PrintableSchedule({ state }: { state: TruckState }) {
           {state.schedule.map((d) => (
             <tr key={d.id} className={d.closed ? "row-closed" : ""}>
               <td className="cell-day">{d.day}</td>
-              <td>{d.closed ? (d.note || "Closed") : d.neighborhood}</td>
+              <td>{d.closed ? d.note || "Closed" : d.neighborhood}</td>
               <td>{d.closed ? "—" : d.spot}</td>
               <td>{d.closed ? "—" : `${d.hoursStart} – ${d.hoursEnd}`}</td>
             </tr>
@@ -1906,7 +1736,6 @@ function PrintableSchedule({ state }: { state: TruckState }) {
     </div>
   );
 }
-
 
 /* ------------------------------- Helpers ------------------------------- */
 
@@ -1952,11 +1781,21 @@ function triggerDownload(blob: Blob, filename: string) {
 async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text);
-  } catch {}
+  } catch {
+    /* clipboard may be unavailable */
+  }
 }
 function PinIcon(p: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...p}
+    >
       <path d="M12 21s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12z" />
       <circle cx="12" cy="9" r="2.5" />
     </svg>
@@ -1967,7 +1806,15 @@ function PinIcon(p: React.SVGProps<SVGSVGElement>) {
 
 function PencilIcon(p: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...p}
+    >
       <path d="M12 20h9" />
       <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
     </svg>
@@ -1975,7 +1822,15 @@ function PencilIcon(p: React.SVGProps<SVGSVGElement>) {
 }
 function ForkKnifeIcon(p: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...p}
+    >
       <path d="M6 3v8a2 2 0 0 0 4 0V3M8 11v10" />
       <path d="M17 3c-1.5 1-2.5 3-2.5 5.5S15.5 13 17 13v8" />
     </svg>
@@ -1983,7 +1838,15 @@ function ForkKnifeIcon(p: React.SVGProps<SVGSVGElement>) {
 }
 function SparklesIcon(p: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...p}
+    >
       <path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4L12 3z" />
       <path d="M19 14l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z" />
     </svg>
@@ -1991,28 +1854,58 @@ function SparklesIcon(p: React.SVGProps<SVGSVGElement>) {
 }
 function HomeIcon(p: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...p}
+    >
       <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1v-9.5Z" />
     </svg>
   );
 }
 function PlusIcon(p: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" {...p}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      {...p}
+    >
       <path d="M12 5v14M5 12h14" />
     </svg>
   );
 }
 function XIcon(p: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" {...p}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      {...p}
+    >
       <path d="M6 6l12 12M18 6 6 18" />
     </svg>
   );
 }
 function GearIcon(p: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...p}
+    >
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
     </svg>

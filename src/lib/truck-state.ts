@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * Shared types and persistence for Bluegrass Kitchen TruckDash.
@@ -214,8 +214,10 @@ export const ONBOARD_KEY = "truckdash.onboarded.v5";
  * Schedule lives here so /this-week and dashboard stay in sync.
  */
 export function useTruckState() {
+  // Always start with defaults so SSR HTML matches the first client paint.
+  // localStorage is applied only after mount (see useEffect below).
   const [state, setState] = useState<TruckState>(DEFAULT_STATE);
-  const hydrated = useRef(false);
+  const [storageReady, setStorageReady] = useState(false);
 
   useEffect(() => {
     try {
@@ -233,17 +235,19 @@ export function useTruckState() {
     } catch {
       // ignore corrupt storage
     }
-    hydrated.current = true;
+    setStorageReady(true);
   }, []);
 
   useEffect(() => {
-    if (!hydrated.current) return;
+    // Don't persist until we've finished the initial localStorage read,
+    // otherwise DEFAULT_STATE would overwrite the owner's real data.
+    if (!storageReady) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch {
       // storage full or blocked — non-fatal
     }
-  }, [state]);
+  }, [state, storageReady]);
 
   return [state, setState] as const;
 }

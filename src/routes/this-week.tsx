@@ -7,6 +7,8 @@ import {
   DEFAULT_SCHEDULE,
   useTruckState,
 } from "@/lib/truck-state";
+import { publishData, getPublishedData, buildPublishPayloadFromState } from "@/lib/publishService";
+import { formatPublishedShort, formatPublishedTime, formatWeekOf } from "@/lib/format-local";
 
 export const Route = createFileRoute("/this-week")({
   head: () => ({
@@ -67,6 +69,35 @@ function ThisWeekPage() {
   const [socialFormat, setSocialFormat] = useState<SocialFormat>("portrait");
   const [busy, setBusy] = useState<null | "print" | "png" | "share">(null);
   const [toast, setToast] = useState<string | null>(null);
+
+  // Publish to website integration (same shared data)
+  // Formatted labels only — never set from SSR so first paint stays empty
+  const [lastPubLabel, setLastPubLabel] = useState<string | null>(null);
+  const [pubBusy, setPubBusy] = useState(false);
+
+  useEffect(() => {
+    getPublishedData().then((p) => {
+      if (p.lastPublished) setLastPubLabel(formatPublishedShort(p.lastPublished));
+    });
+  }, []);
+
+  const handlePublishFromWeek = async () => {
+    setPubBusy(true);
+    try {
+      const payload = buildPublishPayloadFromState(state);
+      const result = await publishData(payload);
+      setLastPubLabel(formatPublishedShort(result.published.lastPublished));
+      const t = formatPublishedTime(result.published.lastPublished);
+      if (result.source === "supabase") setToast(`Published to Supabase at ${t}`);
+      else if (result.source === "local+queued")
+        setToast(result.message || `Saved at ${t} — cloud pending`);
+      else setToast(`Published to website at ${t}`);
+    } catch {
+      setToast("Publish failed");
+    } finally {
+      setPubBusy(false);
+    }
+  };
 
   // Ref for the social image preview (what we export)
   const socialRef = useRef<HTMLDivElement | null>(null);
@@ -252,6 +283,11 @@ function ThisWeekPage() {
               Update locations, hours, and notes for the week. Everything saves automatically to
               this device. Perfect for printing or posting on social each Monday.
             </p>
+            {lastPubLabel && (
+              <p className="text-[11px] text-brand-orange mt-1">
+                Last published to website: {lastPubLabel}
+              </p>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -265,6 +301,13 @@ function ThisWeekPage() {
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white border border-brand-green/10 px-4 py-2 text-sm font-bold active:scale-[0.985] transition"
             >
               Copy as Text
+            </button>
+            <button
+              onClick={handlePublishFromWeek}
+              disabled={pubBusy}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand-orange text-white px-4 py-2 text-sm font-bold active:scale-[0.985] transition disabled:opacity-70"
+            >
+              {pubBusy ? "Publishing…" : "Publish to My Website"}
             </button>
           </div>
         </div>
@@ -576,8 +619,12 @@ const SocialScheduleCard = React.forwardRef<
   }
 >(({ state, schedule, format }, ref) => {
   const fmt = SOCIAL_FORMATS.find((f) => f.id === format)!;
-  const now = new Date();
-  const weekLabel = now.toLocaleDateString(undefined, { month: "long", day: "numeric" });
+  // Fixed en-US month/day; still set after first paint via parent if needed.
+  // Social cards are export previews — use stable placeholder on SSR.
+  const [weekLabel, setWeekLabel] = React.useState("This Week");
+  React.useEffect(() => {
+    setWeekLabel(formatWeekOf().replace(/,\s*\d{4}$/, ""));
+  }, []);
 
   // Filter or show all; show notes when present
   const rows = schedule;
@@ -677,12 +724,10 @@ const SocialScheduleCard = React.forwardRef<
 /* ---------------- Print-optimized professional table (page-specific) ---------------- */
 /** This block is only visible when printing from /this-week. */
 function PrintableWeeklySchedule({ state }: { state: TruckState }) {
-  const now = new Date();
-  const dateLabel = now.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+  const [dateLabel, setDateLabel] = useState("");
+  useEffect(() => {
+    setDateLabel(formatWeekOf());
+  }, []);
 
   return (
     <div className="print-only-schedule hidden print:block mt-8 text-[#111] bg-white p-8 rounded-none">
@@ -696,7 +741,7 @@ function PrintableWeeklySchedule({ state }: { state: TruckState }) {
             <div className="font-display text-4xl font-bold tracking-[-0.4px] text-[#1a3d2e] mt-1">
               Weekly Schedule
             </div>
-            <div className="text-[#4a4a4a] mt-0.5">Week of {dateLabel}</div>
+            <div className="text-[#4a4a4a] mt-0.5">Week of {dateLabel || "…"}</div>
           </div>
           <div className="font-display text-xl italic text-[#1a3d2e]">
             Honest food. Local roots.

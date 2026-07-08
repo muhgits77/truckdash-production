@@ -26,6 +26,27 @@ import {
   type CateringProfile,
   type CateringInquiry,
 } from "@/lib/dataService";
+import {
+  publishData,
+  getPublishedData,
+  exportPublishedJSON,
+  buildPublishPayloadFromState,
+  isSupabaseSyncEnabled,
+  setSupabaseSyncEnabled,
+  getConfiguredTruckId,
+  setConfiguredTruckId,
+  canUseSupabaseSync,
+  hasPendingCloudSync,
+  flushPendingCloudSync,
+  getOwnerSessionEmail,
+  signInOwner,
+  signUpOwner,
+  signOutOwner,
+  DEFAULT_TRUCK_ID,
+} from "@/lib/publishService";
+import { isSupabaseConfigured, getSupabaseConfigHint } from "@/lib/supabase";
+import { formatPublishedShort, formatPublishedTime, formatWeekOf } from "@/lib/format-local";
+import { useHydrated } from "@/hooks/use-hydrated";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -338,12 +359,62 @@ const TEMPLATES: Record<TemplateId, TemplateTheme> = {
 // useTruckState is now imported from @/lib/truck-state (single source of truth for schedule persistence)
 
 function Dashboard() {
+  const hydrated = useHydrated();
   const [state, setState] = useTruckState();
   const [tab, setTab] = useState<"home" | "menu" | "flyer" | "catering">("home");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showOnboard, setShowOnboard] = useState(false);
   const flyerRef = useRef<HTMLDivElement | null>(null);
   const menuHighlights = useMemo(() => state.menu.slice(0, 3), [state.menu]);
+
+  // Publish to Website state (shared data system)
+  const [lastPublished, setLastPublished] = useState<string | null>(null);
+  const [publishBusy, setPublishBusy] = useState(false);
+  const [publishToast, setPublishToast] = useState<string | null>(null);
+  // Client-only flags — must stay false on SSR + first paint to avoid hydration mismatch
+  const [cloudEnabled, setCloudEnabled] = useState(false);
+  const [cloudPending, setCloudPending] = useState(false);
+
+  // Load last published timestamp on mount; flush offline cloud queue if any
+  useEffect(() => {
+    if (!hydrated) return;
+    setCloudEnabled(canUseSupabaseSync());
+    setCloudPending(hasPendingCloudSync());
+    getPublishedData().then((p) => {
+      if (p.lastPublished) setLastPublished(p.lastPublished);
+    });
+    void flushPendingCloudSync().then(() => {
+      setCloudPending(hasPendingCloudSync());
+    });
+  }, [hydrated]);
+
+  const handlePublishToWebsite = async () => {
+    setPublishBusy(true);
+    try {
+      const payload = buildPublishPayloadFromState(state);
+      const result = await publishData(payload);
+      setLastPublished(result.published.lastPublished);
+      setCloudEnabled(canUseSupabaseSync());
+      setCloudPending(hasPendingCloudSync() || result.source === "local+queued");
+
+      const time = formatPublishedTime(result.published.lastPublished);
+      if (result.source === "supabase") {
+        setPublishToast(`Published at ${time}! Live on Supabase.`);
+        setCloudPending(false);
+      } else if (result.source === "local+queued") {
+        setPublishToast(result.message || `Saved at ${time} — cloud sync pending`);
+      } else {
+        setPublishToast(`Published at ${time}! Live on your website.`);
+      }
+      setTimeout(() => setPublishToast(null), 3600);
+    } catch (e) {
+      console.error(e);
+      setPublishToast("Publish failed — please try again");
+      setTimeout(() => setPublishToast(null), 2600);
+    } finally {
+      setPublishBusy(false);
+    }
+  };
 
   // Force-reload on version bump so users always get latest assets.
   useEffect(() => {
@@ -384,6 +455,16 @@ function Dashboard() {
         {tab === "home" && (
           <>
             <StatusCard state={state} setState={setState} />
+
+            {/* PROMINENT: Publish to My Website — core new feature */}
+            <PublishToWebsiteCard
+              lastPublished={lastPublished}
+              busy={publishBusy}
+              onPublish={handlePublishToWebsite}
+              cloudEnabled={cloudEnabled}
+              cloudPending={cloudPending}
+            />
+
             <QuickActions
               onOpenMenu={() => setTab("menu")}
               onOpenFlyer={() => setTab("flyer")}
@@ -412,6 +493,16 @@ function Dashboard() {
             TruckDash · v{APP_VERSION}
           </p>
         </footer>
+
+        {/* Publish toast (warm, non-intrusive) */}
+        {publishToast && (
+          <div
+            role="status"
+            className="fixed bottom-28 left-1/2 -translate-x-1/2 bg-brand-green text-white text-sm font-medium px-5 py-2 rounded-full shadow-xl shadow-brand-green/30 z-50 max-w-[88vw] text-center"
+          >
+            {publishToast}
+          </div>
+        )}
       </main>
 
       <PrintableSchedule state={state} />
@@ -708,6 +799,112 @@ function QuickActions({
         </div>
         <span className="text-xs font-semibold text-brand-green">Flyer</span>
       </button>
+      <Link
+        to="/menu"
+        target="_blank"
+        className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-3xl border border-brand-green/5 shadow-sm active:scale-[0.98] transition"
+      >
+        <div className="size-11 rounded-2xl bg-brand-green/10 flex items-center justify-center text-brand-green">
+          <GlobeIcon className="size-5" />
+        </div>
+        <span className="text-xs font-semibold text-brand-green">My Website</span>
+      </Link>
+    </section>
+  );
+}
+
+/* ---------------- Publish to My Website (core new feature) ---------------- */
+
+function PublishToWebsiteCard({
+  lastPublished,
+  busy,
+  onPublish,
+  cloudEnabled,
+  cloudPending,
+}: {
+  lastPublished: string | null;
+  busy: boolean;
+  onPublish: () => void;
+  cloudEnabled: boolean;
+  cloudPending: boolean;
+}) {
+  // lastPublished is always null on SSR/first paint (loaded in useEffect) — safe to format
+  const formatted = lastPublished ? formatPublishedShort(lastPublished) : null;
+
+  return (
+    <section className="bg-white rounded-3xl border border-brand-green/10 shadow-sm p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-brand-orange">🌾</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-green/60">
+              SHARED WITH YOUR WEBSITE
+            </span>
+          </div>
+          <h3 className="font-display text-xl mt-1">Publish Updates to My Website</h3>
+          <p className="text-sm text-brand-green/70 mt-1 pr-2">
+            Menu, specials, schedule &amp; location appear on your public site at /website, /menu
+            and /schedule.{" "}
+            {cloudEnabled
+              ? "Pushes to Supabase when online."
+              : "Saved on this device — turn on Supabase Sync in Settings for the cloud."}
+          </p>
+          {formatted && (
+            <p className="text-[11px] text-brand-green/50 mt-2">
+              Last published: {formatted}
+              {cloudEnabled && (
+                <span className="ml-1 text-brand-orange/80">· Supabase sync on</span>
+              )}
+              {cloudPending && (
+                <span className="ml-1 text-brand-orange font-semibold">· Cloud pending</span>
+              )}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <button
+        onClick={onPublish}
+        disabled={busy}
+        className="mt-4 w-full flex items-center justify-center gap-2 bg-brand-orange hover:bg-[#a36624] active:scale-[0.985] transition text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-brand-orange/25 disabled:opacity-70"
+      >
+        {busy ? "Publishing…" : "Publish Updates to My Website"}
+      </button>
+
+      <div className="mt-3 flex items-center justify-center gap-4 text-xs flex-wrap">
+        <Link
+          to="/website"
+          target="_blank"
+          className="text-brand-orange font-bold underline underline-offset-2"
+        >
+          Preview website ↗
+        </Link>
+        <span className="text-brand-green/30">·</span>
+        <Link to="/menu" target="_blank" className="text-brand-green/70 hover:text-brand-green">
+          Live menu
+        </Link>
+        <span className="text-brand-green/30">·</span>
+        <Link to="/schedule" target="_blank" className="text-brand-green/70 hover:text-brand-green">
+          Schedule
+        </Link>
+        <span className="text-brand-green/30">·</span>
+        <button
+          onClick={async () => {
+            try {
+              await exportPublishedJSON();
+            } catch {
+              alert("Publish first, then you can export the JSON for other websites.");
+            }
+          }}
+          className="text-brand-green/70 hover:text-brand-green"
+        >
+          Export JSON
+        </button>
+      </div>
+
+      <p className="text-center text-[10px] text-brand-green/50 mt-2">
+        One tap keeps customers up to date. Works offline — syncs when you reconnect.
+      </p>
     </section>
   );
 }
@@ -772,6 +969,29 @@ function MenuManager({
           Done
         </button>
       </div>
+
+      {/* Prominent publish also available while editing the menu (busy owners can publish directly) */}
+      <button
+        onClick={async () => {
+          try {
+            const payload = buildPublishPayloadFromState(state);
+            const result = await publishData(payload);
+            const t = formatPublishedTime(result.published.lastPublished);
+            const extra =
+              result.source === "supabase"
+                ? " (Supabase)"
+                : result.source === "local+queued"
+                  ? " — cloud pending"
+                  : "";
+            alert(`Published! Menu + schedule live as of ${t}${extra}`);
+          } catch {
+            alert("Could not publish. Try again in a moment.");
+          }
+        }}
+        className="w-full py-3 rounded-2xl bg-brand-orange text-white font-bold text-sm active:scale-[0.985] transition"
+      >
+        Publish Menu Updates to My Website
+      </button>
 
       <div className="bg-white rounded-3xl border border-brand-green/5 shadow-sm divide-y divide-brand-green/5">
         {state.menu.map((item) => (
@@ -2119,6 +2339,58 @@ function SettingsSheet({
   setState: (s: TruckState) => void;
   onClose: () => void;
 }) {
+  // Settings only mounts on client after user opens it — still avoid reading
+  // storage in useState initializers so the first paint is stable if SSR ever mounts it.
+  const [syncOn, setSyncOn] = useState(false);
+  const [truckId, setTruckId] = useState(DEFAULT_TRUCK_ID);
+  const [pendingSync, setPendingSync] = useState(false);
+  const [ownerEmail, setOwnerEmail] = useState<string | null>(null);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authMsg, setAuthMsg] = useState<string | null>(null);
+  const configured = isSupabaseConfigured();
+
+  useEffect(() => {
+    setSyncOn(isSupabaseSyncEnabled());
+    setTruckId(getConfiguredTruckId());
+    setPendingSync(hasPendingCloudSync());
+    getOwnerSessionEmail().then(setOwnerEmail);
+  }, []);
+
+  const toggleSync = (next: boolean) => {
+    setSyncOn(next);
+    setSupabaseSyncEnabled(next);
+    if (next) void flushPendingCloudSync();
+  };
+
+  const saveTruckId = (value: string) => {
+    setTruckId(value);
+    setConfiguredTruckId(value || DEFAULT_TRUCK_ID);
+  };
+
+  const handleAuth = async (mode: "in" | "up") => {
+    setAuthBusy(true);
+    setAuthMsg(null);
+    try {
+      if (mode === "in") await signInOwner(authEmail.trim(), authPassword);
+      else await signUpOwner(authEmail.trim(), authPassword);
+      const email = await getOwnerSessionEmail();
+      setOwnerEmail(email);
+      setAuthMsg(
+        mode === "in"
+          ? "Signed in — ready to publish to Supabase."
+          : "Account created. Check email if confirmation is required, then sign in.",
+      );
+      setAuthPassword("");
+      void flushPendingCloudSync();
+    } catch (e) {
+      setAuthMsg(e instanceof Error ? e.message : "Auth failed");
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <button
@@ -2176,9 +2448,152 @@ function SettingsSheet({
           />
         </Field>
 
+        {/* Supabase Sync */}
+        <div className="rounded-2xl bg-white border border-brand-green/10 p-4 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-orange">
+                Cloud website sync
+              </div>
+              <h3 className="font-display text-lg mt-0.5">Use Supabase Sync</h3>
+              <p className="text-xs text-brand-green/65 mt-1 leading-relaxed">
+                Push menu &amp; schedule to Supabase so any phone can load your public site — not
+                just this device. localStorage still works offline.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={syncOn}
+              onClick={() => toggleSync(!syncOn)}
+              className={`shrink-0 mt-1 w-12 h-7 rounded-full transition relative ${
+                syncOn ? "bg-brand-orange" : "bg-brand-green/20"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 size-6 rounded-full bg-white shadow transition ${
+                  syncOn ? "left-5" : "left-0.5"
+                }`}
+              />
+            </button>
+          </div>
+
+          <p className="text-[11px] text-brand-green/55">
+            Status:{" "}
+            <span className={configured ? "text-brand-green font-semibold" : "text-brand-orange"}>
+              {getSupabaseConfigHint()}
+            </span>
+            {pendingSync && (
+              <span className="text-brand-orange font-semibold"> · Offline publish queued</span>
+            )}
+          </p>
+
+          <Field
+            label="Truck ID"
+            hint="Public slug for your truck (e.g. bluegrass-kitchen). Customers load this via ?truck=…"
+          >
+            <input
+              value={truckId}
+              onChange={(e) => saveTruckId(e.target.value)}
+              placeholder={DEFAULT_TRUCK_ID}
+              className="w-full bg-brand-sand rounded-xl px-4 py-3 text-sm font-medium border border-brand-green/10 focus:outline-none focus:border-brand-orange"
+            />
+          </Field>
+
+          {syncOn && (
+            <div className="space-y-2 pt-1 border-t border-brand-green/10">
+              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand-green/50">
+                Owner sign-in (required to publish)
+              </p>
+              {ownerEmail ? (
+                <div className="flex items-center justify-between gap-2 text-sm">
+                  <span className="truncate text-brand-green/80">{ownerEmail}</span>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await signOutOwner();
+                      setOwnerEmail(null);
+                    }}
+                    className="text-xs font-bold text-brand-orange shrink-0"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="email"
+                    autoComplete="email"
+                    placeholder="you@truck.com"
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    className="w-full bg-brand-sand rounded-xl px-4 py-2.5 text-sm border border-brand-green/10 focus:outline-none focus:border-brand-orange"
+                  />
+                  <input
+                    type="password"
+                    autoComplete="current-password"
+                    placeholder="Password"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    className="w-full bg-brand-sand rounded-xl px-4 py-2.5 text-sm border border-brand-green/10 focus:outline-none focus:border-brand-orange"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={authBusy || !authEmail || !authPassword}
+                      onClick={() => handleAuth("in")}
+                      className="flex-1 py-2.5 rounded-xl bg-brand-green text-white text-xs font-bold disabled:opacity-50"
+                    >
+                      Sign in
+                    </button>
+                    <button
+                      type="button"
+                      disabled={authBusy || !authEmail || !authPassword}
+                      onClick={() => handleAuth("up")}
+                      className="flex-1 py-2.5 rounded-xl border border-brand-green/20 text-brand-green text-xs font-bold disabled:opacity-50"
+                    >
+                      Create account
+                    </button>
+                  </div>
+                </>
+              )}
+              {authMsg && <p className="text-[11px] text-brand-green/70 leading-snug">{authMsg}</p>}
+            </div>
+          )}
+
+          <details className="text-xs text-brand-green/65">
+            <summary className="cursor-pointer font-semibold text-brand-green list-none flex items-center gap-1">
+              <span className="text-brand-orange">▸</span> Connection instructions
+            </summary>
+            <ol className="mt-2 space-y-1.5 list-decimal list-inside leading-relaxed pl-0.5">
+              <li>Open your TruckDash project in the Supabase dashboard.</li>
+              <li>
+                SQL Editor → paste &amp; run{" "}
+                <code className="text-[10px] bg-brand-sand px-1 rounded">
+                  supabase/published_trucks.sql
+                </code>
+              </li>
+              <li>
+                Project Settings → API → copy <strong>Project URL</strong> and{" "}
+                <strong>anon public</strong> key.
+              </li>
+              <li>
+                Set env vars{" "}
+                <code className="text-[10px] bg-brand-sand px-1 rounded">VITE_SUPABASE_URL</code>{" "}
+                and{" "}
+                <code className="text-[10px] bg-brand-sand px-1 rounded">
+                  VITE_SUPABASE_ANON_KEY
+                </code>{" "}
+                (Lovable env / .env.local), then rebuild.
+              </li>
+              <li>Toggle Use Supabase Sync on, sign in above, then Publish on Home.</li>
+            </ol>
+          </details>
+        </div>
+
         <div className="rounded-2xl bg-brand-green/5 border border-brand-green/10 p-4 text-xs text-brand-green/70 leading-relaxed">
           <span className="font-semibold text-brand-green">Coming soon:</span> Square integration to
-          sync menu & orders automatically.
+          sync menu &amp; orders automatically.
         </div>
       </div>
     </div>
@@ -2350,19 +2765,18 @@ function WeekPreviewCard({ schedule }: { schedule: ScheduleDay[] }) {
 */
 
 function PrintableSchedule({ state }: { state: TruckState }) {
-  const now = new Date();
-  const dateLabel = now.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+  // Date is client-timezone sensitive — set after mount so SSR HTML matches first paint
+  const [dateLabel, setDateLabel] = useState("");
+  useEffect(() => {
+    setDateLabel(formatWeekOf());
+  }, []);
   return (
     <div className="printable-schedule hidden print:block print-hidden">
       <header className="print-header">
         <div>
           <p className="print-eyebrow">Weekly Schedule</p>
           <h1 className="print-title">{state.name}</h1>
-          <p className="print-sub">Week of {dateLabel}</p>
+          <p className="print-sub">Week of {dateLabel || "…"}</p>
         </div>
         <div className="print-brand">Bluegrass · Kentucky</div>
       </header>
@@ -2532,6 +2946,23 @@ function HomeIcon(p: React.SVGProps<SVGSVGElement>) {
       {...p}
     >
       <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1v-9.5Z" />
+    </svg>
+  );
+}
+
+function GlobeIcon(p: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...p}
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10" />
     </svg>
   );
 }

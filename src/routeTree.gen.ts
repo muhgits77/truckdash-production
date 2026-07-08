@@ -9,13 +9,31 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WebsiteRouteImport } from './routes/website'
 import { Route as ThisWeekRouteImport } from './routes/this-week'
+import { Route as ScheduleRouteImport } from './routes/schedule'
+import { Route as MenuRouteImport } from './routes/menu'
 import { Route as CateringRouteImport } from './routes/catering'
 import { Route as IndexRouteImport } from './routes/index'
 
+const WebsiteRoute = WebsiteRouteImport.update({
+  id: '/website',
+  path: '/website',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ThisWeekRoute = ThisWeekRouteImport.update({
   id: '/this-week',
   path: '/this-week',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScheduleRoute = ScheduleRouteImport.update({
+  id: '/schedule',
+  path: '/schedule',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MenuRoute = MenuRouteImport.update({
+  id: '/menu',
+  path: '/menu',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CateringRoute = CateringRouteImport.update({
@@ -32,40 +50,81 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/catering': typeof CateringRoute
+  '/menu': typeof MenuRoute
+  '/schedule': typeof ScheduleRoute
   '/this-week': typeof ThisWeekRoute
+  '/website': typeof WebsiteRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/catering': typeof CateringRoute
+  '/menu': typeof MenuRoute
+  '/schedule': typeof ScheduleRoute
   '/this-week': typeof ThisWeekRoute
+  '/website': typeof WebsiteRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/catering': typeof CateringRoute
+  '/menu': typeof MenuRoute
+  '/schedule': typeof ScheduleRoute
   '/this-week': typeof ThisWeekRoute
+  '/website': typeof WebsiteRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/catering' | '/this-week'
+  fullPaths:
+    '/' | '/catering' | '/menu' | '/schedule' | '/this-week' | '/website'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/catering' | '/this-week'
-  id: '__root__' | '/' | '/catering' | '/this-week'
+  to: '/' | '/catering' | '/menu' | '/schedule' | '/this-week' | '/website'
+  id:
+    | '__root__'
+    | '/'
+    | '/catering'
+    | '/menu'
+    | '/schedule'
+    | '/this-week'
+    | '/website'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CateringRoute: typeof CateringRoute
+  MenuRoute: typeof MenuRoute
+  ScheduleRoute: typeof ScheduleRoute
   ThisWeekRoute: typeof ThisWeekRoute
+  WebsiteRoute: typeof WebsiteRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/website': {
+      id: '/website'
+      path: '/website'
+      fullPath: '/website'
+      preLoaderRoute: typeof WebsiteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/this-week': {
       id: '/this-week'
       path: '/this-week'
       fullPath: '/this-week'
       preLoaderRoute: typeof ThisWeekRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/schedule': {
+      id: '/schedule'
+      path: '/schedule'
+      fullPath: '/schedule'
+      preLoaderRoute: typeof ScheduleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/menu': {
+      id: '/menu'
+      path: '/menu'
+      fullPath: '/menu'
+      preLoaderRoute: typeof MenuRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/catering': {
@@ -88,7 +147,10 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CateringRoute: CateringRoute,
+  MenuRoute: MenuRoute,
+  ScheduleRoute: ScheduleRoute,
   ThisWeekRoute: ThisWeekRoute,
+  WebsiteRoute: WebsiteRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

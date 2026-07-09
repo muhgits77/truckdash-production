@@ -1,14 +1,9 @@
 /**
- * Sales CTA — plain mailto: link (no forms, no external services).
- * Same behavior as Contact / Get A Quote on bluegrassdigitalforge.com.
+ * Sales CTA — opens the Bluegrass Digital Forge contact form
+ * (same as Contact / Get a Quote on bluegrassdigitalforge.com).
+ * No mailto — no email client / xdg-open dialog.
  */
-import {
-  DEMO_BUY_LABEL,
-  DEMO_BUY_LABEL_SHORT,
-  DEMO_BUY_URL,
-  DEMO_SALES_EMAIL,
-  isDemoMode,
-} from "@/lib/demo-mode";
+import { DEMO_BUY_LABEL, DEMO_CONTACT_URL, isDemoMode } from "@/lib/demo-mode";
 
 type Size = "sm" | "md" | "lg";
 
@@ -21,8 +16,7 @@ const sizeClass: Record<Size, string> = {
 export function BuyFullVersionButton({
   size = "md",
   className = "",
-  /** Defaults: "Contact for Sales" on sm, "Get Full Version" on md/lg */
-  label,
+  label = DEMO_BUY_LABEL,
   /** When true, render even if demo mode is off. */
   alwaysShow = false,
 }: {
@@ -33,12 +27,12 @@ export function BuyFullVersionButton({
 }) {
   if (!isDemoMode && !alwaysShow) return null;
 
-  const text = label ?? (size === "sm" ? DEMO_BUY_LABEL_SHORT : DEMO_BUY_LABEL);
-
   return (
     <a
-      href={DEMO_BUY_URL}
-      title={`Email ${DEMO_SALES_EMAIL}`}
+      href={DEMO_CONTACT_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Contact Bluegrass Digital Forge — open contact form"
       className={[
         "inline-flex items-center justify-center gap-1.5 font-bold text-white",
         "bg-brand-orange hover:bg-brand-orange/90 active:scale-[0.98]",
@@ -48,7 +42,7 @@ export function BuyFullVersionButton({
       ].join(" ")}
     >
       <span aria-hidden>✦</span>
-      {text}
+      {label || "Contact for Sales"}
     </a>
   );
 }
@@ -72,10 +66,24 @@ export function BuyFullVersionCard({ className = "" }: { className?: string }) {
         <li>· JSON export for custom sites</li>
       </ul>
       <p className="mt-3 text-[12px] text-[color:var(--td-ink-muted)] leading-snug">
-        Ready to go live? Tap below to email us — same as Contact on our main site.
+        Ready to go live? Open the contact form on our main site — same as <strong>Contact</strong>{" "}
+        on bluegrassdigitalforge.com. No email app opens.
       </p>
       <div className="mt-4">
-        <BuyFullVersionButton size="lg" />
+        <a
+          href={DEMO_CONTACT_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={[
+            "inline-flex items-center justify-center gap-1.5 font-bold text-white",
+            "bg-brand-orange hover:bg-brand-orange/90 active:scale-[0.98]",
+            "shadow-md shadow-brand-orange/25 transition",
+            sizeClass.lg,
+          ].join(" ")}
+        >
+          <span aria-hidden>✦</span>
+          Contact for Sales
+        </a>
       </div>
     </section>
   );

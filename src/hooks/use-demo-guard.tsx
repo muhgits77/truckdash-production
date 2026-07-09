@@ -2,13 +2,7 @@
  * Hook for gating premium actions in Demo Mode with a lightweight toast.
  */
 import { useCallback, useEffect, useState } from "react";
-import {
-  DEMO_BUY_URL,
-  DEMO_FEATURE_MESSAGES,
-  DEMO_SALES_EMAIL,
-  isDemoMode,
-  type DemoLockedFeature,
-} from "@/lib/demo-mode";
+import { DEMO_FEATURE_MESSAGES, isDemoMode, type DemoLockedFeature } from "@/lib/demo-mode";
 
 export function useDemoGuard() {
   const [toast, setToast] = useState<string | null>(null);
@@ -46,8 +40,10 @@ export function useDemoGuard() {
         <div className="rounded-2xl bg-brand-deep text-white shadow-2xl shadow-black/40 px-4 py-3 space-y-2.5">
           <p className="text-sm font-medium leading-snug text-center">{toast}</p>
           <a
-            href={DEMO_BUY_URL}
-            title={`Email ${DEMO_SALES_EMAIL}`}
+            href="https://bluegrassdigitalforge.com/contact"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Contact Bluegrass Digital Forge — open contact form"
             className="flex items-center justify-center w-full rounded-xl bg-brand-orange text-white text-xs font-bold py-2.5 active:scale-[0.98] transition"
           >
             Contact for Sales

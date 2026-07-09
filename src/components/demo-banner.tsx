@@ -1,16 +1,18 @@
 /**
  * Top banner shown only when Demo Mode is ON.
- * Non-annoying: compact, dismissible for the session, always offers sales CTA.
- * Banner message is fixed; CTA opens the default email client.
+ * Hydration-safe: SSR + first client paint both render null; banner mounts after hydrate.
+ * CTA opens bluegrassdigitalforge.com/contact (same as main-site Contact).
  */
 import { useEffect, useState } from "react";
-import { DEMO_BANNER_MESSAGE, DEMO_BUY_LABEL, isDemoMode } from "@/lib/demo-mode";
+import { DEMO_BANNER_MESSAGE, isDemoMode } from "@/lib/demo-mode";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { BuyFullVersionButton } from "./buy-full-version-button";
 
 const DISMISS_KEY = "truckdash.demo.banner.dismissed";
 
 export function DemoBanner() {
-  const [dismissed, setDismissed] = useState(true); // true until hydrated → no flash mismatch
+  const hydrated = useHydrated();
+  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     if (!isDemoMode) return;
@@ -21,7 +23,9 @@ export function DemoBanner() {
     }
   }, []);
 
-  if (!isDemoMode || dismissed) return null;
+  // SSR + first client paint: always null → no hydration mismatch.
+  // After mount, show banner when demo mode is on and not dismissed.
+  if (!hydrated || !isDemoMode || dismissed) return null;
 
   const dismiss = () => {
     try {
@@ -57,6 +61,7 @@ export function DemoBanner() {
         <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
           <BuyFullVersionButton
             size="sm"
+            label="Contact for Sales"
             className="!py-1.5 !px-3 !text-[11px] !rounded-xl shadow-none"
           />
           <button
@@ -81,7 +86,9 @@ export function DemoInlineNotice({
   message?: string;
   className?: string;
 }) {
+  // Match SSR/client: only gate on build-time isDemoMode (no session/browser APIs).
   if (!isDemoMode) return null;
+
   return (
     <div
       className={`rounded-2xl border border-brand-orange/25 bg-brand-orange/8 px-4 py-3 text-sm text-[color:var(--td-ink)] leading-relaxed ${className}`}
@@ -91,10 +98,10 @@ export function DemoInlineNotice({
       </p>
       <p className="text-[13px] text-[color:var(--td-ink-muted)]">
         {message ??
-          `Try the tools freely. Publishing, high-res exports, and full map editing unlock with the full version (${DEMO_BUY_LABEL}).`}
+          "Try the tools freely. Publishing, high-res exports, and full map editing unlock with the full version."}
       </p>
       <div className="mt-3">
-        <BuyFullVersionButton size="sm" />
+        <BuyFullVersionButton size="sm" label="Contact for Sales" />
       </div>
     </div>
   );

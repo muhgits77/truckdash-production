@@ -20,7 +20,10 @@ function loadSupabaseServerEnvPlugin(): Plugin {
       if (
         (key.startsWith("SUPABASE_") ||
           key === "DATABASE_URL" ||
-          key.startsWith("VITE_SUPABASE_")) &&
+          key.startsWith("VITE_SUPABASE_") ||
+          // Keep demo flag available for SSR process inspection / tooling
+          key === "NEXT_PUBLIC_DEMO_MODE" ||
+          key === "VITE_DEMO_MODE") &&
         value
       ) {
         // Always refresh from .env so restarts pick up key changes
@@ -29,8 +32,9 @@ function loadSupabaseServerEnvPlugin(): Plugin {
       }
     }
     const hasService = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
+    const demo = process.env.NEXT_PUBLIC_DEMO_MODE ?? process.env.VITE_DEMO_MODE ?? "off";
     console.info(
-      `[vite] server env: loaded ${loaded} keys; SUPABASE_SERVICE_ROLE_KEY=${hasService ? "yes" : "MISSING"}`,
+      `[vite] server env: loaded ${loaded} keys; SUPABASE_SERVICE_ROLE_KEY=${hasService ? "yes" : "MISSING"}; DEMO_MODE=${demo}`,
     );
   };
 

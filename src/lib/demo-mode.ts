@@ -3,12 +3,14 @@
  *
  * Toggle via .env (restart dev server after changing):
  *   NEXT_PUBLIC_DEMO_MODE=true
+ *   # or: VITE_DEMO_MODE=true
  *
- * Also accepted (Vite-native alias):
- *   VITE_DEMO_MODE=true
+ * Sales CTAs open the Bluegrass Digital Forge contact form
+ * (https://bluegrassdigitalforge.com/contact) — same as the main site’s
+ * Contact / Get a Quote flow. No mailto, no email app, no xdg-open.
  *
- * Sales CTAs are simple mailto: links (same pattern as bluegrassdigitalforge.com
- * Contact / Get A Quote buttons) — no forms or third-party services.
+ * IMPORTANT: isDemoMode is derived only from import.meta.env so SSR and the
+ * browser always agree (avoids React hydration mismatches).
  */
 
 function envTruthy(raw: string | boolean | undefined | null): boolean {
@@ -18,62 +20,35 @@ function envTruthy(raw: string | boolean | undefined | null): boolean {
   return v === "true" || v === "1" || v === "yes" || v === "on";
 }
 
-function readEnv(key: string): string | undefined {
-  // Vite injects import.meta.env.* at build time for matching envPrefix keys.
-  try {
-    const meta = import.meta.env as Record<string, string | boolean | undefined>;
-    const v = meta[key];
-    if (v != null && String(v).length > 0) return String(v);
-  } catch {
-    /* SSR / non-vite */
-  }
-  if (typeof process !== "undefined" && process.env) {
-    const v = process.env[key];
-    if (v != null && String(v).length > 0) return String(v);
-  }
-  return undefined;
-}
-
-/** True when the public demo is enabled. */
+/**
+ * Build-time flag only — Vite replaces import.meta.env.* on both server and client.
+ * Do NOT fall back to process.env here (that caused SSR/client divergence).
+ */
 export const isDemoMode: boolean = envTruthy(
-  readEnv("NEXT_PUBLIC_DEMO_MODE") ?? readEnv("VITE_DEMO_MODE"),
+  import.meta.env.NEXT_PUBLIC_DEMO_MODE ?? import.meta.env.VITE_DEMO_MODE,
 );
 
-/** One-time full-version price shown in messaging. */
+/** One-time full-version price shown in messaging / banner. */
 export const DEMO_PRICE = "$597";
 
-/** Sales inbox — same as bluegrassdigitalforge.com contact buttons. */
-export const DEMO_SALES_EMAIL = "bluegrassdigitalforge@protonmail.com";
-
-export const DEMO_SALES_SUBJECT = "Interested in Full TruckDash - $597";
-
-export const DEMO_SALES_BODY =
-  "Hi Brian, I'm interested in purchasing the full version of TruckDash for my food truck.";
-
 /**
- * Simple mailto: link — opens the user's default email client.
- * Matches Contact / Get A Quote behavior on bluegrassdigitalforge.com.
+ * Contact form on the main site — same destination as “Contact” / “Get a Quote”.
+ * Sends securely via the form (no email app opens).
  */
-export function buildDemoSalesMailto(): string {
-  return (
-    `mailto:${DEMO_SALES_EMAIL}` +
-    `?subject=${encodeURIComponent(DEMO_SALES_SUBJECT)}` +
-    `&body=${encodeURIComponent(DEMO_SALES_BODY)}`
-  );
-}
+export const DEMO_CONTACT_URL = "https://bluegrassdigitalforge.com/contact";
 
-/** Sales CTA href (plain mailto). */
-export const DEMO_BUY_URL: string = buildDemoSalesMailto();
+/** @deprecated Use DEMO_CONTACT_URL — kept so older imports keep working. */
+export const DEMO_BUY_URL = DEMO_CONTACT_URL;
 
-/** Top banner copy (unchanged). */
+/** All sales CTAs use this label. */
+export const DEMO_BUY_LABEL = "Contact for Sales";
+
+/** @deprecated Use DEMO_BUY_LABEL — kept for call sites. */
+export const DEMO_BUY_LABEL_SHORT = DEMO_BUY_LABEL;
+
+/** Top banner copy. */
 export const DEMO_BANNER_MESSAGE =
   "This is a Demo Version. Try it out! Full version unlocks unlimited flyers, exports, and features for $597 one-time.";
-
-/** Primary CTA label (cards / larger buttons). */
-export const DEMO_BUY_LABEL = "Get Full Version";
-
-/** Compact CTA for banner / headers. */
-export const DEMO_BUY_LABEL_SHORT = "Contact for Sales";
 
 /** Feature ids used by gates and UI. */
 export type DemoLockedFeature =

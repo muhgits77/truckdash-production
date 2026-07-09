@@ -134,7 +134,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
-/** Prevent light flash before ThemeProvider hydrates from localStorage */
+/**
+ * Prevent light flash before ThemeProvider hydrates from localStorage.
+ * suppressHydrationWarning on <html>/<body> is required because this script
+ * (and ThemeProvider) may set class/data-theme before React hydrates.
+ */
 const themeBootScript = `(function(){try{var t=localStorage.getItem("truckdash.theme");if(t==="dark"){document.documentElement.classList.add("dark");document.documentElement.dataset.theme="dark";}else{document.documentElement.dataset.theme="light";}}catch(e){}})();`;
 
 function RootShell({ children }: { children: ReactNode }) {
@@ -161,7 +165,10 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        {/* Demo Mode banner — only renders when NEXT_PUBLIC_DEMO_MODE=true */}
+        {/*
+          Demo banner is client-only after hydrate (see DemoBanner).
+          Do not branch on browser-only APIs here — that causes hydration mismatches.
+        */}
         <DemoBanner />
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />

@@ -50,7 +50,7 @@ Set in `.env` and restart the dev server:
 NEXT_PUBLIC_DEMO_MODE=true
 ```
 
-When on: demo banner, **Contact for Sales / Get Full Version** buttons (simple `mailto:` to bluegrassdigitalforge@protonmail.com — same pattern as Contact / Get A Quote on bluegrassdigitalforge.com), and locks on high-res flyer export, website publish, and full live-map editing. Set `false` (or omit) for the full product.
+When on: demo banner, **Contact for Sales** buttons open the main-site contact form at [bluegrassdigitalforge.com/contact](https://bluegrassdigitalforge.com/contact) (no email app), and locks on high-res flyer export, website publish, and full live-map editing. Set `false` (or omit) for the full product.
 
 ## Scripts
 

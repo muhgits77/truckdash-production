@@ -1,10 +1,13 @@
 /**
  * Publish Service — TruckDash → website via Supabase Storage.
  *
- * On Publish:
- *   1. Save to localStorage (offline-friendly)
- *   2. Upload food photos → menu-images bucket
- *   3. Upload menu.json (menu + schedule + specials) → menu-data bucket
+ * On "Publish Updates to My Website":
+ *   1. Save full menu + schedule to localStorage (offline-friendly)
+ *   2. Upload menu.json → menu-data/{truckId}/menu.json  (default: cluckin-chaos)
+ *   3. Upload food photos → menu-images (non-fatal)
+ *   4. Re-upload menu.json if image URLs changed
+ *
+ * Cluckin Chaos reads the public URL with cache busting (see menuStorage.fetchMenuJson).
  */
 
 import type { MenuItem, ScheduleDay, TruckState } from "./truck-state";
@@ -12,6 +15,7 @@ import { getSupabase, isSupabaseConfigured } from "./supabase";
 import {
   fetchMenuJson,
   menuJsonFullPath,
+  menuJsonPublicUrl,
   type StoredMenuJson,
   uploadMenuImages,
   uploadMenuJson,
@@ -179,8 +183,9 @@ function ensureOnlineHook() {
 // ── Storage publish ──────────────────────────────────────────────────────────
 
 /**
- * Upload images + menu.json to Supabase Storage.
- * Requires owner sign-in (RLS on storage.objects).
+ * Upload full menu + schedule (+ images) to Supabase Storage.
+ * Writes menu-data/{truckId}/menu.json (default truckId: cluckin-chaos).
+ * Anon/publishable key is enough when storage RLS policies are in place.
  */
 export async function publishToStorage(
   truckId: string,
@@ -188,9 +193,10 @@ export async function publishToStorage(
 ): Promise<PublishedPayload> {
   const supabase = getSupabase();
   if (!supabase) {
-    throw new Error("Supabase not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.");
+    throw new Error(
+      "Supabase not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_ANON_KEY).",
+    );
   }
-
 
   const published: PublishedPayload =
     "lastPublished" in payload && payload.lastPublished
@@ -203,15 +209,18 @@ export async function publishToStorage(
 
   const id = truckId.trim() || DEFAULT_TRUCK_ID;
   const targetPath = menuJsonFullPath(id);
+  const publicUrl = menuJsonPublicUrl(id);
 
-  console.info("[publishService] publish START", {
+  console.info("[publishService] ═══ publish START ═══", {
     truckId: id,
     targetPath,
+    publicUrl,
     menuItems: published.menu.length,
     scheduleDays: published.schedule.length,
+    special: published.special?.slice(0, 80),
   });
 
-  // 1) menu.json first — must land at menu-data/{truckId}/menu.json before images
+  // 1) Full menu + schedule JSON first — must land before images
   const initialJson = storedJsonFromPayload(id, published);
   let upload = await uploadMenuJson(id, initialJson);
 
@@ -219,8 +228,10 @@ export async function publishToStorage(
     truckId: id,
     fullPath: upload.fullPath,
     publicUrl: upload.publicUrl,
-    verified: upload.verified,
+    publicReadable: upload.verified,
     listedInBucket: upload.listedInBucket,
+    menuItems: initialJson.menu.length,
+    scheduleDays: initialJson.schedule.length,
   });
 
   // 2) Images (non-fatal) then re-publish JSON if any URLs changed
@@ -236,6 +247,7 @@ export async function publishToStorage(
       console.info("[publishService] menu.json re-uploaded with image URLs", {
         fullPath: upload.fullPath,
         publicUrl: upload.publicUrl,
+        publicReadable: upload.verified,
       });
     }
   } catch (imgErr) {
@@ -248,16 +260,18 @@ export async function publishToStorage(
 
   if (!upload.verified) {
     console.warn(
-      "[publishService] menu.json in bucket but public URL not verified — run storage_buckets.sql",
+      "[publishService] menu.json in bucket but public URL not verified — run supabase/storage_buckets.sql so the bucket is public",
       upload.publicUrl,
     );
   }
 
-  console.info("[publishService] publish SUCCESS", {
+  console.info("[publishService] ═══ publish SUCCESS ═══", {
     truckId: id,
     fullPath: upload.fullPath,
     publicUrl: upload.publicUrl,
-    verified: upload.verified,
+    publicReadable: upload.verified,
+    menuItems: menuWithImages.length,
+    scheduleDays: published.schedule.length,
   });
 
   return { ...published, menu: menuWithImages };
@@ -385,10 +399,18 @@ export async function publishData(
     writeLocalPublished(uploaded);
     setPendingSync(null);
     const fullPath = menuJsonFullPath(truckId);
+    const publicUrl = menuJsonPublicUrl(truckId);
+    console.info("[publishService] ✓ Publish Updates complete", {
+      fullPath,
+      publicUrl,
+      menuItems: uploaded.menu.length,
+      scheduleDays: uploaded.schedule.length,
+      lastPublished: uploaded.lastPublished,
+    });
     return {
       published: uploaded,
       source: "storage",
-      message: `Published! ${fullPath} is live (public read).`,
+      message: `Published! Saved full menu + schedule to ${fullPath}`,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Cloud publish failed";
@@ -396,6 +418,7 @@ export async function publishData(
     console.error("[publishService] cloud publish FAILED", {
       truckId,
       targetPath: menuJsonFullPath(truckId),
+      publicUrl: menuJsonPublicUrl(truckId),
       error: message,
       err,
     });

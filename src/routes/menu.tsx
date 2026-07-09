@@ -1,6 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { getPublishedData, type PublishedPayload } from "@/lib/publishService";
+import {
+  getPublishedData,
+  getConfiguredTruckId,
+  DEFAULT_TRUCK_ID,
+  type PublishedPayload,
+} from "@/lib/publishService";
+import { menuJsonPublicUrl } from "@/lib/menuStorage";
 import { formatPublishedShort } from "@/lib/format-local";
 import { useHydrated } from "@/hooks/use-hydrated";
 import type { MenuItem } from "@/lib/truck-state";
@@ -39,16 +45,27 @@ function PublicMenuPage() {
     if (!hydrated) return;
     let mounted = true;
 
-    getPublishedData()
+    const truckId = getConfiguredTruckId() || DEFAULT_TRUCK_ID;
+    console.info("[CluckinChaos/menu] fetch", {
+      truckId,
+      publicUrl: menuJsonPublicUrl(truckId),
+    });
+
+    getPublishedData(truckId)
       .then((published) => {
         if (!mounted) return;
+        console.info("[CluckinChaos/menu] loaded", {
+          menuItems: published.menu?.length ?? 0,
+          lastPublished: published.lastPublished,
+        });
         setData(published);
         setLastUpdated(
           published.lastPublished ? formatPublishedShort(published.lastPublished) : null,
         );
         setLoading(false);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("[CluckinChaos/menu] load failed", err);
         if (mounted) {
           setData(null);
           setLoading(false);

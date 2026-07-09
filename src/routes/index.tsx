@@ -400,13 +400,17 @@ function Dashboard() {
       const time = formatPublishedTime(result.published.lastPublished);
       if (result.source === "storage") {
         setPublishToast(
-          result.message || `Published at ${time}! menu-data + menu-images buckets updated.`,
+          result.message ||
+            `Published at ${time}! menu-data/cluckin-chaos/menu.json is live.`,
         );
         setCloudPending(false);
       } else if (result.source === "local+queued") {
         setPublishToast(result.message || `Saved at ${time} — storage upload pending`);
       } else {
-        setPublishToast(result.message || `Saved locally at ${time}. Add Supabase env vars to push to menu-data.`);
+        setPublishToast(
+          result.message ||
+            `Saved locally at ${time}. Add VITE_SUPABASE_URL + key to push to menu-data.`,
+        );
       }
       setTimeout(() => setPublishToast(null), 3600);
     } catch (e) {
@@ -845,11 +849,13 @@ function PublishToWebsiteCard({
           </div>
           <h3 className="font-display text-xl mt-1">Publish Updates to My Website</h3>
           <p className="text-sm text-brand-green/70 mt-1 pr-2">
-            Uploads your menu + schedule JSON to the <strong>menu-data</strong> bucket and food
-            photos to <strong>menu-images</strong>. Cluckin Chaos pulls from there automatically.{" "}
+            Saves your full menu + schedule to{" "}
+            <code className="text-[11px] bg-brand-sand px-1 rounded">menu-data/cluckin-chaos/menu.json</code>{" "}
+            (public) and food photos to <strong>menu-images</strong>. Cluckin Chaos fetches that
+            public URL with cache busting.{" "}
             {cloudEnabled
               ? "Supabase Storage sync is on."
-              : "Turn on Supabase Sync in Settings to push live."}
+              : "Publish still uploads when Supabase env is set."}
           </p>
           {formatted && (
             <p className="text-[11px] text-brand-green/50 mt-2" suppressHydrationWarning>
@@ -2612,28 +2618,34 @@ function SettingsSheet({
               <span className="text-brand-orange">▸</span> Connection instructions
             </summary>
             <ol className="mt-2 space-y-1.5 list-decimal list-inside leading-relaxed pl-0.5">
-              <li>Open your TruckDash project in the Supabase dashboard.</li>
               <li>
-                SQL Editor → paste &amp; run{" "}
+                SQL → run{" "}
                 <code className="text-[10px] bg-brand-sand px-1 rounded">
                   supabase/storage_buckets.sql
                 </code>{" "}
-                (creates menu-data + menu-images buckets)
+                (creates public <strong>menu-data</strong> + <strong>menu-images</strong>).
               </li>
               <li>
-                Project Settings → API → copy <strong>Project URL</strong> and{" "}
-                <strong>anon public</strong> key.
+                <strong>Lovable Cloud:</strong> Workspace Settings → Privacy &amp; security → turn{" "}
+                <em>off</em> “Block public storage buckets” so Cluckin Chaos can use the public URL.
               </li>
               <li>
-                Set env vars{" "}
+                Env:{" "}
                 <code className="text-[10px] bg-brand-sand px-1 rounded">VITE_SUPABASE_URL</code>{" "}
-                and{" "}
+                +{" "}
                 <code className="text-[10px] bg-brand-sand px-1 rounded">
-                  VITE_SUPABASE_ANON_KEY
+                  VITE_SUPABASE_PUBLISHABLE_KEY
                 </code>{" "}
-                (Lovable env / .env.local), then rebuild.
+                (or ANON_KEY). Default truck id:{" "}
+                <code className="text-[10px] bg-brand-sand px-1 rounded">cluckin-chaos</code>.
               </li>
-              <li>Toggle Use Supabase Sync on, sign in above, then Publish on Home.</li>
+              <li>
+                Home → <strong>Publish Updates to My Website</strong> → writes{" "}
+                <code className="text-[10px] bg-brand-sand px-1 rounded">
+                  menu-data/cluckin-chaos/menu.json
+                </code>
+                .
+              </li>
             </ol>
           </details>
         </div>

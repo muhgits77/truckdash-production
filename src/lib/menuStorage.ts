@@ -2,11 +2,12 @@
  * Supabase Storage — menu JSON + food photos.
  * Buckets: menu-data (JSON), menu-images (photos).
  *
- * menu.json path: menu-data/{truckId}/menu.json
- * Storage RLS allows anon read + write for both buckets (see migrations),
- * so Publish works without owner sign-in and the public website can fetch
- * the JSON directly once the buckets are flipped to public in workspace
- * Privacy & Security.
+ * Canonical publish path: menu-data/{truckId}/menu.json
+ * Default truck: cluckin-chaos → menu-data/cluckin-chaos/menu.json
+ *
+ * Publish works with anon/publishable key (storage RLS).
+ * Cluckin Chaos reads the public object URL with cache busting,
+ * falling back to authenticated download if the bucket is still private.
  */
 
 import type { MenuItem, ScheduleDay } from "./truck-state";
@@ -70,6 +71,16 @@ export function publicStorageUrl(bucket: string, path: string): string {
   return `${base}/storage/v1/object/public/${bucket}/${cleanPath}`;
 }
 
+/** Public URL for menu-data/{truckId}/menu.json */
+export function menuJsonPublicUrl(truckId: string): string {
+  return publicStorageUrl(MENU_DATA_BUCKET, menuJsonPath(truckId));
+}
+
+/** Cache-busted public URL so CDNs / browsers never serve a stale menu. */
+export function menuJsonPublicUrlWithCacheBust(truckId: string, bust = Date.now()): string {
+  return `${menuJsonPublicUrl(truckId)}?t=${bust}`;
+}
+
 function extensionForBlob(blob: Blob): string {
   if (blob.type.includes("png")) return "png";
   if (blob.type.includes("webp")) return "webp";
@@ -111,22 +122,35 @@ async function verifyBucketListing(bucket: string, path: string): Promise<boolea
   return found;
 }
 
-/** Try public URL first; if bucket is private that returns 400, so fall back
- *  to the authenticated object endpoint with the anon key. Either success
- *  proves the object exists and is readable. */
-async function verifyReadable(bucket: string, path: string): Promise<boolean> {
-  const pub = publicStorageUrl(bucket, path);
+/**
+ * Prove the object is publicly readable via the CDN-style public URL.
+ * Uses cache busting so we never mistake a stale 404 cache for failure.
+ */
+async function verifyPublicUrl(publicUrl: string): Promise<boolean> {
+  const bustUrl = `${publicUrl}?verify=${Date.now()}`;
   try {
-    const res = await fetch(`${pub}?verify=${Date.now()}`, { cache: "no-store" });
+    const res = await fetch(bustUrl, {
+      cache: "no-store",
+      headers: { Accept: "application/json,*/*" },
+    });
     if (res.ok) {
-      console.info(LOG, "verify PUBLIC ok", { pub });
+      console.info(LOG, "✓ public URL verified", { publicUrl, status: res.status });
       return true;
     }
-    console.info(LOG, "public verify not ok — trying authenticated read", { pub, status: res.status });
+    console.warn(LOG, "public URL not readable yet", {
+      publicUrl,
+      status: res.status,
+      body: (await res.text().catch(() => "")).slice(0, 200),
+    });
+    return false;
   } catch (err) {
-    console.warn(LOG, "public verify threw — trying authenticated read", err);
+    console.warn(LOG, "public URL verify threw", { publicUrl, err });
+    return false;
   }
+}
 
+/** Authenticated/object API read — works even when bucket is still private. */
+async function verifyAuthenticatedRead(bucket: string, path: string): Promise<boolean> {
   const supabase = getSupabase();
   if (!supabase) return false;
   const { data, error } = await supabase.storage.from(bucket).download(path);
@@ -134,11 +158,8 @@ async function verifyReadable(bucket: string, path: string): Promise<boolean> {
     console.error(LOG, "authenticated verify FAILED", { bucket, path, message: error?.message });
     return false;
   }
-  console.info(LOG, "verify AUTH ok (bucket is private — flip public in Cloud settings for website read)", {
-    bucket,
-    path,
-  });
-  return false; // reachable, but not publicly reachable
+  console.info(LOG, "authenticated read OK", { bucket, path, bytes: data.size });
+  return true;
 }
 
 /** REST fallback when the JS client upload fails for any reason. */
@@ -152,20 +173,28 @@ async function uploadViaRest(
   const anonKey = getSupabaseAnonKey();
   const encodedPath = path.split("/").map(encodeURIComponent).join("/");
   const url = `${base}/storage/v1/object/${bucket}/${encodedPath}`;
+  const isOpaqueKey =
+    anonKey.startsWith("sb_publishable_") || anonKey.startsWith("sb_secret_");
 
   console.info(LOG, "REST upload attempt", { bucket, path, url, bytes: body.size });
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${anonKey}`,
-      apikey: anonKey,
-      "Content-Type": contentType,
-      "x-upsert": "true",
-      "cache-control": "30",
-    },
-    body,
-  });
+  // Prefer POST + x-upsert (create or overwrite). Fall back to PUT.
+  // Lovable publishable keys are opaque — send apikey only (no Bearer).
+  const headers: Record<string, string> = {
+    apikey: anonKey,
+    "Content-Type": contentType,
+    "x-upsert": "true",
+    "cache-control": "30",
+  };
+  if (!isOpaqueKey) {
+    headers.Authorization = `Bearer ${anonKey}`;
+  }
+
+  let res = await fetch(url, { method: "POST", headers, body });
+  if (!res.ok && (res.status === 400 || res.status === 409 || res.status === 405)) {
+    console.warn(LOG, "REST POST upsert not accepted — trying PUT", { status: res.status });
+    res = await fetch(url, { method: "PUT", headers, body });
+  }
 
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
@@ -183,8 +212,7 @@ async function uploadViaRest(
 
 /**
  * Upload (overwrite) a file to a bucket at exactly {bucket}/{path}.
- * No auth required — buckets use anon-writable RLS.
- * Strategy: client upsert → REST fallback → list + read verify.
+ * Strategy: client upsert → REST fallback → list + public-read verify.
  */
 async function uploadObject(
   bucket: string,
@@ -207,7 +235,7 @@ async function uploadObject(
     publicUrl,
   });
 
-  // Upsert via JS client
+  // 1) Upsert via JS client
   const first = await supabase.storage.from(bucket).upload(path, body, {
     contentType,
     cacheControl: "30",
@@ -236,11 +264,26 @@ async function uploadObject(
 
   console.info(LOG, "upload OK", { fullPath, publicUrl });
 
+  // 2) Prove write landed
   const listedInBucket = await verifyBucketListing(bucket, path);
   if (!listedInBucket) {
     console.error(LOG, "upload reported OK but file NOT in bucket listing", { fullPath });
   }
-  const verified = await verifyReadable(bucket, path);
+
+  // 3) Prefer public URL; fall back to authenticated existence check
+  let verified = await verifyPublicUrl(publicUrl);
+  if (!verified) {
+    const authOk = await verifyAuthenticatedRead(bucket, path);
+    if (authOk) {
+      console.warn(
+        LOG,
+        "file is stored and readable with API key, but public URL failed. " +
+          "Set storage.buckets.public = true for menu-data (run supabase/storage_buckets.sql).",
+        { fullPath, publicUrl },
+      );
+    }
+    // verified stays false unless the public URL works — website needs public
+  }
 
   return { bucket, path, fullPath, publicUrl, verified, listedInBucket };
 }
@@ -285,7 +328,7 @@ export async function uploadMenuImages(
   return updated;
 }
 
-/** Upload menu.json to menu-data/{truckId}/menu.json on every publish. */
+/** Upload full menu + schedule JSON to menu-data/{truckId}/menu.json on every publish. */
 export async function uploadMenuJson(truckId: string, json: StoredMenuJson): Promise<UploadResult> {
   const id = truckId.trim();
   if (!id) throw new Error("truckId is required");
@@ -294,84 +337,124 @@ export async function uploadMenuJson(truckId: string, json: StoredMenuJson): Pro
   const fullPath = menuJsonFullPath(id);
   const body = JSON.stringify(json, null, 2);
   const blob = new Blob([body], { type: "application/json" });
+  const publicUrl = menuJsonPublicUrl(id);
 
-  console.info(LOG, "menu.json publish START", {
+  console.info(LOG, "═══ menu.json publish START ═══", {
     truckId: id,
     fullPath,
+    publicUrl,
     menuItems: json.menu.length,
     scheduleDays: json.schedule.length,
     lastPublished: json.lastPublished,
     bytes: blob.size,
-    publicUrl: publicStorageUrl(MENU_DATA_BUCKET, path),
   });
 
   const result = await uploadObject(MENU_DATA_BUCKET, path, blob, "application/json");
 
   if (!result.listedInBucket) {
-    throw new Error(
-      `menu.json upload did not appear in bucket listing at ${fullPath}. Check storage RLS.`,
-    );
+    // One more authenticated check before failing hard — list can be flaky under RLS
+    const authOk = await verifyAuthenticatedRead(MENU_DATA_BUCKET, path);
+    if (!authOk) {
+      throw new Error(
+        `menu.json upload did not land at ${fullPath}. Check storage RLS / bucket exists.`,
+      );
+    }
+    console.warn(LOG, "list missed file but authenticated read OK — treating as saved", {
+      fullPath,
+    });
+    result.listedInBucket = true;
   }
 
-  if (!result.verified) {
-    console.warn(
-      LOG,
-      "menu.json saved but public URL not verified — bucket is private. " +
-        "Flip menu-data + menu-images to public in workspace Privacy & Security " +
-        "so the website can read it.",
-      result.publicUrl,
-    );
+  if (result.verified) {
+    console.info(LOG, "═══ menu.json publish SUCCESS (public) ═══", {
+      fullPath: result.fullPath,
+      publicUrl: result.publicUrl,
+      menuItems: json.menu.length,
+      scheduleDays: json.schedule.length,
+      publicReadable: true,
+    });
+  } else {
+    console.warn(LOG, "═══ menu.json SAVED (API-readable; public URL not open yet) ═══", {
+      fullPath: result.fullPath,
+      publicUrl: result.publicUrl,
+      menuItems: json.menu.length,
+      scheduleDays: json.schedule.length,
+      hint:
+        "1) Run supabase/storage_buckets.sql. 2) Lovable Cloud: Settings → Privacy & security → disable “Block public storage buckets”. Cluckin Chaos still loads via authenticated download until then.",
+    });
   }
-
-  console.info(LOG, "menu.json publish SUCCESS", {
-    fullPath: result.fullPath,
-    publicUrl: result.publicUrl,
-    publicReadable: result.verified,
-    listedInBucket: result.listedInBucket,
-    menuItems: json.menu.length,
-  });
 
   return result;
 }
 
-/** Public / authenticated read — TruckDash preview + external website. */
+/**
+ * Read menu.json for TruckDash preview + Cluckin Chaos public pages.
+ *
+ * Order (reliable):
+ *   1. Public URL with cache busting (what the live website should use)
+ *   2. Authenticated storage download (works while bucket is still private)
+ */
 export async function fetchMenuJson(truckId: string): Promise<StoredMenuJson | null> {
-  if (!isSupabaseConfigured()) return null;
-
-  const supabase = getSupabase();
-  if (!supabase) return null;
-
-  const path = menuJsonPath(truckId);
-  const fullPath = menuJsonFullPath(truckId);
-  const publicUrl = publicStorageUrl(MENU_DATA_BUCKET, path);
-
-  console.info(LOG, "fetch menu.json", { fullPath, publicUrl });
-
-  const { data, error } = await supabase.storage.from(MENU_DATA_BUCKET).download(path);
-
-  if (!error && data) {
-    try {
-      const parsed = JSON.parse(await data.text()) as StoredMenuJson;
-      console.info(LOG, "fetch OK (client)", { fullPath, menu: parsed.menu?.length ?? 0 });
-      return parsed;
-    } catch (parseErr) {
-      console.error(LOG, "invalid JSON from storage", { fullPath, parseErr });
-    }
-  } else if (error) {
-    console.warn(LOG, "client download failed, trying public URL", { fullPath, message: error.message });
-  }
-
-  try {
-    const res = await fetch(`${publicUrl}?t=${Date.now()}`, { cache: "no-store" });
-    if (!res.ok) {
-      console.warn(LOG, "public fetch failed", { fullPath, status: res.status, publicUrl });
-      return null;
-    }
-    const parsed = (await res.json()) as StoredMenuJson;
-    console.info(LOG, "fetch OK (public URL)", { fullPath, menu: parsed.menu?.length ?? 0 });
-    return parsed;
-  } catch (err) {
-    console.error(LOG, "fetch failed", { fullPath, err });
+  if (!isSupabaseConfigured()) {
+    console.warn(LOG, "fetch skipped — Supabase not configured");
     return null;
   }
+
+  const id = truckId.trim();
+  const path = menuJsonPath(id);
+  const fullPath = menuJsonFullPath(id);
+  const publicUrl = menuJsonPublicUrl(id);
+  const bustUrl = menuJsonPublicUrlWithCacheBust(id);
+
+  console.info(LOG, "fetch menu.json START", { fullPath, publicUrl, bustUrl });
+
+  // 1) Public URL first — cache-busted
+  try {
+    const res = await fetch(bustUrl, {
+      cache: "no-store",
+      headers: { Accept: "application/json,*/*" },
+    });
+    if (res.ok) {
+      const parsed = (await res.json()) as StoredMenuJson;
+      console.info(LOG, "✓ fetch OK (public URL, cache-busted)", {
+        fullPath,
+        menu: parsed.menu?.length ?? 0,
+        schedule: parsed.schedule?.length ?? 0,
+        lastPublished: parsed.lastPublished,
+      });
+      return parsed;
+    }
+    console.warn(LOG, "public fetch not ok — trying authenticated download", {
+      fullPath,
+      status: res.status,
+      publicUrl,
+    });
+  } catch (err) {
+    console.warn(LOG, "public fetch threw — trying authenticated download", { fullPath, err });
+  }
+
+  // 2) Authenticated / object API (works with publishable or anon key + SELECT policy)
+  const supabase = getSupabase();
+  if (supabase) {
+    const { data, error } = await supabase.storage.from(MENU_DATA_BUCKET).download(path);
+    if (!error && data) {
+      try {
+        const parsed = JSON.parse(await data.text()) as StoredMenuJson;
+        console.info(LOG, "✓ fetch OK (authenticated download)", {
+          fullPath,
+          menu: parsed.menu?.length ?? 0,
+          schedule: parsed.schedule?.length ?? 0,
+          lastPublished: parsed.lastPublished,
+        });
+        return parsed;
+      } catch (parseErr) {
+        console.error(LOG, "invalid JSON from storage", { fullPath, parseErr });
+      }
+    } else if (error) {
+      console.warn(LOG, "authenticated download failed", { fullPath, message: error.message });
+    }
+  }
+
+  console.error(LOG, "fetch menu.json FAILED — no public or auth read", { fullPath, publicUrl });
+  return null;
 }

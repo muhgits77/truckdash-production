@@ -7,6 +7,7 @@ import {
   DEFAULT_TRUCK_ID,
   type PublishedPayload,
 } from "@/lib/publishService";
+import { menuJsonPublicUrl } from "@/lib/menuStorage";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { formatPublishedDay, getTodayWeekdayAbbr } from "@/lib/format-local";
 import { useHydrated } from "@/hooks/use-hydrated";
@@ -76,20 +77,34 @@ function PublicWebsitePreview() {
       setLoading(true);
       setError(null);
 
-      // Prefer Supabase when env is configured (public RLS SELECT)
+      // Prefer public menu-data URL (cache-busted) via publishService → fetchMenuJson
       if (isSupabaseConfigured()) {
+        const publicUrl = menuJsonPublicUrl(id);
+        console.info("[CluckinChaos] loading menu from storage", {
+          truckId: id,
+          publicUrl,
+          path: `menu-data/${id}/menu.json`,
+        });
         try {
           const remote = await getLatestPublished(id);
           if (!mounted) return;
           if (remote?.lastPublished) {
+            console.info("[CluckinChaos] ✓ loaded from Supabase Storage", {
+              truckId: id,
+              publicUrl,
+              menuItems: remote.menu.length,
+              scheduleDays: remote.schedule.length,
+              lastPublished: remote.lastPublished,
+            });
             setData(remote);
             setSource("supabase");
             setPublishedDayLabel(formatPublishedDay(remote.lastPublished));
             setLoading(false);
             return;
           }
-        } catch {
-          /* fall through to local */
+          console.warn("[CluckinChaos] storage empty — falling back to local", { publicUrl });
+        } catch (err) {
+          console.warn("[CluckinChaos] storage load failed — falling back to local", err);
         }
       }
 

@@ -7,9 +7,8 @@
  * Also accepted (Vite-native alias):
  *   VITE_DEMO_MODE=true
  *
- * Optional purchase link:
- *   NEXT_PUBLIC_DEMO_BUY_URL=https://yoursite.com/buy
- *   VITE_DEMO_BUY_URL=https://yoursite.com/buy
+ * Sales CTAs are simple mailto: links (same pattern as bluegrassdigitalforge.com
+ * Contact / Get A Quote buttons) — no forms or third-party services.
  */
 
 function envTruthy(raw: string | boolean | undefined | null): boolean {
@@ -40,21 +39,41 @@ export const isDemoMode: boolean = envTruthy(
   readEnv("NEXT_PUBLIC_DEMO_MODE") ?? readEnv("VITE_DEMO_MODE"),
 );
 
-/** One-time full-version price shown in CTAs. */
+/** One-time full-version price shown in messaging. */
 export const DEMO_PRICE = "$597";
 
-/** Purchase / upgrade URL (override in .env). */
-export const DEMO_BUY_URL: string =
-  readEnv("NEXT_PUBLIC_DEMO_BUY_URL") ??
-  readEnv("VITE_DEMO_BUY_URL") ??
-  "https://truckdash.app/buy";
+/** Sales inbox — same as bluegrassdigitalforge.com contact buttons. */
+export const DEMO_SALES_EMAIL = "bluegrassdigitalforge@protonmail.com";
 
-/** Top banner copy. */
+export const DEMO_SALES_SUBJECT = "Interested in Full TruckDash - $597";
+
+export const DEMO_SALES_BODY =
+  "Hi Brian, I'm interested in purchasing the full version of TruckDash for my food truck.";
+
+/**
+ * Simple mailto: link — opens the user's default email client.
+ * Matches Contact / Get A Quote behavior on bluegrassdigitalforge.com.
+ */
+export function buildDemoSalesMailto(): string {
+  return (
+    `mailto:${DEMO_SALES_EMAIL}` +
+    `?subject=${encodeURIComponent(DEMO_SALES_SUBJECT)}` +
+    `&body=${encodeURIComponent(DEMO_SALES_BODY)}`
+  );
+}
+
+/** Sales CTA href (plain mailto). */
+export const DEMO_BUY_URL: string = buildDemoSalesMailto();
+
+/** Top banner copy (unchanged). */
 export const DEMO_BANNER_MESSAGE =
   "This is a Demo Version. Try it out! Full version unlocks unlimited flyers, exports, and features for $597 one-time.";
 
-/** Short CTA label. */
-export const DEMO_BUY_LABEL = `Buy Full Version – ${DEMO_PRICE}`;
+/** Primary CTA label (cards / larger buttons). */
+export const DEMO_BUY_LABEL = "Get Full Version";
+
+/** Compact CTA for banner / headers. */
+export const DEMO_BUY_LABEL_SHORT = "Contact for Sales";
 
 /** Feature ids used by gates and UI. */
 export type DemoLockedFeature =

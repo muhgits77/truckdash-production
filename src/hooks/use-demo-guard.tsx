@@ -3,9 +3,9 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import {
-  DEMO_BUY_LABEL,
   DEMO_BUY_URL,
   DEMO_FEATURE_MESSAGES,
+  DEMO_SALES_EMAIL,
   isDemoMode,
   type DemoLockedFeature,
 } from "@/lib/demo-mode";
@@ -47,11 +47,10 @@ export function useDemoGuard() {
           <p className="text-sm font-medium leading-snug text-center">{toast}</p>
           <a
             href={DEMO_BUY_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+            title={`Email ${DEMO_SALES_EMAIL}`}
             className="flex items-center justify-center w-full rounded-xl bg-brand-orange text-white text-xs font-bold py-2.5 active:scale-[0.98] transition"
           >
-            {DEMO_BUY_LABEL}
+            Contact for Sales
           </a>
         </div>
       </div>

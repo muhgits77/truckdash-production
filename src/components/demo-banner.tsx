@@ -1,9 +1,10 @@
 /**
- * Sticky top banner shown only when Demo Mode is ON.
- * Non-annoying: compact, dismissible for the session, always offers Buy CTA.
+ * Top banner shown only when Demo Mode is ON.
+ * Non-annoying: compact, dismissible for the session, always offers sales CTA.
+ * Banner message is fixed; CTA opens the default email client.
  */
 import { useEffect, useState } from "react";
-import { DEMO_BANNER_MESSAGE, DEMO_BUY_LABEL, DEMO_BUY_URL, isDemoMode } from "@/lib/demo-mode";
+import { DEMO_BANNER_MESSAGE, DEMO_BUY_LABEL, isDemoMode } from "@/lib/demo-mode";
 import { BuyFullVersionButton } from "./buy-full-version-button";
 
 const DISMISS_KEY = "truckdash.demo.banner.dismissed";
@@ -56,7 +57,6 @@ export function DemoBanner() {
         <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
           <BuyFullVersionButton
             size="sm"
-            href={DEMO_BUY_URL}
             className="!py-1.5 !px-3 !text-[11px] !rounded-xl shadow-none"
           />
           <button

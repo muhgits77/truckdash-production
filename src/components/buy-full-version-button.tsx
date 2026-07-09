@@ -1,7 +1,14 @@
 /**
- * Prominent “Buy Full Version – $597” CTA used across Demo Mode surfaces.
+ * Sales CTA — plain mailto: link (no forms, no external services).
+ * Same behavior as Contact / Get A Quote on bluegrassdigitalforge.com.
  */
-import { DEMO_BUY_LABEL, DEMO_BUY_URL, isDemoMode } from "@/lib/demo-mode";
+import {
+  DEMO_BUY_LABEL,
+  DEMO_BUY_LABEL_SHORT,
+  DEMO_BUY_URL,
+  DEMO_SALES_EMAIL,
+  isDemoMode,
+} from "@/lib/demo-mode";
 
 type Size = "sm" | "md" | "lg";
 
@@ -13,25 +20,25 @@ const sizeClass: Record<Size, string> = {
 
 export function BuyFullVersionButton({
   size = "md",
-  href = DEMO_BUY_URL,
   className = "",
-  label = DEMO_BUY_LABEL,
-  /** When true, render even if demo mode is off (e.g. marketing pages). */
+  /** Defaults: "Contact for Sales" on sm, "Get Full Version" on md/lg */
+  label,
+  /** When true, render even if demo mode is off. */
   alwaysShow = false,
 }: {
   size?: Size;
-  href?: string;
   className?: string;
   label?: string;
   alwaysShow?: boolean;
 }) {
   if (!isDemoMode && !alwaysShow) return null;
 
+  const text = label ?? (size === "sm" ? DEMO_BUY_LABEL_SHORT : DEMO_BUY_LABEL);
+
   return (
     <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
+      href={DEMO_BUY_URL}
+      title={`Email ${DEMO_SALES_EMAIL}`}
       className={[
         "inline-flex items-center justify-center gap-1.5 font-bold text-white",
         "bg-brand-orange hover:bg-brand-orange/90 active:scale-[0.98]",
@@ -41,7 +48,7 @@ export function BuyFullVersionButton({
       ].join(" ")}
     >
       <span aria-hidden>✦</span>
-      {label}
+      {text}
     </a>
   );
 }
@@ -64,6 +71,9 @@ export function BuyFullVersionCard({ className = "" }: { className?: string }) {
         <li>· Full live-map GPS &amp; multi-stop editing</li>
         <li>· JSON export for custom sites</li>
       </ul>
+      <p className="mt-3 text-[12px] text-[color:var(--td-ink-muted)] leading-snug">
+        Ready to go live? Tap below to email us — same as Contact on our main site.
+      </p>
       <div className="mt-4">
         <BuyFullVersionButton size="lg" />
       </div>

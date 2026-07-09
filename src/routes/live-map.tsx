@@ -731,7 +731,7 @@ function LiveMapPage() {
             disabled={isDemoMode}
           />
           {isDemoMode ? (
-            <BuyFullVersionButton size="lg" label="Unlock full map editing – $597" />
+            <BuyFullVersionButton size="lg" />
           ) : (
             <button
               type="button"

@@ -41,7 +41,6 @@ Full walkthrough: **[docs/CONNECT.md](docs/CONNECT.md)**
 | `VITE_DEFAULT_TRUCK_ID` | Browser | Storage folder slug |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Server only** | Reliable Publish + `npm run setup` |
 | `NEXT_PUBLIC_DEMO_MODE` | Browser | `true` = public demo (banner + locked premium actions). Default/off = full product |
-| `NEXT_PUBLIC_DEMO_BUY_URL` | Browser | Optional checkout link for “Buy Full Version – $597” |
 
 ### Demo Mode (safe public showcase)
 
@@ -49,11 +48,9 @@ Set in `.env` and restart the dev server:
 
 ```bash
 NEXT_PUBLIC_DEMO_MODE=true
-# optional:
-# NEXT_PUBLIC_DEMO_BUY_URL=https://yoursite.com/buy-truckdash
 ```
 
-When on: demo banner, buy CTAs, and locks on high-res flyer export, website publish, and full live-map editing. Set `false` (or omit) for the full product.
+When on: demo banner, **Contact for Sales / Get Full Version** buttons (simple `mailto:` to bluegrassdigitalforge@protonmail.com — same pattern as Contact / Get A Quote on bluegrassdigitalforge.com), and locks on high-res flyer export, website publish, and full live-map editing. Set `false` (or omit) for the full product.
 
 ## Scripts
 

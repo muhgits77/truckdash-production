@@ -117,13 +117,12 @@ function ThisWeekPage() {
       const result = await publishData(payload);
       setLastPubLabel(formatPublishedShort(result.published.lastPublished));
       const t = formatPublishedTime(result.published.lastPublished);
-      if (result.source === "supabase")
-        setToast(result.message || `Published to Supabase at ${t} + menu.json`);
+      if (result.source === "storage")
+        setToast(result.message || `Published to cloud at ${t}`);
       else if (result.source === "local+queued")
         setToast(result.message || `Saved at ${t} — cloud pending`);
-      else if (result.source === "json")
-        setToast(result.message || `Published at ${t} — menu.json downloaded`);
-      else setToast(result.message || `Published to website at ${t}`);
+      else setToast(result.message || `Saved locally at ${t}`);
+
     } catch {
       setToast("Publish failed");
     } finally {

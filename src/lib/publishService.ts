@@ -188,16 +188,9 @@ export async function publishToStorage(
 ): Promise<PublishedPayload> {
   const supabase = getSupabase();
   if (!supabase) {
-    throw new Error("Supabase not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
+    throw new Error("Supabase not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.");
   }
 
-  const {
-    data: { user },
-    error: userErr,
-  } = await supabase.auth.getUser();
-  if (userErr || !user) {
-    throw new Error("Sign in as the truck owner in Settings to publish to Supabase Storage.");
-  }
 
   const published: PublishedPayload =
     "lastPublished" in payload && payload.lastPublished

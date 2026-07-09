@@ -20,7 +20,6 @@ type ThemeContextValue = {
   theme: ThemeMode;
   setTheme: (t: ThemeMode) => void;
   toggleTheme: () => void;
-  /** True after client has read storage (avoid flash of wrong icon) */
   ready: boolean;
 };
 
@@ -31,13 +30,11 @@ function applyDomTheme(theme: ThemeMode) {
   const root = document.documentElement;
   root.classList.toggle("dark", theme === "dark");
   root.dataset.theme = theme;
-  // Browser chrome (address bar) — warm amber light, deep green dark
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute("content", theme === "dark" ? "#0f2419" : "#b8722c");
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // Default light for SSR match; hydrate from storage after mount
   const [theme, setThemeState] = useState<ThemeMode>("light");
   const [ready, setReady] = useState(false);
 
@@ -81,7 +78,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 export function useTheme(): ThemeContextValue {
   const ctx = useContext(ThemeContext);
   if (!ctx) {
-    // Safe fallback when outside provider (tests / partial mounts)
     return {
       theme: "light",
       setTheme: () => {},
@@ -92,7 +88,7 @@ export function useTheme(): ThemeContextValue {
   return ctx;
 }
 
-/** Compact moon/sun toggle — for headers */
+/** Compact moon/sun toggle — headers & settings */
 export function ThemeToggle({ className = "" }: { className?: string }) {
   const { theme, toggleTheme, ready } = useTheme();
   const isDark = theme === "dark";
@@ -105,16 +101,16 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       title={isDark ? "Light mode" : "Dark mode"}
       className={`shrink-0 size-10 grid place-items-center rounded-full border transition-colors ${
         isDark
-          ? "bg-white/5 border-white/10 text-brand-gold hover:bg-white/10"
-          : "bg-white border-brand-green/10 text-brand-green hover:bg-brand-sand"
+          ? "bg-white/10 border-white/15 text-brand-gold hover:bg-white/15"
+          : "bg-white border-black/10 text-[#1a3d2e] hover:bg-[#f5efe1] shadow-sm"
       } ${className}`}
     >
       {!ready ? (
         <span className="size-4 rounded-full bg-current/20" />
       ) : isDark ? (
-        <SunIcon className="size-4.5" />
+        <SunIcon className="size-4" />
       ) : (
-        <MoonIcon className="size-4.5" />
+        <MoonIcon className="size-4" />
       )}
     </button>
   );

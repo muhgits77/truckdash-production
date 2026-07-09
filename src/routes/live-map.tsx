@@ -1,12 +1,14 @@
 /**
  * Live Map — TruckDash operator command center
  *
- * Premium SVG regional map (Lake Cumberland / Monticello / Russell Springs / Jamestown).
- * Leaflet-ready pin coordinates (% of map). Go Live + multi-stop list.
+ * Premium Leaflet map centered on Lake Cumberland / Monticello / Russell Springs /
+ * Jamestown KY. Gold teardrop = live pin, deep forest = weekly schedule stops.
+ * Theme-aware basemap (warm light / deep forest dark). All state in truck-state.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PageShell, TipCard } from "@/components/page-shell";
+import { useTheme } from "@/hooks/use-theme";
 import { type LiveStop, type ScheduleDay, useTruckState } from "@/lib/truck-state";
 
 export const Route = createFileRoute("/live-map")({
@@ -19,53 +21,105 @@ export const Route = createFileRoute("/live-map")({
           "Go live with your GPS pin, map this week's stops, and let locals find your Kentucky food truck.",
       },
     ],
+    links: [
+      {
+        rel: "stylesheet",
+        href: "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
+        integrity: "sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=",
+        crossOrigin: "",
+      },
+    ],
   }),
   component: LiveMapPage,
 });
 
-/** Map viewBox 0–100 (percent-friendly) */
-const MAP = {
-  latMax: 37.12,
-  latMin: 36.72,
-  lngMin: -85.15,
-  lngMax: -84.7,
-};
+/** Town anchors — Wayne / Russell / Lake Cumberland corridor */
+const TOWNS: { name: string; lat: number; lng: number }[] = [
+  { name: "Monticello", lat: 36.8298, lng: -84.8491 },
+  { name: "Russell Springs", lat: 37.0567, lng: -85.0886 },
+  { name: "Jamestown", lat: 36.9848, lng: -85.063 },
+  { name: "Lake Cumberland", lat: 36.92, lng: -84.96 },
+];
 
-function project(lat: number, lng: number): { x: number; y: number } {
-  const x = ((lng - MAP.lngMin) / (MAP.lngMax - MAP.lngMin)) * 100;
-  const y = ((MAP.latMax - lat) / (MAP.latMax - MAP.latMin)) * 100;
-  return {
-    x: Math.min(94, Math.max(6, x)),
-    y: Math.min(92, Math.max(8, y)),
-  };
-}
-
-/** Accurate-ish anchors for Wayne / Russell / lake corridor */
 const DAY_ANCHORS: Record<string, { lat: number; lng: number }> = {
-  MON: { lat: 36.83, lng: -84.85 },
-  TUE: { lat: 36.83, lng: -84.85 }, // Monticello
-  WED: { lat: 37.05, lng: -85.08 }, // Russell Springs
-  THU: { lat: 36.98, lng: -85.06 }, // Jamestown
-  FRI: { lat: 37.05, lng: -85.08 },
-  SAT: { lat: 36.92, lng: -84.95 }, // Lake Cumberland
-  SUN: { lat: 36.83, lng: -84.85 },
+  MON: TOWNS[0],
+  TUE: TOWNS[0],
+  WED: TOWNS[1],
+  THU: TOWNS[2],
+  FRI: TOWNS[1],
+  SAT: TOWNS[3],
+  SUN: TOWNS[0],
 };
 
-const TOWNS = [
-  { name: "Monticello", lat: 36.83, lng: -84.85 },
-  { name: "Russell Springs", lat: 37.055, lng: -85.08 },
-  { name: "Jamestown", lat: 36.985, lng: -85.065 },
-  { name: "Lake Cumberland", lat: 36.91, lng: -84.94 },
-] as const;
+const MAP_CENTER: [number, number] = [36.95, -84.95];
+const MAP_ZOOM = 10;
+
+/** Warm light basemap — parchment / soft terrain */
+const TILE_LIGHT =
+  "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+/** Deep forest night basemap */
+const TILE_DARK =
+  "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+
+const TILE_ATTR =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> · &copy; <a href="https://carto.com/">CARTO</a>';
+
+/** Elegant teardrop pin (gold = live, deep green = schedule) */
+function pinHtml(kind: "live" | "sched", label: string) {
+  if (kind === "live") {
+    return `
+      <div class="td-pin td-pin--live" role="img" aria-label="Live pin">
+        <div class="td-pin__badge">Live</div>
+        <svg class="td-pin__svg" viewBox="0 0 40 52" width="36" height="46" aria-hidden="true">
+          <defs>
+            <linearGradient id="goldPin" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#e8c36a"/>
+              <stop offset="55%" stop-color="#d4a437"/>
+              <stop offset="100%" stop-color="#b8722c"/>
+            </linearGradient>
+            <filter id="pinShadow" x="-30%" y="-10%" width="160%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.35"/>
+            </filter>
+          </defs>
+          <path filter="url(#pinShadow)" fill="url(#goldPin)" stroke="#5c3a14" stroke-width="1.2"
+            d="M20 2C11.2 2 4 9.2 4 18c0 11.5 16 30 16 30s16-18.5 16-30C36 9.2 28.8 2 20 2z"/>
+          <circle cx="20" cy="18" r="6.5" fill="#fffdf6" stroke="#5c3a14" stroke-width="1"/>
+          <circle cx="20" cy="18" r="3.2" fill="#b8722c"/>
+        </svg>
+      </div>`;
+  }
+  return `
+    <div class="td-pin td-pin--sched" role="img" aria-label="${escapeHtml(label)} stop">
+      <div class="td-pin__day">${escapeHtml(label)}</div>
+      <svg class="td-pin__svg" viewBox="0 0 40 52" width="30" height="39" aria-hidden="true">
+        <defs>
+          <linearGradient id="deepPin" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#2a5240"/>
+            <stop offset="100%" stop-color="#14281f"/>
+          </linearGradient>
+        </defs>
+        <path fill="url(#deepPin)" stroke="#0a1812" stroke-width="1.1"
+          d="M20 2C11.2 2 4 9.2 4 18c0 11.5 16 30 16 30s16-18.5 16-30C36 9.2 28.8 2 20 2z"
+          style="filter:drop-shadow(0 2px 3px rgba(0,0,0,.28))"/>
+        <circle cx="20" cy="18" r="5.5" fill="#f5efe1" stroke="#0a1812" stroke-width="0.9"/>
+        <circle cx="20" cy="18" r="2.4" fill="#1a3d2e"/>
+      </svg>
+    </div>`;
+}
 
 function LiveMapPage() {
   const [state, setState] = useTruckState();
+  const { theme } = useTheme();
   const [label, setLabel] = useState(state.liveSession.label || state.location);
   const [note, setNote] = useState(state.liveSession.note || "");
   const [stopLabel, setStopLabel] = useState("");
   const [stopTime, setStopTime] = useState("");
   const [geoMsg, setGeoMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const mapEl = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<import("leaflet").Map | null>(null);
+  const layerRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const tileRef = useRef<import("leaflet").TileLayer | null>(null);
 
   const session = state.liveSession;
   const isLive = session.isLive || state.live;
@@ -74,18 +128,20 @@ function LiveMapPage() {
     return state.schedule
       .filter((d) => !d.closed)
       .map((d) => {
-        const anchor = DAY_ANCHORS[d.day] ?? DAY_ANCHORS.SAT;
+        const a = DAY_ANCHORS[d.day] ?? DAY_ANCHORS.SAT;
         return {
           id: d.id,
           day: d.day,
           title: d.neighborhood || d.spot,
-          lat: anchor.lat,
-          lng: anchor.lng,
+          sub: d.spot,
+          hours: d.hoursStart && d.hoursEnd ? `${d.hoursStart} – ${d.hoursEnd}` : "",
+          lat: a.lat,
+          lng: a.lng,
         };
       });
   }, [state.schedule]);
 
-  const livePin =
+  const liveCoords: { lat: number; lng: number; label: string } | null =
     session.lat != null && session.lng != null
       ? { lat: session.lat, lng: session.lng, label: session.label || "Live now" }
       : isLive
@@ -95,6 +151,157 @@ function LiveMapPage() {
             label: session.label || state.location || "Live now",
           }
         : null;
+
+  // Init Leaflet once
+  useEffect(() => {
+    if (!mapEl.current || mapRef.current) return;
+    let cancelled = false;
+
+    void (async () => {
+      const L = await import("leaflet");
+      if (cancelled || !mapEl.current) return;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (L.Icon.Default.prototype as any)._getIconUrl;
+
+      const map = L.map(mapEl.current, {
+        center: MAP_CENTER,
+        zoom: MAP_ZOOM,
+        zoomControl: true,
+        attributionControl: true,
+      });
+
+      const isDark = document.documentElement.classList.contains("dark");
+      const tile = L.tileLayer(isDark ? TILE_DARK : TILE_LIGHT, {
+        attribution: TILE_ATTR,
+        subdomains: "abcd",
+        maxZoom: 18,
+      }).addTo(map);
+
+      const group = L.layerGroup().addTo(map);
+      mapRef.current = map;
+      layerRef.current = group;
+      tileRef.current = tile;
+
+      setTimeout(() => map.invalidateSize(), 80);
+      setTimeout(() => map.invalidateSize(), 300);
+    })();
+
+    return () => {
+      cancelled = true;
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        layerRef.current = null;
+        tileRef.current = null;
+      }
+    };
+  }, []);
+
+  // Swap basemap when theme changes
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    void (async () => {
+      const L = await import("leaflet");
+      if (tileRef.current) {
+        map.removeLayer(tileRef.current);
+      }
+      const tile = L.tileLayer(theme === "dark" ? TILE_DARK : TILE_LIGHT, {
+        attribution: TILE_ATTR,
+        subdomains: "abcd",
+        maxZoom: 18,
+      }).addTo(map);
+      tileRef.current = tile;
+    })();
+  }, [theme]);
+
+  // Redraw pins when schedule / live changes
+  useEffect(() => {
+    const map = mapRef.current;
+    const group = layerRef.current;
+    if (!map || !group) return;
+
+    void (async () => {
+      const L = await import("leaflet");
+      group.clearLayers();
+
+      // Subtle town anchors (no childish blobs)
+      for (const t of TOWNS) {
+        L.circleMarker([t.lat, t.lng], {
+          radius: 2.5,
+          color: theme === "dark" ? "#8a9a8e" : "#6a5a42",
+          fillColor: theme === "dark" ? "#1c382a" : "#f5efe1",
+          fillOpacity: 0.95,
+          weight: 1.25,
+        })
+          .bindTooltip(t.name, {
+            permanent: true,
+            direction: "top",
+            offset: [0, -8],
+            className: "td-map-town-label",
+          })
+          .addTo(group);
+      }
+
+      for (const p of weekPins) {
+        const icon = L.divIcon({
+          className: "td-map-pin-wrap",
+          html: pinHtml("sched", p.day),
+          iconSize: [40, 52],
+          iconAnchor: [20, 48],
+          popupAnchor: [0, -44],
+        });
+        L.marker([p.lat, p.lng], { icon })
+          .bindPopup(
+            `<div class="td-map-popup"><strong>${escapeHtml(p.day)}</strong><br/>${escapeHtml(
+              p.title,
+            )}${
+              p.sub ? `<br/><span class="td-map-popup__sub">${escapeHtml(p.sub)}</span>` : ""
+            }${p.hours ? `<br/><span class="td-map-popup__hrs">${escapeHtml(p.hours)}</span>` : ""}</div>`,
+          )
+          .addTo(group);
+      }
+
+      if (liveCoords) {
+        const icon = L.divIcon({
+          className: "td-map-pin-wrap",
+          html: pinHtml("live", "Live"),
+          iconSize: [48, 60],
+          iconAnchor: [24, 54],
+          popupAnchor: [0, -50],
+        });
+        L.marker([liveCoords.lat, liveCoords.lng], { icon, zIndexOffset: 1000 })
+          .bindPopup(
+            `<div class="td-map-popup"><strong>Live Now</strong><br/>${escapeHtml(
+              liveCoords.label,
+            )}</div>`,
+          )
+          .addTo(group);
+
+        // Soft gold pulse ring under live pin
+        L.circleMarker([liveCoords.lat, liveCoords.lng], {
+          radius: 18,
+          color: "#d4a437",
+          fillColor: "#d4a437",
+          fillOpacity: 0.12,
+          weight: 1.5,
+          opacity: 0.55,
+          className: "td-live-ring",
+        }).addTo(group);
+      }
+
+      const pts: [number, number][] = weekPins.map((p) => [p.lat, p.lng]);
+      if (liveCoords) pts.push([liveCoords.lat, liveCoords.lng]);
+      if (pts.length >= 2) {
+        map.fitBounds(L.latLngBounds(pts), { padding: [40, 40], maxZoom: 12 });
+      } else if (pts.length === 1) {
+        map.setView(pts[0], 12);
+      } else {
+        map.setView(MAP_CENTER, MAP_ZOOM);
+      }
+    })();
+  }, [weekPins, liveCoords, theme]);
 
   const goLive = async () => {
     setBusy(true);
@@ -116,6 +323,9 @@ function LiveMapPage() {
         },
       });
       if (geoNote) setGeoMsg(geoNote);
+      if (lat != null && lng != null && mapRef.current) {
+        mapRef.current.setView([lat, lng], 13, { animate: true });
+      }
       setBusy(false);
     };
 
@@ -169,92 +379,46 @@ function LiveMapPage() {
     <PageShell title="Live Map" eyebrow="Command center" live={isLive}>
       <TipCard>
         <p className="td-section-label mb-1.5">How to use Live Map</p>
-        <p className="text-sm leading-relaxed text-foreground/80">
-          Flip <strong className="text-foreground">Go Live</strong> when you park at the market or
-          ramp. Locals see a gold pin. End the session when you pack up. Weekly stops from{" "}
+        <p className="text-sm leading-relaxed text-[color:var(--td-ink)]">
+          Flip <strong>Go Live</strong> when you park. A gold pin marks you. Deep green pins are
+          this week&apos;s stops from{" "}
           <Link to="/this-week" className="text-brand-orange font-semibold underline">
             This Week
-          </Link>{" "}
-          show as map markers.
+          </Link>
+          .
         </p>
       </TipCard>
 
-      {/* ── Premium regional map ── */}
       <section className="td-card overflow-hidden">
         <div
-          className="relative w-full aspect-[5/4] sm:aspect-[4/3] bg-[#e8e2d4] dark:bg-[#1a2e24]"
-          role="img"
-          aria-label="Map of Lake Cumberland area — Monticello, Russell Springs, Jamestown"
-        >
-          <RegionalMapSvg />
+          ref={mapEl}
+          className="td-leaflet-map w-full h-[min(54vh,340px)] min-h-[260px] bg-[#e8e2d4] dark:bg-[#0c1c15] z-0"
+          role="application"
+          aria-label="Interactive map of Lake Cumberland area food truck stops"
+        />
 
-          {/* Town labels (projected) */}
-          {TOWNS.map((t) => {
-            const { x, y } = project(t.lat, t.lng);
-            return (
-              <span
-                key={t.name}
-                className="absolute z-[5] -translate-x-1/2 pointer-events-none select-none text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.12em] text-[#1a3d2e]/55 dark:text-white/45"
-                style={{ left: `${x}%`, top: `${Math.max(4, y - 6)}%` }}
-              >
-                {t.name}
-              </span>
-            );
-          })}
-
-          {/* Scheduled stop pins — deep green */}
-          {weekPins.map((p) => {
-            const { x, y } = project(p.lat, p.lng);
-            return (
-              <div
-                key={p.id}
-                className="absolute z-10 -translate-x-1/2 -translate-y-[110%]"
-                style={{ left: `${x}%`, top: `${y}%` }}
-                title={`${p.day}: ${p.title}`}
-              >
-                <div className="flex flex-col items-center gap-0.5">
-                  <span className="text-[9px] font-bold tracking-wide bg-white dark:bg-[#173024] text-[#1a3d2e] dark:text-[#e8f0ea] px-1.5 py-0.5 rounded-md shadow-sm border border-black/8 dark:border-white/15">
-                    {p.day}
-                  </span>
-                  <span className="relative flex size-3.5 items-center justify-center">
-                    <span className="absolute size-3.5 rounded-full bg-[#1a3d2e]/20 dark:bg-white/15" />
-                    <span className="size-2.5 rounded-full bg-[#1a3d2e] dark:bg-[#c5d9cc] border-2 border-white dark:border-[#0f2419] shadow" />
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Live pin — bourbon gold + pulse */}
-          {livePin && (
-            <div
-              className="absolute z-20 -translate-x-1/2 -translate-y-[115%]"
-              style={{
-                left: `${project(livePin.lat, livePin.lng).x}%`,
-                top: `${project(livePin.lat, livePin.lng).y}%`,
-              }}
-            >
-              <div className="flex flex-col items-center gap-1">
-                <span className="text-[10px] font-bold bg-[#b8722c] text-white px-2.5 py-1 rounded-full shadow-md shadow-[#b8722c]/35 whitespace-nowrap">
-                  Live Now
-                </span>
-                <span className="live-pin-pulse size-4 rounded-full bg-[#d4a437] border-2 border-white shadow-lg" />
-              </div>
-            </div>
-          )}
-
-          <div className="absolute bottom-0 inset-x-0 flex justify-between px-3 py-2 bg-gradient-to-t from-black/25 to-transparent text-[9px] font-semibold text-white/90">
-            <span>Green = scheduled · Gold = live</span>
-            <span>Leaflet-ready coords</span>
-          </div>
+        {/* Legend strip */}
+        <div className="flex flex-wrap items-center gap-4 px-5 py-3 border-t border-[color:var(--border)] bg-[color:var(--surface-2)]">
+          <span className="inline-flex items-center gap-2 text-xs font-semibold text-[color:var(--td-ink)]">
+            <span className="size-2.5 rounded-full bg-[#d4a437] shadow-[0_0_0_3px_rgba(212,164,55,0.25)]" />
+            Live pin
+          </span>
+          <span className="inline-flex items-center gap-2 text-xs font-semibold text-[color:var(--td-ink)]">
+            <span className="size-2.5 rounded-full bg-[#1a3d2e] dark:bg-[#c5d9cc] border border-black/10" />
+            Week stop
+          </span>
+          <span className="text-[11px] text-[color:var(--td-ink-muted)] ml-auto">
+            Lake Cumberland · KY
+          </span>
         </div>
 
-        {/* Live Now controls */}
-        <div className="p-5 space-y-4 border-t border-black/5 dark:border-white/10">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="font-display text-lg tracking-tight text-foreground">Live Now</h2>
-              <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+        <div className="p-5 sm:p-6 space-y-5 border-t border-[color:var(--border)]">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <h2 className="font-display text-lg tracking-tight text-[color:var(--td-ink)]">
+                Live Now
+              </h2>
+              <p className="text-sm text-[color:var(--td-ink-muted)] mt-1.5 leading-relaxed">
                 Show customers you&apos;re open and where to find you.
               </p>
             </div>
@@ -276,35 +440,35 @@ function LiveMapPage() {
             </button>
           </div>
 
-          <label className="block">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          <label className="block space-y-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[color:var(--td-ink-muted)]">
               Arriving / open at
             </span>
             <input
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="e.g. Monticello Market · Courthouse Square"
-              className="mt-1.5 w-full rounded-xl border border-border bg-muted/40 dark:bg-black/25 px-3.5 py-2.5 text-sm font-medium text-foreground outline-none focus:border-brand-orange"
+              className="td-input"
             />
           </label>
-          <label className="block">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          <label className="block space-y-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[color:var(--td-ink-muted)]">
               Quick note
             </span>
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="e.g. brisket sold out, til 8pm"
-              className="mt-1.5 w-full rounded-xl border border-border bg-muted/40 dark:bg-black/25 px-3.5 py-2.5 text-sm text-foreground outline-none focus:border-brand-orange"
+              className="td-input"
             />
           </label>
 
-          <div className="flex flex-col gap-2.5 sm:flex-row pt-0.5">
+          <div className="flex flex-col gap-3 pt-0.5">
             <button
               type="button"
               disabled={busy}
               onClick={() => void goLive()}
-              className="flex-1 py-3.5 rounded-2xl bg-brand-orange text-white font-bold text-sm shadow-lg shadow-brand-orange/20 disabled:opacity-60"
+              className="w-full py-3.5 rounded-2xl bg-brand-orange text-white font-bold text-sm shadow-lg shadow-brand-orange/20 disabled:opacity-60"
             >
               {busy ? "Getting GPS…" : isLive ? "Update live pin" : "Go Live + GPS"}
             </button>
@@ -312,19 +476,19 @@ function LiveMapPage() {
               <button
                 type="button"
                 onClick={endSession}
-                className="sm:w-auto px-5 py-3.5 rounded-2xl border border-border text-sm font-bold text-foreground/80 bg-surface"
+                className="w-full py-3.5 rounded-2xl border border-[color:var(--border)] text-sm font-bold text-[color:var(--td-ink)] bg-[color:var(--surface)]"
               >
                 End session
               </button>
             )}
           </div>
           {geoMsg && (
-            <p className="text-xs text-muted-foreground" role="status">
+            <p className="text-sm text-[color:var(--td-ink-muted)] leading-relaxed" role="status">
               {geoMsg}
             </p>
           )}
           {session.updatedAt && (
-            <p className="text-[10px] text-muted-foreground/80">
+            <p className="text-xs text-[color:var(--td-ink-muted)]">
               Last change: {new Date(session.updatedAt).toLocaleString()}
               {session.lat != null &&
                 ` · ${session.lat.toFixed(4)}, ${session.lng?.toFixed(4)}`}
@@ -333,58 +497,60 @@ function LiveMapPage() {
         </div>
       </section>
 
-      {/* Stops today — stacked layout, no overflow */}
-      <section className="td-card td-card-pad space-y-4">
-        <div>
-          <h2 className="font-display text-lg tracking-tight text-foreground">Stops today</h2>
-          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+      {/* Stops today — full-width stacked, generous padding, no overlaps */}
+      <section className="td-card td-card-pad space-y-5">
+        <div className="space-y-1.5">
+          <h2 className="font-display text-lg tracking-tight text-[color:var(--td-ink)]">
+            Stops today
+          </h2>
+          <p className="text-sm text-[color:var(--td-ink-muted)] leading-relaxed">
             Multi-stop days — add locations if you&apos;re moving around.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-2.5">
+        <div className="flex flex-col gap-3">
           <input
             value={stopLabel}
             onChange={(e) => setStopLabel(e.target.value)}
             placeholder="Label (e.g. Town Square)"
-            className="w-full rounded-xl border border-border bg-muted/40 dark:bg-black/25 px-3.5 py-3 text-sm text-foreground outline-none focus:border-brand-orange"
+            className="td-input"
           />
-          <div className="grid grid-cols-[1fr_auto] gap-2.5">
-            <input
-              value={stopTime}
-              onChange={(e) => setStopTime(e.target.value)}
-              placeholder="Hours (e.g. 11am–2pm)"
-              className="w-full min-w-0 rounded-xl border border-border bg-muted/40 dark:bg-black/25 px-3.5 py-3 text-sm text-foreground outline-none focus:border-brand-orange"
-            />
-            <button
-              type="button"
-              onClick={addStop}
-              className="shrink-0 rounded-xl bg-brand-deep text-white font-bold text-sm px-4 py-3 whitespace-nowrap"
-            >
-              + Add
-            </button>
-          </div>
+          <input
+            value={stopTime}
+            onChange={(e) => setStopTime(e.target.value)}
+            placeholder="Hours (e.g. 11am–2pm)"
+            className="td-input"
+          />
+          <button
+            type="button"
+            onClick={addStop}
+            className="w-full rounded-xl bg-brand-deep text-white dark:bg-[#c5d9cc] dark:text-[#0f2419] font-bold text-sm py-3.5"
+          >
+            + Add stop
+          </button>
         </div>
 
-        <ul className="rounded-2xl border border-border overflow-hidden divide-y divide-border">
+        <ul className="rounded-2xl border border-[color:var(--border)] overflow-hidden divide-y divide-[color:var(--border)]">
           {state.liveStops.length === 0 && (
-            <li className="px-4 py-3.5 text-sm text-muted-foreground">No extra stops yet.</li>
+            <li className="px-4 py-5 text-sm text-[color:var(--td-ink-muted)] leading-relaxed">
+              No extra stops yet.
+            </li>
           )}
           {state.liveStops.map((s) => (
             <li
               key={s.id}
-              className="flex items-center justify-between gap-3 px-4 py-3.5 text-sm bg-surface"
+              className="flex items-center justify-between gap-4 px-4 py-4 text-sm bg-[color:var(--surface)]"
             >
               <span className="min-w-0">
-                <span className="font-semibold text-foreground">{s.label}</span>
+                <span className="font-semibold text-[color:var(--td-ink)]">{s.label}</span>
                 {s.time && (
-                  <span className="text-muted-foreground"> · {s.time}</span>
+                  <span className="text-[color:var(--td-ink-muted)]"> · {s.time}</span>
                 )}
               </span>
               <button
                 type="button"
                 onClick={() => removeStop(s.id)}
-                className="text-xs font-bold text-brand-orange shrink-0"
+                className="text-xs font-bold text-brand-orange shrink-0 px-2 py-1"
               >
                 Remove
               </button>
@@ -393,9 +559,9 @@ function LiveMapPage() {
         </ul>
       </section>
 
-      <section className="td-card td-card-pad">
-        <div className="flex items-baseline justify-between gap-2 mb-3">
-          <h2 className="font-display text-lg tracking-tight text-foreground">
+      <section className="td-card td-card-pad space-y-4">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="font-display text-lg tracking-tight text-[color:var(--td-ink)]">
             This week on the map
           </h2>
           <Link to="/this-week" className="text-xs font-bold text-brand-orange shrink-0">
@@ -408,154 +574,36 @@ function LiveMapPage() {
   );
 }
 
-/**
- * Clean topographic-style SVG of the Lake Cumberland corridor.
- * Not a crayon blob — layered hills, lake, roads, towns.
- * ViewBox 0 0 100 80 for percentage pin overlay.
- */
-function RegionalMapSvg() {
-  return (
-    <svg
-      viewBox="0 0 100 80"
-      className="absolute inset-0 size-full"
-      preserveAspectRatio="xMidYMid slice"
-      aria-hidden
-    >
-      <defs>
-        <linearGradient id="skyHill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#d4cfc0" />
-          <stop offset="55%" stopColor="#c5d0b4" />
-          <stop offset="100%" stopColor="#a8b896" />
-        </linearGradient>
-        <linearGradient id="skyHillDark" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#1e3329" />
-          <stop offset="100%" stopColor="#152820" />
-        </linearGradient>
-        <linearGradient id="lakeGrad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#4a8a96" stopOpacity="0.55" />
-          <stop offset="50%" stopColor="#3d7a88" stopOpacity="0.7" />
-          <stop offset="100%" stopColor="#2f6570" stopOpacity="0.5" />
-        </linearGradient>
-        <filter id="soft" x="-10%" y="-10%" width="120%" height="120%">
-          <feGaussianBlur stdDeviation="0.4" />
-        </filter>
-      </defs>
-
-      {/* Terrain base */}
-      <rect width="100" height="80" className="fill-[#d8d2c2] dark:fill-[#152820]" />
-
-      {/* Distant hills */}
-      <path
-        d="M0 28 Q15 18 28 26 T52 22 T78 28 T100 20 L100 80 L0 80 Z"
-        className="fill-[#b8c4a6]/80 dark:fill-[#1f352b]"
-      />
-      <path
-        d="M0 38 Q20 30 40 36 T70 32 T100 40 L100 80 L0 80 Z"
-        className="fill-[#a8b896]/90 dark:fill-[#243d32]"
-      />
-
-      {/* Soft topo contour lines */}
-      <g
-        fill="none"
-        stroke="#1a3d2e"
-        strokeOpacity="0.08"
-        strokeWidth="0.25"
-        className="dark:stroke-white dark:stroke-opacity-10"
-      >
-        <path d="M5 45 Q25 42 45 46 T85 44" />
-        <path d="M8 52 Q30 48 50 53 T90 50" />
-        <path d="M10 58 Q35 55 55 59 T92 56" />
-        <path d="M12 65 Q40 62 60 66 T95 63" />
-      </g>
-
-      {/* Lake Cumberland — elongated reservoir shape */}
-      <ellipse
-        cx="48"
-        cy="48"
-        rx="22"
-        ry="14"
-        fill="url(#lakeGrad)"
-        filter="url(#soft)"
-        transform="rotate(-18 48 48)"
-      />
-      <ellipse
-        cx="52"
-        cy="50"
-        rx="14"
-        ry="8"
-        fill="#5a9aaa"
-        fillOpacity="0.25"
-        transform="rotate(-12 52 50)"
-        className="dark:fill-[#4a8a96] dark:fill-opacity-30"
-      />
-
-      {/* KY 90 corridor (simplified road) */}
-      <path
-        d="M5 62 Q30 58 50 55 T95 52"
-        fill="none"
-        stroke="#8a7a60"
-        strokeWidth="0.9"
-        strokeOpacity="0.45"
-        strokeLinecap="round"
-        className="dark:stroke-white dark:stroke-opacity-20"
-      />
-      <path
-        d="M5 62 Q30 58 50 55 T95 52"
-        fill="none"
-        stroke="#c4b8a0"
-        strokeWidth="0.35"
-        strokeOpacity="0.7"
-        strokeLinecap="round"
-        strokeDasharray="1.2 1.5"
-        className="dark:stroke-white dark:stroke-opacity-25"
-      />
-
-      {/* Secondary road north–south */}
-      <path
-        d="M38 12 Q42 35 48 55 T55 78"
-        fill="none"
-        stroke="#8a7a60"
-        strokeWidth="0.55"
-        strokeOpacity="0.35"
-        strokeLinecap="round"
-        className="dark:stroke-white dark:stroke-opacity-15"
-      />
-
-      {/* Soft vignette */}
-      <rect
-        width="100"
-        height="80"
-        fill="url(#vignette)"
-        className="pointer-events-none"
-        opacity="0"
-      />
-    </svg>
-  );
-}
-
 function WeekStopList({ schedule }: { schedule: ScheduleDay[] }) {
   return (
-    <ul className="divide-y divide-border">
+    <ul className="divide-y divide-[color:var(--border)]">
       {schedule.map((d) => (
         <li
           key={d.id}
-          className={`flex justify-between gap-3 py-2.5 text-sm ${d.closed ? "opacity-50" : ""}`}
+          className={`flex justify-between gap-4 py-3.5 text-sm first:pt-0 last:pb-0 ${
+            d.closed ? "opacity-60" : ""
+          }`}
         >
           <span className="min-w-0">
-            <span className="font-bold text-brand-orange w-9 inline-block">{d.day}</span>
+            <span className="font-bold text-brand-orange w-10 inline-block tabular-nums">
+              {d.day}
+            </span>
             {d.closed ? (
-              <span className="text-muted-foreground">{d.note || "Closed"}</span>
+              <span className="text-[color:var(--td-ink-muted)]">{d.note || "Closed"}</span>
             ) : (
-              <span className="text-foreground">
+              <span className="text-[color:var(--td-ink)] font-medium">
                 {d.neighborhood}
                 {d.spot ? (
-                  <span className="text-muted-foreground"> · {d.spot}</span>
+                  <span className="text-[color:var(--td-ink-muted)] font-normal">
+                    {" "}
+                    · {d.spot}
+                  </span>
                 ) : null}
               </span>
             )}
           </span>
           {!d.closed && d.hoursStart && (
-            <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
+            <span className="text-xs font-medium text-[color:var(--td-ink-muted)] shrink-0 tabular-nums pt-0.5">
               {d.hoursStart}–{d.hoursEnd}
             </span>
           )}
@@ -563,4 +611,12 @@ function WeekStopList({ schedule }: { schedule: ScheduleDay[] }) {
       ))}
     </ul>
   );
+}
+
+function escapeHtml(s: string) {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }

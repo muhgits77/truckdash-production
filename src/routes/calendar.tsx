@@ -1,6 +1,7 @@
 /**
  * Built-in Event Calendar — monthly grid + list.
  * Merges TruckEvent entries with This Week schedule (recurring Fri markets, etc.).
+ * High-contrast ink tokens for light & dark Kentucky palette.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
@@ -85,9 +86,7 @@ function CalendarPage() {
           kind: ev.kind,
         });
       }
-      // Recurring by weekday without a one-off date, or with date in past still weekly
       if (ev.recurring && ev.recurringWeekday != null && day.getDay() === ev.recurringWeekday) {
-        // Skip if a one-off with same title already on this exact date from above
         if (!ev.date || ev.date !== ymd) {
           out.push({
             title: `${ev.title} (weekly)`,
@@ -98,7 +97,6 @@ function CalendarPage() {
       }
     }
 
-    // This Week schedule → day chips
     const schedKey = DOW_TO_SCHEDULE[day.getDay()];
     const sched = state.schedule.find((s) => s.day === schedKey && !s.closed);
     if (sched) {
@@ -127,9 +125,7 @@ function CalendarPage() {
       location: draft.location || "",
       kind: (draft.kind as TruckEvent["kind"]) || "other",
       recurring: !!draft.recurring,
-      recurringWeekday: draft.recurring
-        ? parseISO(draft.date).getDay()
-        : null,
+      recurringWeekday: draft.recurring ? parseISO(draft.date).getDay() : null,
       note: draft.note || "",
     };
     setState({ ...state, events: [...state.events, ev] });
@@ -154,7 +150,7 @@ function CalendarPage() {
     <PageShell title="Calendar" eyebrow="Events & markets">
       <TipCard>
         <p className="td-section-label mb-1.5">How to use Calendar</p>
-        <p className="text-sm leading-relaxed">
+        <p className="text-sm leading-relaxed text-[color:var(--td-ink)]">
           Add festivals and catering gigs. Weekly service from{" "}
           <Link to="/this-week" className="text-brand-orange font-semibold underline">
             This Week
@@ -164,25 +160,29 @@ function CalendarPage() {
       </TipCard>
 
       <section className="td-card td-card-pad">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between gap-3 mb-5">
           <button
             type="button"
             onClick={() => setCursor((c) => addMonths(c, -1))}
-            className="size-10 rounded-xl border border-brand-green/10 dark:border-white/10 font-bold text-brand-green/55 bg-brand-sand/50 dark:bg-white/5"
+            className="size-10 rounded-xl border border-[color:var(--border)] font-bold text-[color:var(--td-ink)] bg-[color:var(--surface-2)]"
+            aria-label="Previous month"
           >
             ‹
           </button>
-          <h2 className="font-display text-lg tracking-tight">{format(cursor, "MMMM yyyy")}</h2>
+          <h2 className="font-display text-lg tracking-tight text-[color:var(--td-ink)]">
+            {format(cursor, "MMMM yyyy")}
+          </h2>
           <button
             type="button"
             onClick={() => setCursor((c) => addMonths(c, 1))}
-            className="size-10 rounded-xl border border-brand-green/10 dark:border-white/10 font-bold text-brand-green/55 bg-brand-sand/50 dark:bg-white/5"
+            className="size-10 rounded-xl border border-[color:var(--border)] font-bold text-[color:var(--td-ink)] bg-[color:var(--surface-2)]"
+            aria-label="Next month"
           >
             ›
           </button>
         </div>
 
-        <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold uppercase tracking-wider text-brand-green/35 mb-1.5">
+        <div className="grid grid-cols-7 gap-1.5 text-center text-[10px] font-bold uppercase tracking-wider text-[color:var(--td-ink-muted)] mb-2">
           {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
             <div key={d} className="py-1">
               {d}
@@ -206,14 +206,14 @@ function CalendarPage() {
                   sel
                     ? "bg-brand-orange text-white shadow-md shadow-brand-orange/20"
                     : inMonth
-                      ? "bg-brand-sand/90 dark:bg-white/6 text-brand-green hover:bg-brand-sand dark:hover:bg-white/10"
-                      : "text-brand-green/22"
+                      ? "bg-[color:var(--surface-2)] text-[color:var(--td-ink)] hover:border-brand-orange/30 border border-transparent"
+                      : "text-[color:var(--td-ink-muted)] opacity-45"
                 }`}
               >
                 {format(day, "d")}
                 {has && (
                   <span
-                    className={`absolute bottom-1 left-1/2 -translate-x-1/2 size-1 rounded-full ${
+                    className={`absolute bottom-1 left-1/2 -translate-x-1/2 size-1.5 rounded-full ${
                       sel ? "bg-white" : "bg-brand-gold"
                     }`}
                   />
@@ -224,9 +224,11 @@ function CalendarPage() {
         </div>
       </section>
 
-      <section className="td-card td-card-pad space-y-3.5">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="font-display text-lg tracking-tight">{format(selected, "EEE · MMM d")}</h2>
+      <section className="td-card td-card-pad space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-display text-lg tracking-tight text-[color:var(--td-ink)]">
+            {format(selected, "EEE · MMM d")}
+          </h2>
           <button
             type="button"
             onClick={() => setFormOpen((v) => !v)}
@@ -237,79 +239,88 @@ function CalendarPage() {
         </div>
 
         {formOpen && (
-          <div className="rounded-2xl border border-brand-green/10 dark:border-white/10 bg-brand-sand/70 dark:bg-black/20 p-3.5 space-y-2.5">
+          <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] p-4 space-y-3">
             <input
               value={draft.title || ""}
               onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
               placeholder="Event title (e.g. Wayne County Fair)"
-              className="w-full rounded-xl bg-surface border border-brand-green/10 dark:border-white/10 px-3.5 py-2.5 text-sm outline-none focus:border-brand-orange"
+              className="td-input"
             />
             <input
               type="date"
               value={draft.date || ""}
               onChange={(e) => setDraft((d) => ({ ...d, date: e.target.value }))}
-              className="w-full rounded-xl bg-surface border border-brand-green/10 dark:border-white/10 px-3.5 py-2.5 text-sm outline-none"
+              className="td-input"
             />
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
               <input
                 value={draft.hoursStart || ""}
                 onChange={(e) => setDraft((d) => ({ ...d, hoursStart: e.target.value }))}
                 placeholder="Start"
-                className="rounded-xl bg-surface border border-brand-green/10 dark:border-white/10 px-3.5 py-2.5 text-sm"
+                className="td-input"
               />
               <input
                 value={draft.hoursEnd || ""}
                 onChange={(e) => setDraft((d) => ({ ...d, hoursEnd: e.target.value }))}
                 placeholder="End"
-                className="rounded-xl bg-surface border border-brand-green/10 dark:border-white/10 px-3.5 py-2.5 text-sm"
+                className="td-input"
               />
             </div>
             <input
               value={draft.location || ""}
               onChange={(e) => setDraft((d) => ({ ...d, location: e.target.value }))}
               placeholder="Location"
-              className="w-full rounded-xl bg-surface border border-brand-green/10 dark:border-white/10 px-3.5 py-2.5 text-sm"
+              className="td-input"
             />
             <select
               value={draft.kind || "festival"}
               onChange={(e) =>
                 setDraft((d) => ({ ...d, kind: e.target.value as TruckEvent["kind"] }))
               }
-              className="w-full rounded-xl bg-surface border border-brand-green/10 dark:border-white/10 px-3.5 py-2.5 text-sm"
+              className="td-input"
             >
               <option value="festival">Festival</option>
               <option value="catering">Catering</option>
               <option value="market">Market</option>
               <option value="other">Other</option>
             </select>
-            <label className="flex items-center gap-2 text-sm text-brand-green/65">
+            <label className="flex items-center gap-2.5 text-sm text-[color:var(--td-ink)]">
               <input
                 type="checkbox"
                 checked={!!draft.recurring}
                 onChange={(e) => setDraft((d) => ({ ...d, recurring: e.target.checked }))}
+                className="size-4 accent-brand-orange"
               />
               Recurring weekly
             </label>
             <button
               type="button"
               onClick={saveEvent}
-              className="w-full py-2.5 rounded-xl bg-brand-green dark:bg-brand-orange dark:text-[#0f2419] text-white font-bold text-sm"
+              className="w-full py-3 rounded-xl bg-brand-deep text-white dark:bg-brand-orange dark:text-[#0f2419] font-bold text-sm"
             >
               Save event
             </button>
           </div>
         )}
 
-        <ul className="divide-y divide-brand-green/6 dark:divide-white/6">
+        <ul className="divide-y divide-[color:var(--border)]">
           {selectedEvents.length === 0 && (
-            <li className="py-3.5 text-sm text-brand-green/40">Nothing scheduled this day.</li>
+            <li className="py-4 text-sm text-[color:var(--td-ink-muted)] leading-relaxed">
+              Nothing scheduled this day.
+            </li>
           )}
           {selectedEvents.map((ev, i) => (
-            <li key={`${ev.title}-${i}`} className="py-3.5 flex justify-between gap-2 text-sm">
-              <div>
-                <p className="font-semibold tracking-tight">{ev.title}</p>
-                {ev.meta && <p className="text-xs text-brand-green/50 mt-0.5">{ev.meta}</p>}
-                <span className="text-[10px] font-bold uppercase tracking-wider text-brand-orange/85 mt-1 inline-block">
+            <li key={`${ev.title}-${i}`} className="py-3.5 flex justify-between gap-3 text-sm">
+              <div className="min-w-0">
+                <p className="font-semibold tracking-tight text-[color:var(--td-ink)]">
+                  {ev.title}
+                </p>
+                {ev.meta && (
+                  <p className="text-xs text-[color:var(--td-ink-muted)] mt-1 leading-snug">
+                    {ev.meta}
+                  </p>
+                )}
+                <span className="text-[10px] font-bold uppercase tracking-wider text-brand-orange mt-1.5 inline-block">
                   {ev.kind === "schedule"
                     ? "This Week"
                     : KIND_LABEL[ev.kind as TruckEvent["kind"]] || ev.kind}
@@ -321,21 +332,25 @@ function CalendarPage() {
       </section>
 
       <section className="td-card td-card-pad">
-        <h2 className="font-display text-lg tracking-tight mb-3">Your events</h2>
-        <ul className="divide-y divide-brand-green/6 dark:divide-white/6">
+        <h2 className="font-display text-lg tracking-tight mb-4 text-[color:var(--td-ink)]">
+          Your events
+        </h2>
+        <ul className="divide-y divide-[color:var(--border)]">
           {state.events.filter((e) => e.title).length === 0 && (
-            <li className="py-2.5 text-sm text-brand-green/40">No custom events yet.</li>
+            <li className="py-3 text-sm text-[color:var(--td-ink-muted)] leading-relaxed">
+              No custom events yet.
+            </li>
           )}
           {state.events.map((ev) => (
-            <li key={ev.id} className="py-3 flex justify-between gap-2 text-sm">
-              <div>
-                <p className="font-semibold tracking-tight">
+            <li key={ev.id} className="py-3.5 flex justify-between gap-3 text-sm">
+              <div className="min-w-0">
+                <p className="font-semibold tracking-tight text-[color:var(--td-ink)]">
                   {ev.title}{" "}
-                  <span className="text-brand-green/35 font-normal text-xs">
+                  <span className="text-[color:var(--td-ink-muted)] font-normal text-xs">
                     {ev.recurring ? "· weekly" : ev.date}
                   </span>
                 </p>
-                <p className="text-xs text-brand-green/50 mt-0.5">
+                <p className="text-xs text-[color:var(--td-ink-muted)] mt-1 leading-snug">
                   {KIND_LABEL[ev.kind]}
                   {ev.location ? ` · ${ev.location}` : ""}
                 </p>
@@ -343,7 +358,7 @@ function CalendarPage() {
               <button
                 type="button"
                 onClick={() => removeEvent(ev.id)}
-                className="text-xs font-bold text-brand-orange shrink-0"
+                className="text-xs font-bold text-brand-orange shrink-0 self-start px-1 py-1"
               >
                 Remove
               </button>

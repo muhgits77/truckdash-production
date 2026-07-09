@@ -1,6 +1,6 @@
 /**
  * Shared chrome for operator tools (Live Map, Calendar, Listings).
- * Theme-aware: cream light / warm forest dark.
+ * Theme-aware with high-contrast ink tokens and generous spacing.
  */
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
@@ -16,13 +16,15 @@ export function PageShell({
   title: string;
   eyebrow?: string;
   children: ReactNode;
-  /** Show LIVE pill in header */
   live?: boolean;
 }) {
   return (
-    <div className="min-h-screen bg-brand-sand text-brand-green pb-28 transition-colors duration-200">
-      <header className="sticky top-0 z-30 bg-brand-sand/90 backdrop-blur-xl border-b border-brand-green/8 dark:border-white/8">
-        <div className="mx-auto max-w-md px-4 py-3.5 flex items-center justify-between gap-3">
+    <div className="min-h-screen bg-brand-sand pb-28 transition-colors duration-200">
+      <header
+        className="sticky top-0 z-30 backdrop-blur-xl border-b border-[color:var(--border)]"
+        style={{ background: "color-mix(in srgb, var(--brand-sand) 92%, transparent)" }}
+      >
+        <div className="mx-auto max-w-md px-4 py-4 flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <Link
               to="/"
@@ -31,21 +33,21 @@ export function PageShell({
               ← TruckDash
             </Link>
             {eyebrow && (
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand-green/40 dark:text-brand-green/45 mt-1">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[color:var(--td-ink-muted)] mt-1.5">
                 {eyebrow}
               </p>
             )}
-            <h1 className="font-display text-[1.35rem] truncate leading-snug mt-0.5 tracking-tight">
+            <h1 className="font-display text-[1.4rem] truncate leading-snug mt-0.5 tracking-tight text-[color:var(--td-ink)]">
               {title}
             </h1>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0">
             {live != null && (
               <span
                 className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${
                   live
                     ? "bg-brand-orange text-white shadow-md shadow-brand-orange/25"
-                    : "bg-surface text-brand-green/50 border border-brand-green/10 dark:border-white/10"
+                    : "bg-[color:var(--surface)] text-[color:var(--td-ink-muted)] border border-[color:var(--border)]"
                 }`}
               >
                 {live && (
@@ -58,16 +60,15 @@ export function PageShell({
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-md px-4 pt-5 space-y-5">{children}</main>
+      <main className="mx-auto max-w-md px-4 pt-5 space-y-5 pb-2">{children}</main>
       <AppBottomNav />
     </div>
   );
 }
 
-/** Consistent tip / how-to card used on tool screens */
 export function TipCard({ children }: { children: ReactNode }) {
   return (
-    <div className="td-card td-card-pad text-sm text-brand-green/70 dark:text-brand-green/65 leading-relaxed">
+    <div className="td-card td-card-pad text-sm text-[color:var(--td-ink)] leading-relaxed">
       {children}
     </div>
   );

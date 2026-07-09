@@ -478,7 +478,7 @@ function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-brand-sand text-brand-green pb-28 transition-colors duration-200">
+    <div className="min-h-screen bg-brand-sand text-[color:var(--td-ink)] pb-28 transition-colors duration-200">
       <div className="print:hidden">
         <Header state={state} setState={setState} onOpenSettings={() => setSettingsOpen(true)} />
       </div>
@@ -849,14 +849,16 @@ function CommandCenterLinks() {
           <Link
             key={it.to}
             to={it.to}
-            className="flex flex-col items-center gap-2 rounded-2xl bg-brand-sand/90 dark:bg-white/5 border border-brand-green/6 dark:border-white/6 py-3.5 px-2 active:scale-[0.98] transition hover:border-brand-orange/25"
+            className="flex flex-col items-center gap-2.5 rounded-2xl bg-[color:var(--surface-2)] border border-[color:var(--border)] py-4 px-2 active:scale-[0.98] transition hover:border-brand-orange/30"
           >
             {it.icon}
             <span className="text-center">
-              <span className="block text-[11px] font-bold text-brand-green tracking-tight">
+              <span className="block text-[11px] font-bold text-[color:var(--td-ink)] tracking-tight">
                 {it.label}
               </span>
-              <span className="block text-[9px] text-brand-green/40 mt-0.5">{it.hint}</span>
+              <span className="block text-[10px] text-[color:var(--td-ink-muted)] mt-0.5">
+                {it.hint}
+              </span>
             </span>
           </Link>
         ))}
@@ -1052,21 +1054,24 @@ function MenuHighlightsCard({ items, onEdit }: { items: MenuItem[]; onEdit: () =
   return (
     <section className="td-card td-card-pad">
       <div className="flex justify-between items-baseline gap-3 mb-4">
-        <h3 className="font-display text-lg tracking-tight text-foreground">Menu Highlights</h3>
+        <h3 className="font-display text-lg tracking-tight text-[color:var(--td-ink)]">
+          Menu Highlights
+        </h3>
         <button
+          type="button"
           onClick={onEdit}
           className="text-[11px] text-brand-orange font-bold uppercase tracking-wider shrink-0"
         >
           Manage
         </button>
       </div>
-      <ul className="divide-y divide-border">
+      <ul className="divide-y divide-[color:var(--border)]">
         {items.map((item) => (
           <li
             key={item.id}
-            className="flex justify-between items-center gap-3 py-3 first:pt-0 last:pb-0"
+            className="flex justify-between items-center gap-4 py-3.5 first:pt-0 last:pb-0"
           >
-            <span className="text-sm font-semibold text-foreground truncate pr-2">
+            <span className="text-sm font-semibold text-[color:var(--td-ink)] truncate pr-2 leading-snug">
               {item.name}
             </span>
             <span className="text-sm font-bold text-brand-orange shrink-0 tabular-nums">
@@ -1075,7 +1080,9 @@ function MenuHighlightsCard({ items, onEdit }: { items: MenuItem[]; onEdit: () =
           </li>
         ))}
         {items.length === 0 && (
-          <li className="py-2 text-sm text-muted-foreground">No menu items yet.</li>
+          <li className="py-3 text-sm text-[color:var(--td-ink-muted)] leading-relaxed">
+            No menu items yet.
+          </li>
         )}
       </ul>
     </section>
@@ -2948,7 +2955,9 @@ function WeekPreviewCard({ schedule }: { schedule: ScheduleDay[] }) {
   return (
     <section className="td-card td-card-pad">
       <div className="flex justify-between items-baseline gap-3 mb-4">
-        <h3 className="font-display text-lg tracking-tight text-foreground">This Week</h3>
+        <h3 className="font-display text-lg tracking-tight text-[color:var(--td-ink)]">
+          This Week
+        </h3>
         <Link
           to="/this-week"
           className="text-[11px] text-brand-orange font-bold uppercase tracking-wider shrink-0"
@@ -2956,18 +2965,22 @@ function WeekPreviewCard({ schedule }: { schedule: ScheduleDay[] }) {
           View &amp; Edit
         </Link>
       </div>
-      <ul className="space-y-3">
+      <ul className="space-y-3.5">
         {upcoming.length === 0 && (
-          <li className="text-sm text-muted-foreground">No open days this week.</li>
+          <li className="text-sm text-[color:var(--td-ink-muted)] leading-relaxed">
+            No open days this week.
+          </li>
         )}
         {upcoming.map((d) => (
-          <li key={d.id} className="flex items-center gap-3">
-            <span className="shrink-0 min-w-11 text-center px-2 py-1.5 rounded-lg bg-brand-orange text-white text-[11px] font-bold tracking-wider shadow-sm shadow-brand-orange/20">
+          <li key={d.id} className="flex items-center gap-3.5">
+            <span className="shrink-0 min-w-11 text-center px-2.5 py-2 rounded-xl bg-brand-orange text-white text-[11px] font-bold tracking-wider shadow-sm shadow-brand-orange/25">
               {d.day}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-foreground truncate">{d.neighborhood}</p>
-              <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+              <p className="text-sm font-semibold text-[color:var(--td-ink)] truncate leading-snug">
+                {d.neighborhood}
+              </p>
+              <p className="text-xs text-[color:var(--td-ink-muted)] truncate mt-1 leading-snug">
                 {d.spot}
                 {d.hoursStart ? ` · ${d.hoursStart}–${d.hoursEnd}` : ""}
               </p>

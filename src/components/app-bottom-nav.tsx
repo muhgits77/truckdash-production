@@ -1,5 +1,6 @@
 /**
  * Shared mobile bottom navigation — premium, cohesive with dark mode.
+ * High-contrast ink tokens (never washed-out green-on-green).
  */
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
@@ -62,21 +63,21 @@ export function AppBottomNav() {
         <div className="fixed inset-0 z-50 print:hidden">
           <button
             type="button"
-            className="absolute inset-0 bg-brand-green/35 dark:bg-black/55 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm"
             aria-label="Close menu"
             onClick={() => setMoreOpen(false)}
           />
           <div className="absolute bottom-[5.25rem] inset-x-0 mx-auto max-w-md px-4 pb-1">
             <div
-              className="rounded-[1.5rem] border border-brand-green/10 dark:border-white/10 overflow-hidden"
+              className="rounded-[1.5rem] border border-[color:var(--border)] overflow-hidden"
               style={{
                 background: "var(--surface)",
                 boxShadow: "var(--shadow-elevated)",
               }}
             >
-              <div className="px-5 pt-5 pb-3 border-b border-brand-green/6 dark:border-white/6">
+              <div className="px-5 pt-5 pb-3.5 border-b border-[color:var(--border)]">
                 <p className="td-section-label">More tools</p>
-                <p className="text-sm text-brand-green/55 dark:text-brand-green/50 mt-1.5 leading-snug">
+                <p className="text-sm text-[color:var(--td-ink-muted)] mt-1.5 leading-snug">
                   Menu, flyers, listings & catering — your Kentucky command center
                 </p>
               </div>
@@ -86,32 +87,30 @@ export function AppBottomNav() {
                     key={l.to}
                     className={
                       i < MORE_LINKS.length - 1
-                        ? "border-b border-brand-green/6 dark:border-white/6"
+                        ? "border-b border-[color:var(--border)]"
                         : ""
                     }
                   >
                     <Link
                       to={l.to}
                       onClick={() => setMoreOpen(false)}
-                      className="flex items-center gap-3.5 px-5 py-3.5 hover:bg-brand-sand/70 dark:hover:bg-white/5 transition active:scale-[0.99]"
+                      className="flex items-center gap-3.5 px-5 py-3.5 hover:bg-[color:var(--surface-2)] transition active:scale-[0.99]"
                     >
                       <span
-                        className="size-10 shrink-0 grid place-items-center rounded-2xl text-sm bg-brand-sand dark:bg-white/8 border border-brand-green/8 dark:border-white/8"
+                        className="size-10 shrink-0 grid place-items-center rounded-2xl text-sm bg-[color:var(--surface-2)] border border-[color:var(--border)]"
                         aria-hidden
                       >
                         {l.emoji}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-bold text-brand-green tracking-tight">
+                        <span className="block text-sm font-bold text-[color:var(--td-ink)] tracking-tight">
                           {l.label}
                         </span>
-                        <span className="text-[11px] text-brand-green/45 dark:text-brand-green/40">
+                        <span className="text-[11px] text-[color:var(--td-ink-muted)]">
                           {l.hint}
                         </span>
                       </span>
-                      <span className="text-brand-orange text-base font-semibold opacity-80">
-                        →
-                      </span>
+                      <span className="text-brand-orange text-base font-semibold">→</span>
                     </Link>
                   </li>
                 ))}
@@ -122,9 +121,9 @@ export function AppBottomNav() {
       )}
 
       <nav
-        className="fixed bottom-0 inset-x-0 z-40 border-t border-brand-green/8 dark:border-white/8 px-2 pt-2.5 pb-[max(0.85rem,env(safe-area-inset-bottom))] print:hidden"
+        className="fixed bottom-0 inset-x-0 z-40 border-t border-[color:var(--border)] px-2 pt-2.5 pb-[max(0.85rem,env(safe-area-inset-bottom))] print:hidden"
         style={{
-          background: "color-mix(in srgb, var(--surface) 92%, transparent)",
+          background: "color-mix(in srgb, var(--surface) 94%, transparent)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
         }}
@@ -138,8 +137,8 @@ export function AppBottomNav() {
                 to={it.to!}
                 className={`flex flex-1 flex-col items-center gap-1 py-2 px-1 rounded-2xl transition min-w-0 ${
                   active
-                    ? "text-brand-orange bg-brand-orange/8 dark:bg-brand-orange/12"
-                    : "text-brand-green/38 dark:text-brand-green/35 hover:text-brand-orange"
+                    ? "text-brand-orange bg-brand-orange/10 dark:bg-brand-orange/15"
+                    : "text-[color:var(--td-ink-muted)] hover:text-brand-orange"
                 }`}
               >
                 <span className={active ? "scale-105" : ""}>{it.icon}</span>
@@ -154,8 +153,8 @@ export function AppBottomNav() {
             onClick={() => setMoreOpen((v) => !v)}
             className={`flex flex-1 flex-col items-center gap-1 py-2 px-1 rounded-2xl transition min-w-0 ${
               moreOpen
-                ? "text-brand-orange bg-brand-orange/8 dark:bg-brand-orange/12"
-                : "text-brand-green/38 dark:text-brand-green/35 hover:text-brand-orange"
+                ? "text-brand-orange bg-brand-orange/10 dark:bg-brand-orange/15"
+                : "text-[color:var(--td-ink-muted)] hover:text-brand-orange"
             }`}
           >
             <IconMore />

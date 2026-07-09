@@ -143,7 +143,7 @@ function RootShell({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
         <HeadContent />
       </head>
-      <body className="bg-brand-sand text-brand-green antialiased" suppressHydrationWarning>
+      <body className="bg-brand-sand text-[color:var(--td-ink)] antialiased" suppressHydrationWarning>
         {children}
         <Scripts />
       </body>

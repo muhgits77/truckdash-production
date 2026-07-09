@@ -37,22 +37,33 @@
   --color-brand-sand: var(--brand-sand);
   --color-brand-gold: var(--brand-gold);
   --color-brand-paper: var(--brand-paper);
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-walnut: var(--brand-walnut);
+  --color-brand-deep: var(--brand-deep);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink-muted: var(--ink-muted);
 
   --font-serif: "Fraunces", ui-serif, Georgia, serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
+/* ─── Light: cream, bluegrass, bourbon ───────────────────────────────────── */
 :root {
-  --radius: 0.75rem;
+  --radius: 0.85rem;
 
-  /* Bluegrass Digital Forge — Kentucky palette */
-  --brand-green: #1a3d2e; /* deep bluegrass */
-  --brand-orange: #b8722c; /* bourbon amber (primary accent) */
-  --brand-sand: #f5efe1; /* warm cream */
-  --brand-gold: #d4a437; /* bourbon gold */
+  --brand-green: #1a3d2e; /* text + brand ink (light mode) */
+  --brand-deep: #1a3d2e; /* solid deep green surfaces (always dark green) */
+  --brand-orange: #b8722c;
+  --brand-sand: #f5efe1;
+  --brand-gold: #d4a437;
   --brand-paper: #fffdf6;
-  --brand-navy: #12283f; /* deep Kentucky navy */
-  --brand-walnut: #4a2c1a; /* barrel walnut */
+  --brand-navy: #12283f;
+  --brand-walnut: #4a2c1a;
+
+  --surface: #ffffff;
+  --surface-2: #faf6ec;
+  --ink-muted: rgba(26, 61, 46, 0.58);
 
   --background: #f5efe1;
   --foreground: #1a3d2e;
@@ -73,6 +84,101 @@
   --border: rgba(26, 61, 46, 0.1);
   --input: rgba(26, 61, 46, 0.14);
   --ring: #b8722c;
+
+  --shadow-card: 0 1px 2px rgba(26, 61, 46, 0.04), 0 8px 24px rgba(26, 61, 46, 0.05);
+  --shadow-elevated: 0 12px 40px rgba(26, 61, 46, 0.12);
+}
+
+/* ─── Dark: deep green, warm stone, amber ────────────────────────────────── */
+.dark {
+  --brand-green: #e8f0ea; /* light ink on dark backgrounds */
+  --brand-deep: #122a1c; /* solid panels / status card */
+  --brand-orange: #d4924a;
+  --brand-sand: #0f2419;
+  --brand-gold: #e0b84a;
+  --brand-paper: #152b20;
+  --brand-navy: #c5d0dc;
+  --brand-walnut: #c4a484;
+
+  --surface: #173024;
+  --surface-2: #1c382a;
+  --ink-muted: rgba(232, 240, 234, 0.58);
+
+  --background: #0f2419;
+  --foreground: #e8f0ea;
+  --card: #173024;
+  --card-foreground: #e8f0ea;
+  --popover: #1c382a;
+  --popover-foreground: #e8f0ea;
+  --primary: #d4924a;
+  --primary-foreground: #0f2419;
+  --secondary: #e8f0ea;
+  --secondary-foreground: #0f2419;
+  --muted: #1c382a;
+  --muted-foreground: #a8b8ae;
+  --accent: #e0b84a;
+  --accent-foreground: #0f2419;
+  --destructive: #e05a4e;
+  --destructive-foreground: #ffffff;
+  --border: rgba(232, 240, 234, 0.1);
+  --input: rgba(232, 240, 234, 0.12);
+  --ring: #d4924a;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.25), 0 8px 28px rgba(0, 0, 0, 0.28);
+  --shadow-elevated: 0 16px 48px rgba(0, 0, 0, 0.45);
+}
+
+/* Live pin pulse — bourbon gold */
+.live-pin-pulse {
+  animation: live-pin-pulse 1.6s ease-out infinite;
+  box-shadow: 0 0 0 0 rgba(212, 164, 55, 0.55);
+}
+
+@keyframes live-pin-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(212, 164, 55, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(212, 164, 55, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(212, 164, 55, 0);
+  }
+}
+
+/* Shared premium card / section utilities */
+@utility td-card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1.35rem;
+  box-shadow: var(--shadow-card);
+}
+
+@utility td-card-pad {
+  padding: 1.15rem 1.2rem;
+}
+
+@utility td-section-label {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--brand-orange);
+}
+
+@utility td-input {
+  width: 100%;
+  border-radius: 0.85rem;
+  border: 1px solid var(--border);
+  background: var(--brand-sand);
+  color: var(--foreground);
+  padding: 0.7rem 0.9rem;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+@utility td-input-focus {
+  border-color: var(--brand-orange);
 }
 
 @layer base {
@@ -90,6 +196,10 @@
   body {
     overscroll-behavior-y: none;
   }
+  /* Breathing room for cards stacked on mobile */
+  .td-stack > * + * {
+    margin-top: 1rem;
+  }
 }
 
 @utility font-display {
@@ -97,7 +207,7 @@
   font-optical-sizing: auto;
 }
 
-/* ---------- Printable schedule ---------- */
+/* ---------- Printable schedule (always light paper) ---------- */
 .printable-schedule {
   color: #1a1a1a;
   background: #ffffff;
@@ -192,20 +302,15 @@
     background: #ffffff !important;
     color: #1a1a1a !important;
   }
-  /* Legacy printable block from dashboard */
   body.printing-schedule .printable-schedule {
     display: block !important;
   }
-
-  /* New dedicated /this-week print block */
   .print-only-schedule {
     display: block !important;
     padding: 0 !important;
     margin: 0 !important;
     box-shadow: none !important;
   }
-
-  /* Hide everything else when printing schedule pages */
   .print-hidden,
   nav,
   header,
@@ -216,7 +321,6 @@
   }
 }
 
-/* Additional polish for the /this-week print table when visible on screen for preview (rare) */
 .print-only-schedule {
   font-family: var(--font-sans);
 }

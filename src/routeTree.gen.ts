@@ -13,7 +13,10 @@ import { Route as WebsiteRouteImport } from './routes/website'
 import { Route as ThisWeekRouteImport } from './routes/this-week'
 import { Route as ScheduleRouteImport } from './routes/schedule'
 import { Route as MenuRouteImport } from './routes/menu'
+import { Route as LiveMapRouteImport } from './routes/live-map'
+import { Route as ListingsRouteImport } from './routes/listings'
 import { Route as CateringRouteImport } from './routes/catering'
+import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
 
 const WebsiteRoute = WebsiteRouteImport.update({
@@ -36,9 +39,24 @@ const MenuRoute = MenuRouteImport.update({
   path: '/menu',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LiveMapRoute = LiveMapRouteImport.update({
+  id: '/live-map',
+  path: '/live-map',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ListingsRoute = ListingsRouteImport.update({
+  id: '/listings',
+  path: '/listings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CateringRoute = CateringRouteImport.update({
   id: '/catering',
   path: '/catering',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -49,7 +67,10 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/calendar': typeof CalendarRoute
   '/catering': typeof CateringRoute
+  '/listings': typeof ListingsRoute
+  '/live-map': typeof LiveMapRoute
   '/menu': typeof MenuRoute
   '/schedule': typeof ScheduleRoute
   '/this-week': typeof ThisWeekRoute
@@ -57,7 +78,10 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/calendar': typeof CalendarRoute
   '/catering': typeof CateringRoute
+  '/listings': typeof ListingsRoute
+  '/live-map': typeof LiveMapRoute
   '/menu': typeof MenuRoute
   '/schedule': typeof ScheduleRoute
   '/this-week': typeof ThisWeekRoute
@@ -66,7 +90,10 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/calendar': typeof CalendarRoute
   '/catering': typeof CateringRoute
+  '/listings': typeof ListingsRoute
+  '/live-map': typeof LiveMapRoute
   '/menu': typeof MenuRoute
   '/schedule': typeof ScheduleRoute
   '/this-week': typeof ThisWeekRoute
@@ -75,13 +102,33 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/catering' | '/menu' | '/schedule' | '/this-week' | '/website'
+    | '/'
+    | '/calendar'
+    | '/catering'
+    | '/listings'
+    | '/live-map'
+    | '/menu'
+    | '/schedule'
+    | '/this-week'
+    | '/website'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/catering' | '/menu' | '/schedule' | '/this-week' | '/website'
+  to:
+    | '/'
+    | '/calendar'
+    | '/catering'
+    | '/listings'
+    | '/live-map'
+    | '/menu'
+    | '/schedule'
+    | '/this-week'
+    | '/website'
   id:
     | '__root__'
     | '/'
+    | '/calendar'
     | '/catering'
+    | '/listings'
+    | '/live-map'
     | '/menu'
     | '/schedule'
     | '/this-week'
@@ -90,7 +137,10 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CalendarRoute: typeof CalendarRoute
   CateringRoute: typeof CateringRoute
+  ListingsRoute: typeof ListingsRoute
+  LiveMapRoute: typeof LiveMapRoute
   MenuRoute: typeof MenuRoute
   ScheduleRoute: typeof ScheduleRoute
   ThisWeekRoute: typeof ThisWeekRoute
@@ -127,11 +177,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/live-map': {
+      id: '/live-map'
+      path: '/live-map'
+      fullPath: '/live-map'
+      preLoaderRoute: typeof LiveMapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/listings': {
+      id: '/listings'
+      path: '/listings'
+      fullPath: '/listings'
+      preLoaderRoute: typeof ListingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/catering': {
       id: '/catering'
       path: '/catering'
       fullPath: '/catering'
       preLoaderRoute: typeof CateringRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -146,7 +217,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CalendarRoute: CalendarRoute,
   CateringRoute: CateringRoute,
+  ListingsRoute: ListingsRoute,
+  LiveMapRoute: LiveMapRoute,
   MenuRoute: MenuRoute,
   ScheduleRoute: ScheduleRoute,
   ThisWeekRoute: ThisWeekRoute,

@@ -47,8 +47,13 @@ import {
 import { isSupabaseConfigured, getSupabaseConfigHint, getSupabaseUrl } from "@/lib/supabase";
 import { formatPublishedShort, formatPublishedTime, formatWeekOf } from "@/lib/format-local";
 import { useHydrated } from "@/hooks/use-hydrated";
+import { AppBottomNav } from "@/components/app-bottom-nav";
+import { ThemeToggle } from "@/hooks/use-theme";
 
 export const Route = createFileRoute("/")({
+  validateSearch: (search: Record<string, unknown>): { tab?: string } => ({
+    tab: typeof search.tab === "string" ? search.tab : undefined,
+  }),
   head: () => ({
     meta: [{ title: "TruckDash — Food Truck Dashboard & Flyer Studio" }],
   }),
@@ -360,12 +365,22 @@ const TEMPLATES: Record<TemplateId, TemplateTheme> = {
 
 function Dashboard() {
   const hydrated = useHydrated();
+  const { tab: tabFromSearch } = Route.useSearch();
   const [state, setState] = useTruckState();
   const [tab, setTab] = useState<"home" | "menu" | "flyer" | "catering">("home");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showOnboard, setShowOnboard] = useState(false);
   const flyerRef = useRef<HTMLDivElement | null>(null);
   const menuHighlights = useMemo(() => state.menu.slice(0, 3), [state.menu]);
+
+  // Deep links from More menu: /?tab=menu | flyer | catering
+  useEffect(() => {
+    if (!hydrated) return;
+    const t = tabFromSearch?.trim();
+    if (t === "menu" || t === "flyer" || t === "catering" || t === "home") {
+      setTab(t);
+    }
+  }, [hydrated, tabFromSearch]);
 
   // Publish to Website state (shared data system)
   const [lastPublished, setLastPublished] = useState<string | null>(null);
@@ -463,12 +478,12 @@ function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-brand-sand text-brand-green pb-28">
+    <div className="min-h-screen bg-brand-sand text-brand-green pb-28 transition-colors duration-200">
       <div className="print:hidden">
         <Header state={state} setState={setState} onOpenSettings={() => setSettingsOpen(true)} />
       </div>
 
-      <main className="mx-auto max-w-md px-4 pt-4 space-y-6 print:hidden">
+      <main className="mx-auto max-w-md px-4 pt-5 space-y-5 print:hidden">
         {tab === "home" && (
           <>
             <StatusCard state={state} setState={setState} />
@@ -493,6 +508,7 @@ function Dashboard() {
               onOpenFlyer={() => setTab("flyer")}
               onOpenCatering={() => setTab("catering")}
             />
+            <CommandCenterLinks />
             <WeekPreviewCard schedule={state.schedule} />
             <MenuHighlightsCard items={menuHighlights} onEdit={() => setTab("menu")} />
             <FlyerSection state={state} setState={setState} flyerRef={flyerRef} />
@@ -521,7 +537,7 @@ function Dashboard() {
         {publishToast && (
           <div
             role="status"
-            className="fixed bottom-28 left-1/2 -translate-x-1/2 bg-brand-green text-white text-sm font-medium px-5 py-2 rounded-full shadow-xl shadow-brand-green/30 z-50 max-w-[88vw] text-center"
+            className="fixed bottom-28 left-1/2 -translate-x-1/2 bg-brand-deep text-white text-sm font-medium px-5 py-2.5 rounded-full shadow-xl shadow-black/30 z-50 max-w-[88vw] text-center"
           >
             {publishToast}
           </div>
@@ -530,7 +546,7 @@ function Dashboard() {
 
       <PrintableSchedule state={state} />
 
-      <BottomNav tab={tab} setTab={setTab} />
+      <AppBottomNav />
 
       {settingsOpen && (
         <SettingsSheet state={state} setState={setState} onClose={() => setSettingsOpen(false)} />
@@ -613,54 +629,70 @@ function Header({
   setState: (s: TruckState) => void;
   onOpenSettings: () => void;
 }) {
+  const isLive = state.liveSession?.isLive || state.live;
   return (
-    <header className="sticky top-0 z-40 bg-brand-sand/85 backdrop-blur-md border-b border-brand-green/5 px-4 py-3 grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
-      <div className="min-w-0 pl-1">
-        <div className="flex items-center gap-1.5">
-          <span className="size-1.5 rounded-full bg-brand-orange" />
-          <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-brand-orange">
-            TruckDash
-          </span>
+    <header className="sticky top-0 z-40 bg-brand-sand/90 backdrop-blur-xl border-b border-brand-green/8 dark:border-white/8 px-4 py-3.5">
+      <div className="max-w-md mx-auto flex items-center gap-2.5">
+        <div className="min-w-0 flex-1 pl-0.5">
+          <div className="flex items-center gap-1.5">
+            <span className="size-1.5 rounded-full bg-brand-orange shrink-0" />
+            <span className="text-[9px] font-bold uppercase tracking-[0.22em] text-brand-orange">
+              TruckDash
+            </span>
+          </div>
+          <div className="flex items-baseline gap-2 min-w-0 mt-0.5">
+            <h1 className="font-display text-xl font-bold tracking-tight truncate leading-snug">
+              {state.name}
+            </h1>
+            <Link
+              to="/this-week"
+              className="text-[9px] font-bold uppercase tracking-[0.14em] text-brand-orange/90 hover:underline shrink-0 hidden xs:inline sm:inline"
+            >
+              Week →
+            </Link>
+          </div>
+          <p className="text-[9px] font-semibold text-brand-green/50 dark:text-brand-green/45 uppercase tracking-[0.16em] mt-0.5">
+            {isLive ? "Active session" : "Off the clock"}
+          </p>
         </div>
-        <div className="flex items-baseline gap-2">
-          <h1 className="font-display text-xl font-bold tracking-tight truncate leading-tight">
-            {state.name}
-          </h1>
-          <Link
-            to="/this-week"
-            className="text-[9px] font-bold uppercase tracking-[0.18em] text-brand-orange hover:underline shrink-0"
-          >
-            This Week →
-          </Link>
-        </div>
-        <p className="text-[9px] font-semibold text-brand-green/60 uppercase tracking-[0.2em]">
-          {state.live ? "Active Session" : "Off the clock"}
-        </p>
-      </div>
 
-      <button
-        onClick={() => setState({ ...state, live: !state.live })}
-        aria-pressed={state.live}
-        className={`shrink-0 flex items-center gap-2 pl-3 pr-3.5 py-2 rounded-full border transition-colors ${
-          state.live
-            ? "bg-brand-green text-white border-brand-green"
-            : "bg-white text-brand-green/60 border-brand-green/10"
-        }`}
-      >
-        <span
-          className={`size-2 rounded-full ${state.live ? "bg-brand-gold animate-pulse" : "bg-brand-green/30"}`}
-        />
-        <span className="text-[11px] font-bold uppercase tracking-wider">
-          {state.live ? "Live" : "Offline"}
-        </span>
-      </button>
-      <button
-        onClick={onOpenSettings}
-        aria-label="Settings"
-        className="shrink-0 size-10 grid place-items-center rounded-full bg-white border border-brand-green/10 text-brand-green"
-      >
-        <GearIcon className="size-5" />
-      </button>
+        <button
+          onClick={() => {
+            const next = !isLive;
+            setState({
+              ...state,
+              live: next,
+              liveSession: {
+                ...state.liveSession,
+                isLive: next,
+                label: state.liveSession?.label || state.location,
+                updatedAt: new Date().toISOString(),
+              },
+            });
+          }}
+          aria-pressed={isLive}
+          className={`shrink-0 flex items-center gap-1.5 pl-2.5 pr-3 py-2 rounded-full border transition-colors ${
+            isLive
+              ? "bg-brand-green text-white border-brand-green dark:bg-brand-orange dark:border-brand-orange dark:text-[#0f2419]"
+              : "bg-surface text-brand-green/55 border-brand-green/10 dark:border-white/10"
+          }`}
+        >
+          <span
+            className={`size-2 rounded-full ${isLive ? "bg-brand-gold animate-pulse" : "bg-brand-green/25"}`}
+          />
+          <span className="text-[10px] font-bold uppercase tracking-wider">
+            {isLive ? "Live" : "Off"}
+          </span>
+        </button>
+        <ThemeToggle />
+        <button
+          onClick={onOpenSettings}
+          aria-label="Settings"
+          className="shrink-0 size-10 grid place-items-center rounded-full bg-surface border border-brand-green/10 dark:border-white/10 text-brand-green"
+        >
+          <GearIcon className="size-5" />
+        </button>
+      </div>
     </header>
   );
 }
@@ -715,7 +747,7 @@ function StatusCard({ state, setState }: { state: TruckState; setState: (s: Truc
   };
 
   return (
-    <section className="bg-brand-green text-white rounded-3xl p-6 shadow-xl shadow-brand-green/15">
+    <section className="bg-brand-deep text-white rounded-3xl p-6 shadow-xl shadow-black/20">
       <div className="flex justify-between items-start mb-4 gap-3">
         <div className="min-w-0 space-y-1 flex-1">
           <p className="text-brand-gold text-[10px] font-bold uppercase tracking-[0.2em]">
@@ -775,6 +807,64 @@ function StatusCard({ state, setState }: { state: TruckState; setState: (s: Truc
   );
 }
 
+/** New operator tools — Live Map, Calendar, My Listings */
+function CommandCenterLinks() {
+  const items = [
+    {
+      to: "/live-map" as const,
+      label: "Live Map",
+      hint: "Go live + pins",
+      icon: (
+        <span className="size-10 rounded-2xl bg-brand-orange/12 text-brand-orange flex items-center justify-center">
+          <span className="size-2.5 rounded-full bg-brand-orange shadow-[0_0_0_4px_rgba(184,114,44,0.2)]" />
+        </span>
+      ),
+    },
+    {
+      to: "/calendar" as const,
+      label: "Calendar",
+      hint: "Events & fairs",
+      icon: (
+        <span className="size-10 rounded-2xl bg-brand-green/8 dark:bg-white/8 text-brand-green flex items-center justify-center">
+          <CalendarIcon className="size-4.5" />
+        </span>
+      ),
+    },
+    {
+      to: "/listings" as const,
+      label: "Listings",
+      hint: "Public profile",
+      icon: (
+        <span className="size-10 rounded-2xl bg-brand-gold/15 text-brand-green flex items-center justify-center text-sm font-bold">
+          ★
+        </span>
+      ),
+    },
+  ];
+  return (
+    <section className="td-card td-card-pad">
+      <p className="td-section-label mb-3">Command center</p>
+      <div className="grid grid-cols-3 gap-2.5">
+        {items.map((it) => (
+          <Link
+            key={it.to}
+            to={it.to}
+            className="flex flex-col items-center gap-2 rounded-2xl bg-brand-sand/90 dark:bg-white/5 border border-brand-green/6 dark:border-white/6 py-3.5 px-2 active:scale-[0.98] transition hover:border-brand-orange/25"
+          >
+            {it.icon}
+            <span className="text-center">
+              <span className="block text-[11px] font-bold text-brand-green tracking-tight">
+                {it.label}
+              </span>
+              <span className="block text-[9px] text-brand-green/40 mt-0.5">{it.hint}</span>
+            </span>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function QuickActions({
   onOpenMenu,
   onOpenFlyer,
@@ -788,16 +878,16 @@ function QuickActions({
     <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
       <Link
         to="/this-week"
-        className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-3xl border border-brand-green/5 shadow-sm active:scale-[0.98] transition"
+        className="flex flex-col items-center justify-center gap-2 td-card p-4 active:scale-[0.98] transition"
       >
-        <div className="size-11 rounded-2xl bg-brand-green/10 flex items-center justify-center text-brand-green">
+        <div className="size-11 rounded-2xl bg-brand-green/10 dark:bg-white/8 flex items-center justify-center text-brand-green">
           <CalendarIcon className="size-5" />
         </div>
         <span className="text-xs font-semibold text-brand-green">This Week</span>
       </Link>
       <button
         onClick={onOpenCatering}
-        className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-3xl border border-brand-green/5 shadow-sm active:scale-[0.98] transition"
+        className="flex flex-col items-center justify-center gap-2 td-card p-4 active:scale-[0.98] transition"
       >
         <div className="size-11 rounded-2xl bg-brand-orange/10 flex items-center justify-center text-brand-orange">
           <CateringIcon className="size-5" />
@@ -806,7 +896,7 @@ function QuickActions({
       </button>
       <button
         onClick={onOpenMenu}
-        className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-3xl border border-brand-green/5 shadow-sm active:scale-[0.98] transition"
+        className="flex flex-col items-center justify-center gap-2 td-card p-4 active:scale-[0.98] transition"
       >
         <div className="size-11 rounded-2xl bg-brand-orange/10 flex items-center justify-center text-brand-orange">
           <ForkKnifeIcon className="size-5" />
@@ -815,7 +905,7 @@ function QuickActions({
       </button>
       <button
         onClick={onOpenFlyer}
-        className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-3xl border border-brand-green/5 shadow-sm active:scale-[0.98] transition"
+        className="flex flex-col items-center justify-center gap-2 td-card p-4 active:scale-[0.98] transition"
       >
         <div className="size-11 rounded-2xl bg-brand-gold/15 flex items-center justify-center text-brand-green">
           <SparklesIcon className="size-5" />
@@ -860,56 +950,58 @@ function PublishToWebsiteCard({
   const storagePath = `menu-data/${truckId}/menu.json`;
 
   return (
-    <section className="bg-white rounded-3xl border border-brand-green/10 shadow-sm p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-brand-orange">🌾</span>
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-green/60">
-              SHARED WITH YOUR WEBSITE
+    <section className="td-card td-card-pad">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-brand-orange" aria-hidden>
+            🌾
+          </span>
+          <span className="td-section-label text-brand-green/50 dark:text-brand-green/45 !tracking-[0.18em]">
+            Shared with your website
+          </span>
+        </div>
+        <h3 className="font-display text-xl mt-2 tracking-tight leading-snug">
+          Publish Updates to My Website
+        </h3>
+        <p className="text-sm text-brand-green/65 dark:text-brand-green/55 mt-2 leading-relaxed">
+          One tap uploads your full menu + schedule to{" "}
+          <code className="text-[11px] bg-brand-sand dark:bg-white/8 px-1.5 py-0.5 rounded-md">
+            {storagePath}
+          </code>
+          . Your public site loads that file automatically.
+        </p>
+        <p className="text-[11px] mt-2.5" suppressHydrationWarning>
+          {supabaseReady ? (
+            <span className="text-brand-green/60 font-medium">
+              Connected · {getSupabaseConfigHint()}
             </span>
-          </div>
-          <h3 className="font-display text-xl mt-1">Publish Updates to My Website</h3>
-          <p className="text-sm text-brand-green/70 mt-1 pr-2">
-            One tap uploads your full menu + schedule to{" "}
-            <code className="text-[11px] bg-brand-sand px-1 rounded">{storagePath}</code>. Your
-            public site loads that file automatically.
-          </p>
-          <p className="text-[11px] mt-2" suppressHydrationWarning>
-            {supabaseReady ? (
-              <span className="text-brand-green/70 font-medium">
-                Connected · {getSupabaseConfigHint()}
-              </span>
-            ) : (
-              <span className="text-brand-orange font-medium">
-                Not connected — add Supabase keys to .env, then run{" "}
-                <code className="bg-brand-sand px-1 rounded">npm run setup</code>
-              </span>
+          ) : (
+            <span className="text-brand-orange font-medium">
+              Not connected — add Supabase keys, then{" "}
+              <code className="bg-brand-sand dark:bg-white/8 px-1 rounded">npm run setup</code>
+            </span>
+          )}
+        </p>
+        {formatted && (
+          <p className="text-[11px] text-brand-green/45 mt-1" suppressHydrationWarning>
+            Last published: {formatted}
+            {cloudEnabled && <span className="ml-1 text-brand-orange/80">· sync on</span>}
+            {cloudPending && (
+              <span className="ml-1 text-brand-orange font-semibold">· pending</span>
             )}
           </p>
-          {formatted && (
-            <p className="text-[11px] text-brand-green/50 mt-1" suppressHydrationWarning>
-              Last published: {formatted}
-              {cloudEnabled && (
-                <span className="ml-1 text-brand-orange/80">· sync on</span>
-              )}
-              {cloudPending && (
-                <span className="ml-1 text-brand-orange font-semibold">· pending</span>
-              )}
-            </p>
-          )}
-        </div>
+        )}
       </div>
 
       <button
         onClick={onPublish}
         disabled={busy}
-        className="mt-4 w-full flex items-center justify-center gap-2 bg-brand-orange hover:bg-[#a36624] active:scale-[0.985] transition text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-brand-orange/25 disabled:opacity-70"
+        className="mt-5 w-full flex items-center justify-center gap-2 bg-brand-orange hover:brightness-95 active:scale-[0.985] transition text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-brand-orange/20 disabled:opacity-70"
       >
         {busy ? "Publishing…" : "Publish Updates to My Website"}
       </button>
 
-      <div className="mt-3 flex items-center justify-center gap-4 text-xs flex-wrap">
+      <div className="mt-4 flex items-center justify-center gap-3 text-xs flex-wrap">
         <Link
           to="/website"
           search={{ truck: truckId }}
@@ -918,15 +1010,23 @@ function PublishToWebsiteCard({
         >
           Preview website ↗
         </Link>
-        <span className="text-brand-green/30">·</span>
-        <Link to="/menu" target="_blank" className="text-brand-green/70 hover:text-brand-green">
+        <span className="text-brand-green/25">·</span>
+        <Link
+          to="/menu"
+          target="_blank"
+          className="text-brand-green/60 hover:text-brand-green font-medium"
+        >
           Live menu
         </Link>
-        <span className="text-brand-green/30">·</span>
-        <Link to="/schedule" target="_blank" className="text-brand-green/70 hover:text-brand-green">
+        <span className="text-brand-green/25">·</span>
+        <Link
+          to="/schedule"
+          target="_blank"
+          className="text-brand-green/60 hover:text-brand-green font-medium"
+        >
           Schedule
         </Link>
-        <span className="text-brand-green/30">·</span>
+        <span className="text-brand-green/25">·</span>
         <button
           onClick={async () => {
             try {
@@ -935,14 +1035,14 @@ function PublishToWebsiteCard({
               alert("Publish first, then you can export the JSON for other websites.");
             }
           }}
-          className="text-brand-green/70 hover:text-brand-green"
+          className="text-brand-green/60 hover:text-brand-green font-medium"
         >
           Export JSON
         </button>
       </div>
 
-      <p className="text-center text-[10px] text-brand-green/50 mt-2">
-        Works offline — queues and syncs when you reconnect. Setup guide: docs/CONNECT.md
+      <p className="text-center text-[10px] text-brand-green/40 mt-3 leading-relaxed">
+        Works offline — queues and syncs when you reconnect.
       </p>
     </section>
   );
@@ -950,23 +1050,33 @@ function PublishToWebsiteCard({
 
 function MenuHighlightsCard({ items, onEdit }: { items: MenuItem[]; onEdit: () => void }) {
   return (
-    <section className="bg-white rounded-3xl p-5 border border-brand-green/5 shadow-sm">
-      <div className="flex justify-between items-baseline mb-3">
-        <h3 className="font-display text-lg">Menu Highlights</h3>
+    <section className="td-card td-card-pad">
+      <div className="flex justify-between items-baseline gap-3 mb-4">
+        <h3 className="font-display text-lg tracking-tight text-foreground">Menu Highlights</h3>
         <button
           onClick={onEdit}
-          className="text-[11px] text-brand-orange font-bold uppercase tracking-wider"
+          className="text-[11px] text-brand-orange font-bold uppercase tracking-wider shrink-0"
         >
           Manage
         </button>
       </div>
-      <ul className="divide-y divide-brand-green/5">
+      <ul className="divide-y divide-border">
         {items.map((item) => (
-          <li key={item.id} className="flex justify-between items-center py-3 first:pt-0 last:pb-0">
-            <span className="text-sm font-medium truncate pr-3">{item.name}</span>
-            <span className="text-sm font-semibold text-brand-orange shrink-0">${item.price}</span>
+          <li
+            key={item.id}
+            className="flex justify-between items-center gap-3 py-3 first:pt-0 last:pb-0"
+          >
+            <span className="text-sm font-semibold text-foreground truncate pr-2">
+              {item.name}
+            </span>
+            <span className="text-sm font-bold text-brand-orange shrink-0 tabular-nums">
+              ${item.price}
+            </span>
           </li>
         ))}
+        {items.length === 0 && (
+          <li className="py-2 text-sm text-muted-foreground">No menu items yet.</li>
+        )}
       </ul>
     </section>
   );
@@ -2483,15 +2593,21 @@ function SettingsSheet({
         className="absolute inset-0 bg-brand-green/40 backdrop-blur-sm"
       />
       <div className="relative w-full max-w-md bg-brand-sand rounded-t-[2rem] sm:rounded-3xl p-6 space-y-5 shadow-2xl max-h-[85vh] overflow-y-auto">
-        <div className="flex justify-between items-baseline">
-          <h2 className="font-display text-2xl">Settings</h2>
-          <button
-            onClick={onClose}
-            className="text-xs font-bold uppercase tracking-wider text-brand-orange"
-          >
-            Done
-          </button>
+        <div className="flex justify-between items-center gap-3">
+          <h2 className="font-display text-2xl tracking-tight">Settings</h2>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <button
+              onClick={onClose}
+              className="text-xs font-bold uppercase tracking-wider text-brand-orange"
+            >
+              Done
+            </button>
+          </div>
         </div>
+        <p className="text-xs text-brand-green/50 -mt-2">
+          Appearance, truck profile, and cloud website sync.
+        </p>
 
         <Field label="Truck name">
           <input
@@ -2830,26 +2946,30 @@ function PrinterIcon(p: React.SVGProps<SVGSVGElement>) {
 function WeekPreviewCard({ schedule }: { schedule: ScheduleDay[] }) {
   const upcoming = schedule.filter((d) => !d.closed).slice(0, 3);
   return (
-    <section className="bg-white rounded-3xl p-5 border border-brand-green/5 shadow-sm">
-      <div className="flex justify-between items-baseline mb-3">
-        <h3 className="font-display text-lg">This Week</h3>
+    <section className="td-card td-card-pad">
+      <div className="flex justify-between items-baseline gap-3 mb-4">
+        <h3 className="font-display text-lg tracking-tight text-foreground">This Week</h3>
         <Link
           to="/this-week"
-          className="text-[11px] text-brand-orange font-bold uppercase tracking-wider"
+          className="text-[11px] text-brand-orange font-bold uppercase tracking-wider shrink-0"
         >
           View &amp; Edit
         </Link>
       </div>
-      <ul className="space-y-2">
+      <ul className="space-y-3">
+        {upcoming.length === 0 && (
+          <li className="text-sm text-muted-foreground">No open days this week.</li>
+        )}
         {upcoming.map((d) => (
           <li key={d.id} className="flex items-center gap-3">
-            <span className="shrink-0 min-w-11 text-center px-2 py-1 rounded-lg bg-brand-orange text-white text-[11px] font-bold tracking-wider">
+            <span className="shrink-0 min-w-11 text-center px-2 py-1.5 rounded-lg bg-brand-orange text-white text-[11px] font-bold tracking-wider shadow-sm shadow-brand-orange/20">
               {d.day}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-brand-green truncate">{d.neighborhood}</p>
-              <p className="text-[11px] text-brand-green/60 truncate">
-                {d.spot} · {d.hoursStart}–{d.hoursEnd}
+              <p className="text-sm font-semibold text-foreground truncate">{d.neighborhood}</p>
+              <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                {d.spot}
+                {d.hoursStart ? ` · ${d.hoursStart}–${d.hoursEnd}` : ""}
               </p>
             </div>
           </li>

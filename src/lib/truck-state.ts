@@ -42,6 +42,55 @@ export type ShareFormat = "portrait" | "story" | "square";
 export type BackgroundId =
   "paper" | "cream-grid" | "kraft" | "sunset-gradient" | "sage-linen" | "charcoal-grain";
 
+/** Live “I’m open now” session (GPS / pin + note) — operator command center */
+export type LiveSession = {
+  isLive: boolean;
+  /** Human label: “Monticello Market · Courthouse Square” */
+  label: string;
+  note: string;
+  lat: number | null;
+  lng: number | null;
+  /** ISO when live was last toggled on/off */
+  updatedAt: string;
+};
+
+/** Extra stop on the road today (multi-stop Live Map) */
+export type LiveStop = {
+  id: string;
+  label: string;
+  time: string; // e.g. "11:00 AM – 2:00 PM" or free text
+  lat: number | null;
+  lng: number | null;
+  note?: string;
+};
+
+/** One-off or recurring events (festivals, catering) — Calendar */
+export type TruckEvent = {
+  id: string;
+  title: string;
+  /** YYYY-MM-DD */
+  date: string;
+  hoursStart: string;
+  hoursEnd: string;
+  location: string;
+  /** festival | catering | market | other */
+  kind: "festival" | "catering" | "market" | "other";
+  recurring: boolean;
+  /** If recurring: weekly weekday 0–6 (Sun–Sat) optional */
+  recurringWeekday?: number | null;
+  note?: string;
+};
+
+/** Public-facing profile card for My Listings manager */
+export type ListingProfile = {
+  tagline: string;
+  description: string;
+  cuisine: string;
+  serviceArea: string;
+  photos: string[]; // data URLs or remote
+  showOnPublicSite: boolean;
+};
+
 export type TruckState = {
   name: string;
   live: boolean;
@@ -60,6 +109,14 @@ export type TruckState = {
   schedule: ScheduleDay[];
   // Catering feature (owner-configurable, used by public form + dashboard)
   catering: CateringSettings;
+  /** Live Map session (Go Live / End Session) */
+  liveSession: LiveSession;
+  /** Extra stops today on Live Map */
+  liveStops: LiveStop[];
+  /** Calendar events (festivals, catering, markets) */
+  events: TruckEvent[];
+  /** My Listings profile for public-facing card */
+  listing: ListingProfile;
 };
 
 export type CateringSettings = {
@@ -186,9 +243,55 @@ export const DEFAULT_CATERING: CateringSettings = {
   ],
 };
 
+export const DEFAULT_LIVE_SESSION: LiveSession = {
+  isLive: false,
+  label: "",
+  note: "",
+  lat: null,
+  lng: null,
+  updatedAt: "",
+};
+
+export const DEFAULT_LISTING: ListingProfile = {
+  tagline: "Lake Cumberland BBQ · Kentucky soul",
+  description:
+    "Family-run food truck serving bourbon-glazed classics around Monticello, Russell Springs, Jamestown, and the lake.",
+  cuisine: "BBQ · Southern",
+  serviceArea: "Lake Cumberland · Monticello · Russell Springs · Jamestown",
+  photos: [],
+  showOnPublicSite: true,
+};
+
+/** Seed a couple of sample calendar events (Kentucky-flavored) */
+export const DEFAULT_EVENTS: TruckEvent[] = [
+  {
+    id: "ev1",
+    title: "Food Truck Friday",
+    date: "", // filled relative at runtime if empty — keep as weekly via schedule
+    hoursStart: "5:00 PM",
+    hoursEnd: "9:00 PM",
+    location: "Russell Springs · Downtown",
+    kind: "market",
+    recurring: true,
+    recurringWeekday: 5, // Friday
+    note: "Weekly downtown block party",
+  },
+  {
+    id: "ev2",
+    title: "Wayne County Fair weekend",
+    date: "2026-07-17",
+    hoursStart: "11:00 AM",
+    hoursEnd: "9:00 PM",
+    location: "Wayne County Fairgrounds · Monticello",
+    kind: "festival",
+    recurring: false,
+    note: "Festival booth — load-in 9am",
+  },
+];
+
 export const DEFAULT_STATE: TruckState = {
   name: "Bluegrass Kitchen",
-  live: true,
+  live: false,
   location: "Food Truck Friday · Russell Springs",
   hoursStart: "5:00 PM",
   hoursEnd: "9:00 PM",
@@ -208,12 +311,16 @@ export const DEFAULT_STATE: TruckState = {
   phone: "(555) 123-4567",
   schedule: DEFAULT_SCHEDULE,
   catering: DEFAULT_CATERING,
+  liveSession: DEFAULT_LIVE_SESSION,
+  liveStops: [],
+  events: DEFAULT_EVENTS,
+  listing: DEFAULT_LISTING,
 };
 
-export const APP_VERSION = "0.5.0";
+export const APP_VERSION = "0.6.0";
 export const STORAGE_KEY = "truckdash.state.v1";
 export const VERSION_KEY = "truckdash.version";
-export const ONBOARD_KEY = "truckdash.onboarded.v5";
+export const ONBOARD_KEY = "truckdash.onboarded.v6";
 
 /**
  * Hook for loading/saving the full TruckState.
@@ -237,6 +344,10 @@ export function useTruckState() {
           ...parsed,
           schedule: parsed.schedule ?? DEFAULT_STATE.schedule,
           catering: parsed.catering ?? DEFAULT_STATE.catering,
+          liveSession: parsed.liveSession ?? DEFAULT_STATE.liveSession,
+          liveStops: parsed.liveStops ?? DEFAULT_STATE.liveStops,
+          events: parsed.events ?? DEFAULT_STATE.events,
+          listing: { ...DEFAULT_LISTING, ...(parsed.listing ?? {}) },
         });
       }
     } catch {

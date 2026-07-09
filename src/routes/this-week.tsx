@@ -16,6 +16,7 @@ import {
 } from "@/lib/publishService";
 import { formatPublishedShort, formatPublishedTime, formatWeekOf } from "@/lib/format-local";
 import { useHydrated } from "@/hooks/use-hydrated";
+import { AppBottomNav } from "@/components/app-bottom-nav";
 
 export const Route = createFileRoute("/this-week")({
   head: () => ({
@@ -540,9 +541,10 @@ function ThisWeekPage() {
       )}
 
       {/* Footer */}
-      <footer className="text-center pt-8 pb-6 text-[10px] text-brand-green/40">
+      <footer className="text-center pt-8 pb-24 text-[10px] text-brand-green/40">
         TruckDash · Bluegrass Kitchen · Kentucky
       </footer>
+      <AppBottomNav />
     </div>
   );
 }

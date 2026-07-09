@@ -13,6 +13,7 @@
  */
 
 import type { MenuItem, ScheduleDay, TruckState } from "./truck-state";
+import { DEMO_FEATURE_MESSAGES, isDemoMode } from "./demo-mode";
 import {
   ensureFreshSession,
   getAuthStatus,
@@ -395,6 +396,11 @@ export async function publishData(
   data: Omit<PublishedPayload, "lastPublished" | "version">,
   options?: { truckId?: string; skipCloud?: boolean },
 ): Promise<PublishResult> {
+  // Hard stop in public demo — no cloud (or faux-local) publish
+  if (isDemoMode) {
+    throw new Error(DEMO_FEATURE_MESSAGES.publish_website);
+  }
+
   ensureOnlineHook();
 
   const published: PublishedPayload = {
@@ -408,7 +414,10 @@ export async function publishData(
 
   // Always prefer cluckin-chaos unless an explicit truckId option is passed
   const truckId =
-    options?.truckId?.trim() || getConfiguredTruckId().trim() || DEFAULT_TRUCK_ID || "cluckin-chaos";
+    options?.truckId?.trim() ||
+    getConfiguredTruckId().trim() ||
+    DEFAULT_TRUCK_ID ||
+    "cluckin-chaos";
   const fullPath = menuJsonFullPath(truckId);
   const publicUrl = menuJsonPublicUrl(truckId);
   const supabaseHost = getSupabaseUrl();
@@ -493,6 +502,9 @@ export async function publishData(
 }
 
 export async function exportPublishedJSON(): Promise<void> {
+  if (isDemoMode) {
+    throw new Error(DEMO_FEATURE_MESSAGES.export_json);
+  }
   const data = await getPublishedData();
   if (!data.lastPublished) throw new Error("Publish first.");
   downloadWebsiteMenuJson(data, getConfiguredTruckId());

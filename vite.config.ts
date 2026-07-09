@@ -54,7 +54,10 @@ export default defineConfig({
   },
   vite: {
     plugins: [loadSupabaseServerEnvPlugin()],
+    // Expose NEXT_PUBLIC_* (user-facing demo toggle) alongside default VITE_*.
+    // Demo Mode: NEXT_PUBLIC_DEMO_MODE=true | VITE_DEMO_MODE=true
+    envPrefix: ["VITE_", "NEXT_PUBLIC_"],
     // Keep service role available to SSR/server-fn process.env at runtime
-    // (do NOT put SUPABASE_ in envPrefix — that would ship it to the browser).
+    // (do NOT put SUPABASE_ in envPrefix — that would ship secrets to the browser).
   },
 });

@@ -15,6 +15,10 @@ import {
   DEFAULT_TRUCK_ID,
 } from "@/lib/publishService";
 import { formatPublishedShort, formatPublishedTime, formatWeekOf } from "@/lib/format-local";
+import { BuyFullVersionButton } from "@/components/buy-full-version-button";
+import { DemoInlineNotice } from "@/components/demo-banner";
+import { useDemoGuard } from "@/hooks/use-demo-guard";
+import { DEMO_FEATURE_MESSAGES, isDemoMode } from "@/lib/demo-mode";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { AppBottomNav } from "@/components/app-bottom-nav";
 import { ThemeToggle } from "@/hooks/use-theme";
@@ -85,6 +89,7 @@ function ThisWeekPage() {
   const [weekOfLabel, setWeekOfLabel] = useState("");
   const [weekOfShortLabel, setWeekOfShortLabel] = useState("This Week");
   const socialRef = useRef<HTMLDivElement | null>(null);
+  const { allowOrToast, DemoToast } = useDemoGuard();
 
   useEffect(() => {
     if (!hydrated) return;
@@ -119,6 +124,7 @@ function ThisWeekPage() {
   const schedule = state.schedule;
 
   const handlePublishFromWeek = async () => {
+    if (!allowOrToast("publish_website")) return;
     setPubBusy(true);
     try {
       const truckId = getConfiguredTruckId().trim() || DEFAULT_TRUCK_ID || "cluckin-chaos";
@@ -196,6 +202,7 @@ function ThisWeekPage() {
   };
 
   const downloadSocialPng = async () => {
+    if (!allowOrToast("export_flyer")) return;
     if (!socialRef.current) return;
     setBusy("png");
     try {
@@ -219,6 +226,7 @@ function ThisWeekPage() {
   };
 
   const shareSocialNative = async () => {
+    if (!allowOrToast("share_image")) return;
     setBusy("share");
     try {
       const blob = await captureSocialBlob();
@@ -271,7 +279,10 @@ function ThisWeekPage() {
       <header className="sticky top-0 z-40 bg-brand-sand/90 backdrop-blur-md border-b border-[color:var(--border)] px-4 py-3">
         <div className="mx-auto max-w-3xl flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link to="/" className="text-[color:var(--td-ink-muted)] hover:text-brand-orange transition">
+            <Link
+              to="/"
+              className="text-[color:var(--td-ink-muted)] hover:text-brand-orange transition"
+            >
               ← Home
             </Link>
             <div>
@@ -307,6 +318,8 @@ function ThisWeekPage() {
       </header>
 
       <main className="mx-auto max-w-3xl px-4 pt-6 space-y-6">
+        {isDemoMode && <DemoInlineNotice message={DEMO_FEATURE_MESSAGES.publish_website} />}
+
         {/* Intro + actions */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
@@ -314,7 +327,7 @@ function ThisWeekPage() {
               Update locations, hours, and notes for the week. Everything saves automatically to
               this device. Perfect for printing or posting on social each Monday.
             </p>
-            {lastPubLabel && (
+            {lastPubLabel && !isDemoMode && (
               <p className="text-[11px] text-brand-orange mt-1" suppressHydrationWarning>
                 Last published to website: {lastPubLabel}
               </p>
@@ -333,13 +346,17 @@ function ThisWeekPage() {
             >
               Copy as Text
             </button>
-            <button
-              onClick={handlePublishFromWeek}
-              disabled={pubBusy}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand-orange text-white px-4 py-2 text-sm font-bold active:scale-[0.985] transition disabled:opacity-70"
-            >
-              {pubBusy ? "Publishing…" : "Publish to My Website"}
-            </button>
+            {isDemoMode ? (
+              <BuyFullVersionButton size="md" />
+            ) : (
+              <button
+                onClick={handlePublishFromWeek}
+                disabled={pubBusy}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand-orange text-white px-4 py-2 text-sm font-bold active:scale-[0.985] transition disabled:opacity-70"
+              >
+                {pubBusy ? "Publishing…" : "Publish to My Website"}
+              </button>
+            )}
           </div>
         </div>
 
@@ -446,7 +463,10 @@ function ThisWeekPage() {
                   </div>
                   <h3 className="font-display text-2xl">Share This Week</h3>
                 </div>
-                <button onClick={closeSocial} className="text-[color:var(--td-ink-muted)] font-bold px-2">
+                <button
+                  onClick={closeSocial}
+                  className="text-[color:var(--td-ink-muted)] font-bold px-2"
+                >
                   Done
                 </button>
               </div>
@@ -505,20 +525,25 @@ function ThisWeekPage() {
 
           {socialOpen && (
             <>
+              {isDemoMode && (
+                <div className="mb-3">
+                  <BuyFullVersionButton size="lg" />
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <button
                   onClick={downloadSocialPng}
                   disabled={busy !== null}
                   className="w-full bg-brand-green text-white font-semibold py-3 rounded-2xl active:scale-[0.985] disabled:opacity-60"
                 >
-                  {busy === "png" ? "Rendering…" : "Download PNG"}
+                  {busy === "png" ? "Rendering…" : isDemoMode ? "Download PNG 🔒" : "Download PNG"}
                 </button>
                 <button
                   onClick={shareSocialNative}
                   disabled={busy !== null}
                   className="w-full bg-brand-orange text-white font-semibold py-3 rounded-2xl active:scale-[0.985] disabled:opacity-60"
                 >
-                  {busy === "share" ? "Preparing…" : "Share Image"}
+                  {busy === "share" ? "Preparing…" : isDemoMode ? "Share Image 🔒" : "Share Image"}
                 </button>
                 <button
                   onClick={copyTextSchedule}
@@ -529,8 +554,9 @@ function ThisWeekPage() {
               </div>
 
               <p className="text-center text-[10px] text-[color:var(--td-ink-muted)] pt-4">
-                High-resolution export. Use on Instagram, Facebook, or stories. Looks great printed
-                too.
+                {isDemoMode
+                  ? "Demo · high-res social export unlocks with the full version."
+                  : "High-resolution export. Use on Instagram, Facebook, or stories. Looks great printed too."}
               </p>
             </>
           )}
@@ -542,6 +568,7 @@ function ThisWeekPage() {
           {toast}
         </div>
       )}
+      <DemoToast />
 
       {/* Footer */}
       <footer className="text-center pt-8 pb-24 text-[10px] text-[color:var(--td-ink-muted)]">
@@ -655,7 +682,9 @@ function ScheduleDayCard({
               onChange={(e) => onChange({ closed: e.target.checked })}
               className="size-4 accent-brand-orange"
             />
-            <span className="font-medium text-[color:var(--td-ink)]">Closed / prep / off this day</span>
+            <span className="font-medium text-[color:var(--td-ink)]">
+              Closed / prep / off this day
+            </span>
           </label>
         </div>
       </div>

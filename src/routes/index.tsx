@@ -48,8 +48,12 @@ import {
 import { isSupabaseConfigured, getSupabaseConfigHint, getSupabaseUrl } from "@/lib/supabase";
 import { formatPublishedShort, formatPublishedTime, formatWeekOf } from "@/lib/format-local";
 import { useHydrated } from "@/hooks/use-hydrated";
+import { useDemoGuard } from "@/hooks/use-demo-guard";
 import { AppBottomNav } from "@/components/app-bottom-nav";
+import { BuyFullVersionButton, BuyFullVersionCard } from "@/components/buy-full-version-button";
+import { DemoInlineNotice } from "@/components/demo-banner";
 import { ThemeToggle } from "@/hooks/use-theme";
+import { DEMO_FEATURE_MESSAGES, isDemoMode } from "@/lib/demo-mode";
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>): { tab?: string } => ({
@@ -523,6 +527,11 @@ function Dashboard() {
   }, [hydrated]);
 
   const handlePublishToWebsite = async () => {
+    if (isDemoMode) {
+      setPublishToast(DEMO_FEATURE_MESSAGES.publish_website);
+      setTimeout(() => setPublishToast(null), 5000);
+      return;
+    }
     setPublishBusy(true);
     try {
       // Explicit truck path: menu-data/cluckin-chaos/menu.json (or Settings truck id)
@@ -605,6 +614,8 @@ function Dashboard() {
       <main className="mx-auto max-w-md px-4 pt-5 space-y-5 print:hidden td-rise">
         {tab === "home" && (
           <>
+            {isDemoMode && <BuyFullVersionCard />}
+
             <AppModeToggle
               mode={state.appMode ?? "full-sync"}
               onChange={(mode) => setState({ ...state, appMode: mode })}
@@ -654,9 +665,7 @@ function Dashboard() {
                   cloudEnabled={cloudEnabled}
                   cloudPending={cloudPending}
                   truckId={
-                    hydrated
-                      ? getConfiguredTruckId().trim() || DEFAULT_TRUCK_ID
-                      : DEFAULT_TRUCK_ID
+                    hydrated ? getConfiguredTruckId().trim() || DEFAULT_TRUCK_ID : DEFAULT_TRUCK_ID
                   }
                   supabaseReady={hydrated ? isSupabaseConfigured() : false}
                 />
@@ -680,13 +689,16 @@ function Dashboard() {
         )}
 
         {tab === "flyer" && (
-          <FlyerSection
-            state={state}
-            setState={setState}
-            flyerRef={flyerRef}
-            standalone
-            socialFocus={state.appMode === "social-flyer"}
-          />
+          <>
+            {isDemoMode && <DemoInlineNotice message={DEMO_FEATURE_MESSAGES.export_flyer} />}
+            <FlyerSection
+              state={state}
+              setState={setState}
+              flyerRef={flyerRef}
+              standalone
+              socialFocus={state.appMode === "social-flyer"}
+            />
+          </>
         )}
 
         {tab === "catering" && (
@@ -699,13 +711,16 @@ function Dashboard() {
           </p>
         </footer>
 
-        {/* Publish toast (warm, non-intrusive) */}
+        {/* Publish / demo toast (warm, non-intrusive) */}
         {publishToast && (
           <div
             role="status"
-            className="fixed bottom-28 left-1/2 -translate-x-1/2 bg-brand-deep text-white text-sm font-medium px-5 py-2.5 rounded-full shadow-xl shadow-black/30 z-50 max-w-[88vw] text-center"
+            className="fixed bottom-28 left-1/2 -translate-x-1/2 bg-brand-deep text-white text-sm font-medium px-5 py-2.5 rounded-2xl shadow-xl shadow-black/30 z-50 max-w-[min(88vw,22rem)] text-center space-y-2"
           >
-            {publishToast}
+            <p>{publishToast}</p>
+            {isDemoMode && /full[- ]version|unlock/i.test(publishToast) && (
+              <BuyFullVersionButton size="sm" className="!w-full" />
+            )}
           </div>
         )}
       </main>
@@ -786,13 +801,7 @@ function OnboardingModal({ onDone, onSkip }: { onDone: () => void; onSkip: () =>
   );
 }
 
-function AppModeToggle({
-  mode,
-  onChange,
-}: {
-  mode: AppMode;
-  onChange: (m: AppMode) => void;
-}) {
+function AppModeToggle({ mode, onChange }: { mode: AppMode; onChange: (m: AppMode) => void }) {
   return (
     <section className="td-card p-1.5">
       <div className="grid grid-cols-2 gap-1">
@@ -869,42 +878,42 @@ function SocialFlyerHero({
           website publish required.
         </p>
         <div className="flex flex-wrap gap-2 pt-1">
-          {(["lakecumberland", "lakesunset", "bourbonbarrel", "festival", "rustic"] as TemplateId[]).map(
-            (id) => {
-              const t = TEMPLATES[id];
-              if (!t) return null;
-              const active = state.template === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() =>
-                    setState({
-                      ...state,
-                      template: id,
-                      background:
-                        id === "lakesunset"
-                          ? "lake-dusk"
-                          : id === "bourbonbarrel"
-                            ? "bourbon-oak"
-                            : id === "festival"
-                              ? "festival-lights"
-                              : id === "rustic"
-                                ? "kraft"
-                                : "sage-linen",
-                    })
-                  }
-                  className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border transition ${
-                    active
-                      ? "bg-brand-orange text-white border-brand-orange"
-                      : "bg-[color:var(--surface)] text-[color:var(--td-ink)] border-[color:var(--border)]"
-                  }`}
-                >
-                  {t.label}
-                </button>
-              );
-            },
-          )}
+          {(
+            ["lakecumberland", "lakesunset", "bourbonbarrel", "festival", "rustic"] as TemplateId[]
+          ).map((id) => {
+            const t = TEMPLATES[id];
+            if (!t) return null;
+            const active = state.template === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() =>
+                  setState({
+                    ...state,
+                    template: id,
+                    background:
+                      id === "lakesunset"
+                        ? "lake-dusk"
+                        : id === "bourbonbarrel"
+                          ? "bourbon-oak"
+                          : id === "festival"
+                            ? "festival-lights"
+                            : id === "rustic"
+                              ? "kraft"
+                              : "sage-linen",
+                  })
+                }
+                className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border transition ${
+                  active
+                    ? "bg-brand-orange text-white border-brand-orange"
+                    : "bg-[color:var(--surface)] text-[color:var(--td-ink)] border-[color:var(--border)]"
+                }`}
+              >
+                {t.label}
+              </button>
+            );
+          })}
         </div>
       </div>
       <div className="px-5 py-4 border-t border-[color:var(--border)] space-y-3">
@@ -982,11 +991,7 @@ function Header({
             )}
           </div>
           <p className="text-[9px] font-semibold text-[color:var(--td-ink-muted)] uppercase tracking-[0.16em] mt-0.5">
-            {social
-              ? "Flyer & share mode"
-              : isLive
-                ? "Active session"
-                : "Off the clock"}
+            {social ? "Flyer & share mode" : isLive ? "Active session" : "Off the clock"}
           </p>
         </div>
 
@@ -1019,6 +1024,12 @@ function Header({
             {isLive ? "Live" : "Off"}
           </span>
         </button>
+        {isDemoMode && (
+          <BuyFullVersionButton
+            size="sm"
+            className="!hidden xs:!inline-flex sm:!inline-flex !px-2.5 !py-1.5 !text-[10px]"
+          />
+        )}
         <ThemeToggle />
         <button
           type="button"
@@ -1302,30 +1313,43 @@ function PublishToWebsiteCard({
             🌾
           </span>
           <span className="td-section-label !tracking-[0.18em]">Shared with your website</span>
+          {isDemoMode && (
+            <span className="ml-auto text-[9px] font-bold uppercase tracking-wider text-brand-orange bg-brand-orange/10 px-2 py-0.5 rounded-full">
+              Full version
+            </span>
+          )}
         </div>
         <h3 className="font-display text-xl mt-2 tracking-tight leading-snug text-[color:var(--td-ink)]">
           Publish Updates to My Website
         </h3>
         <p className="text-sm text-[color:var(--td-ink-muted)] mt-2 leading-relaxed">
-          One tap uploads your full menu + schedule to{" "}
-          <code className="text-[11px] bg-[color:var(--surface-2)] border border-[color:var(--border)] px-1.5 py-0.5 rounded-md text-[color:var(--td-ink)]">
-            {storagePath}
-          </code>
-          . Your public site loads that file automatically.
-        </p>
-        <p className="text-[11px] mt-2.5" suppressHydrationWarning>
-          {supabaseReady ? (
-            <span className="text-[color:var(--td-ink-muted)] font-medium">
-              Connected · {getSupabaseConfigHint()}
-            </span>
+          {isDemoMode ? (
+            "Preview your public site anytime. Going live (upload menu + schedule) unlocks with the full version."
           ) : (
-            <span className="text-brand-orange font-medium">
-              Not connected — add Supabase keys, then{" "}
-              <code className="bg-[color:var(--surface-2)] px-1 rounded">npm run setup</code>
-            </span>
+            <>
+              One tap uploads your full menu + schedule to{" "}
+              <code className="text-[11px] bg-[color:var(--surface-2)] border border-[color:var(--border)] px-1.5 py-0.5 rounded-md text-[color:var(--td-ink)]">
+                {storagePath}
+              </code>
+              . Your public site loads that file automatically.
+            </>
           )}
         </p>
-        {formatted && (
+        {!isDemoMode && (
+          <p className="text-[11px] mt-2.5" suppressHydrationWarning>
+            {supabaseReady ? (
+              <span className="text-[color:var(--td-ink-muted)] font-medium">
+                Connected · {getSupabaseConfigHint()}
+              </span>
+            ) : (
+              <span className="text-brand-orange font-medium">
+                Not connected — add Supabase keys, then{" "}
+                <code className="bg-[color:var(--surface-2)] px-1 rounded">npm run setup</code>
+              </span>
+            )}
+          </p>
+        )}
+        {formatted && !isDemoMode && (
           <p className="text-[11px] text-[color:var(--td-ink-muted)] mt-1" suppressHydrationWarning>
             Last published: {formatted}
             {cloudEnabled && <span className="ml-1 text-brand-orange">· sync on</span>}
@@ -1336,14 +1360,18 @@ function PublishToWebsiteCard({
         )}
       </div>
 
-      <button
-        type="button"
-        onClick={onPublish}
-        disabled={busy}
-        className="td-btn-primary mt-5"
-      >
-        {busy ? "Publishing…" : "Publish Updates to My Website"}
-      </button>
+      {isDemoMode ? (
+        <div className="mt-5 space-y-2">
+          <button type="button" onClick={onPublish} className="td-btn-primary opacity-90">
+            Publish Updates to My Website 🔒
+          </button>
+          <BuyFullVersionButton size="lg" />
+        </div>
+      ) : (
+        <button type="button" onClick={onPublish} disabled={busy} className="td-btn-primary mt-5">
+          {busy ? "Publishing…" : "Publish Updates to My Website"}
+        </button>
+      )}
 
       <div className="mt-4 flex items-center justify-center gap-3 text-xs flex-wrap">
         <Link
@@ -1374,6 +1402,10 @@ function PublishToWebsiteCard({
         <button
           type="button"
           onClick={async () => {
+            if (isDemoMode) {
+              alert(DEMO_FEATURE_MESSAGES.export_json);
+              return;
+            }
             try {
               await exportPublishedJSON();
             } catch {
@@ -1382,12 +1414,14 @@ function PublishToWebsiteCard({
           }}
           className="text-[color:var(--td-ink-muted)] hover:text-brand-orange font-medium transition-colors"
         >
-          Export JSON
+          Export JSON{isDemoMode ? " 🔒" : ""}
         </button>
       </div>
 
       <p className="text-center text-[10px] text-[color:var(--td-ink-muted)] mt-3 leading-relaxed">
-        Works offline — queues and syncs when you reconnect.
+        {isDemoMode
+          ? "Demo · design & preview freely · publish unlocks with full version"
+          : "Works offline — queues and syncs when you reconnect."}
       </p>
     </section>
   );
@@ -1470,28 +1504,41 @@ function MenuManager({
       </div>
 
       {/* Same path as home Publish: Supabase Storage menu-data/{truckId}/menu.json */}
-      <button
-        onClick={async () => {
-          try {
-            const truckId = getConfiguredTruckId().trim() || DEFAULT_TRUCK_ID || "cluckin-chaos";
-            const payload = buildPublishPayloadFromState(state);
-            const result = await publishData(payload, { truckId });
-            const t = formatPublishedTime(result.published.lastPublished);
-            if (result.source === "storage") {
-              alert(
-                `Published to Supabase Storage!\nmenu-data/${truckId}/menu.json\nLive as of ${t}`,
-              );
-            } else {
-              alert(result.message || `Saved at ${t} — Supabase upload did not complete.`);
+      {isDemoMode ? (
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => alert(DEMO_FEATURE_MESSAGES.publish_website)}
+            className="w-full py-3 rounded-2xl bg-brand-orange/80 text-white font-bold text-sm active:scale-[0.985] transition"
+          >
+            Publish Menu Updates to My Website 🔒
+          </button>
+          <BuyFullVersionButton size="lg" />
+        </div>
+      ) : (
+        <button
+          onClick={async () => {
+            try {
+              const truckId = getConfiguredTruckId().trim() || DEFAULT_TRUCK_ID || "cluckin-chaos";
+              const payload = buildPublishPayloadFromState(state);
+              const result = await publishData(payload, { truckId });
+              const t = formatPublishedTime(result.published.lastPublished);
+              if (result.source === "storage") {
+                alert(
+                  `Published to Supabase Storage!\nmenu-data/${truckId}/menu.json\nLive as of ${t}`,
+                );
+              } else {
+                alert(result.message || `Saved at ${t} — Supabase upload did not complete.`);
+              }
+            } catch (err) {
+              alert(err instanceof Error ? err.message : "Could not publish. Try again.");
             }
-          } catch (err) {
-            alert(err instanceof Error ? err.message : "Could not publish. Try again.");
-          }
-        }}
-        className="w-full py-3 rounded-2xl bg-brand-orange text-white font-bold text-sm active:scale-[0.985] transition"
-      >
-        Publish Menu Updates to My Website
-      </button>
+          }}
+          className="w-full py-3 rounded-2xl bg-brand-orange text-white font-bold text-sm active:scale-[0.985] transition"
+        >
+          Publish Menu Updates to My Website
+        </button>
+      )}
 
       <div className="bg-white rounded-3xl border border-brand-green/5 shadow-sm divide-y divide-brand-green/5">
         {state.menu.map((item) => (
@@ -1611,6 +1658,7 @@ function FlyerSection({
   const [busy, setBusy] = useState<null | "png" | "share" | "fb" | "ig">(null);
   const [toast, setToast] = useState<string | null>(null);
   const theme = resolveTemplate(state.template);
+  const { allowOrToast, DemoToast } = useDemoGuard();
 
   useEffect(() => {
     if (!toast) return;
@@ -1628,6 +1676,7 @@ function FlyerSection({
   };
 
   const downloadPng = async () => {
+    if (!allowOrToast("export_flyer")) return;
     if (!flyerRef.current) return;
     setBusy("png");
     try {
@@ -1650,6 +1699,7 @@ function FlyerSection({
   };
 
   const shareNative = async () => {
+    if (!allowOrToast("share_image")) return;
     setBusy("share");
     try {
       const blob = await captureBlob();
@@ -1678,6 +1728,7 @@ function FlyerSection({
   };
 
   const shareFacebook = async () => {
+    if (!allowOrToast("export_flyer")) return;
     setBusy("fb");
     try {
       const blob = await captureBlob();
@@ -1696,6 +1747,7 @@ function FlyerSection({
 
   /** One-tap: download + copy caption for Stories / Instagram paste flow */
   const shareStoriesReady = async () => {
+    if (!allowOrToast("export_flyer")) return;
     if (!flyerRef.current) return;
     setBusy("ig");
     try {
@@ -1762,6 +1814,16 @@ function FlyerSection({
 
       <Flyer state={state} ref={flyerRef} />
 
+      {isDemoMode && (
+        <div className="rounded-2xl border border-brand-orange/25 bg-brand-orange/8 px-4 py-3 text-center space-y-2">
+          <p className="text-[12px] text-[color:var(--td-ink-muted)] leading-snug">
+            Live preview is free in demo. High-res download &amp; image share unlock with the full
+            version.
+          </p>
+          <BuyFullVersionButton size="md" className="!w-full" />
+        </div>
+      )}
+
       <button
         type="button"
         onClick={() => void shareNative()}
@@ -1770,23 +1832,25 @@ function FlyerSection({
       >
         {busy === "share"
           ? "Preparing flyer…"
-          : `One-tap share · ${SHARE_FORMATS.find((f) => f.id === state.shareFormat)?.label ?? "Flyer"}`}
+          : isDemoMode
+            ? `Share flyer 🔒 · ${SHARE_FORMATS.find((f) => f.id === state.shareFormat)?.label ?? "Flyer"}`
+            : `One-tap share · ${SHARE_FORMATS.find((f) => f.id === state.shareFormat)?.label ?? "Flyer"}`}
       </button>
 
       <div className={`grid gap-2 ${socialFocus || standalone ? "grid-cols-2" : "grid-cols-3"}`}>
         <ShareChip
-          label={busy === "png" ? "Rendering…" : "Download PNG"}
+          label={busy === "png" ? "Rendering…" : isDemoMode ? "Download PNG 🔒" : "Download PNG"}
           onClick={() => void downloadPng()}
           disabled={busy !== null}
         />
         <ShareChip
-          label={busy === "fb" ? "…" : "Facebook"}
+          label={busy === "fb" ? "…" : isDemoMode ? "Facebook 🔒" : "Facebook"}
           onClick={() => void shareFacebook()}
           disabled={busy !== null}
         />
         {(socialFocus || standalone) && (
           <ShareChip
-            label={busy === "ig" ? "…" : "Stories pack"}
+            label={busy === "ig" ? "…" : isDemoMode ? "Stories 🔒" : "Stories pack"}
             onClick={() => void shareStoriesReady()}
             disabled={busy !== null}
           />
@@ -1809,6 +1873,7 @@ function FlyerSection({
           {toast}
         </div>
       )}
+      <DemoToast />
     </section>
   );
 }
@@ -3236,34 +3301,40 @@ function SettingsSheet({
                 Create a free Supabase project → <strong>Settings → API</strong>.
               </li>
               <li>
-                Copy{" "}
-                <code className="text-[10px] bg-brand-sand px-1 rounded">.env.example</code> →{" "}
+                Copy <code className="text-[10px] bg-brand-sand px-1 rounded">.env.example</code> →{" "}
                 <code className="text-[10px] bg-brand-sand px-1 rounded">.env</code> and paste:
                 <br />
-                <code className="text-[10px] bg-brand-sand px-1 rounded">VITE_SUPABASE_URL</code>,{" "}
-                <code className="text-[10px] bg-brand-sand px-1 rounded">VITE_SUPABASE_ANON_KEY</code>
+                <code className="text-[10px] bg-brand-sand px-1 rounded">
+                  VITE_SUPABASE_URL
+                </code>,{" "}
+                <code className="text-[10px] bg-brand-sand px-1 rounded">
+                  VITE_SUPABASE_ANON_KEY
+                </code>
                 ,{" "}
                 <code className="text-[10px] bg-brand-sand px-1 rounded">
                   SUPABASE_SERVICE_ROLE_KEY
                 </code>{" "}
                 (server-only), and your{" "}
-                <code className="text-[10px] bg-brand-sand px-1 rounded">VITE_DEFAULT_TRUCK_ID</code>.
+                <code className="text-[10px] bg-brand-sand px-1 rounded">
+                  VITE_DEFAULT_TRUCK_ID
+                </code>
+                .
               </li>
               <li>
                 Run <code className="text-[10px] bg-brand-sand px-1 rounded">npm run setup</code>{" "}
                 (creates public <strong>menu-data</strong> + <strong>menu-images</strong>).
               </li>
               <li>
-                Restart <code className="text-[10px] bg-brand-sand px-1 rounded">npm run dev</code> →
-                home → <strong>Publish Updates to My Website</strong>.
+                Restart <code className="text-[10px] bg-brand-sand px-1 rounded">npm run dev</code>{" "}
+                → home → <strong>Publish Updates to My Website</strong>.
               </li>
               <li>
                 Publishes to{" "}
                 <code className="text-[10px] bg-brand-sand px-1 rounded">
                   menu-data/{truckId || "your-truck"}/menu.json
                 </code>
-                . Full guide: <code className="text-[10px] bg-brand-sand px-1 rounded">docs/CONNECT.md</code>
-                .
+                . Full guide:{" "}
+                <code className="text-[10px] bg-brand-sand px-1 rounded">docs/CONNECT.md</code>.
               </li>
             </ol>
             {configured && (

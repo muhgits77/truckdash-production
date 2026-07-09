@@ -5,7 +5,9 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { AppBottomNav } from "./app-bottom-nav";
+import { BuyFullVersionButton } from "./buy-full-version-button";
 import { ThemeToggle } from "@/hooks/use-theme";
+import { isDemoMode } from "@/lib/demo-mode";
 
 export function PageShell({
   title,
@@ -56,6 +58,7 @@ export function PageShell({
                 {live ? "Live" : "Offline"}
               </span>
             )}
+            {isDemoMode && <BuyFullVersionButton size="sm" className="!hidden sm:!inline-flex" />}
             <ThemeToggle />
           </div>
         </div>

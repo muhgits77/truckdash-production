@@ -8,7 +8,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PageShell, TipCard } from "@/components/page-shell";
+import { BuyFullVersionButton } from "@/components/buy-full-version-button";
+import { DemoInlineNotice } from "@/components/demo-banner";
 import { useTheme } from "@/hooks/use-theme";
+import { useDemoGuard } from "@/hooks/use-demo-guard";
+import { DEMO_FEATURE_MESSAGES, isDemoMode } from "@/lib/demo-mode";
 import {
   buildScheduleQuery,
   geocodePlace,
@@ -120,6 +124,7 @@ function pinHtml(kind: "live" | "sched" | "today", label: string) {
 function LiveMapPage() {
   const [state, setState] = useTruckState();
   const { theme } = useTheme();
+  const { allowOrToast, DemoToast } = useDemoGuard();
   const [label, setLabel] = useState(state.liveSession.label || state.location);
   const [note, setNote] = useState(state.liveSession.note || "");
   const [stopLabel, setStopLabel] = useState("");
@@ -226,9 +231,7 @@ function LiveMapPage() {
         const byId = new Map(scheduleUpdates.map((x) => [x.id, x]));
         setState({
           ...cur,
-          schedule: scheduleDirty
-            ? cur.schedule.map((d) => byId.get(d.id) ?? d)
-            : cur.schedule,
+          schedule: scheduleDirty ? cur.schedule.map((d) => byId.get(d.id) ?? d) : cur.schedule,
           liveStops: stopsDirty ? stopUpdates : cur.liveStops,
         });
       }
@@ -396,9 +399,7 @@ function LiveMapPage() {
             )}</strong><br/>${escapeHtml(p.title)}${
               p.sub ? `<br/><span class="td-map-popup__sub">${escapeHtml(p.sub)}</span>` : ""
             }${
-              p.hours
-                ? `<br/><span class="td-map-popup__hrs">${escapeHtml(p.hours)}</span>`
-                : ""
+              p.hours ? `<br/><span class="td-map-popup__hrs">${escapeHtml(p.hours)}</span>` : ""
             }${
               p.source
                 ? `<br/><span class="td-map-popup__hrs" style="opacity:.65">via ${escapeHtml(p.source)}</span>`
@@ -447,6 +448,7 @@ function LiveMapPage() {
   }, [pins, theme]);
 
   const goLive = useCallback(async () => {
+    if (!allowOrToast("map_edit")) return;
     setBusy(true);
     setGeoMsg(null);
     const locLabel = label.trim() || state.location || "On the road";
@@ -488,7 +490,11 @@ function LiveMapPage() {
           if (pt) {
             finish(pt.lat, pt.lng, `GPS unavailable — pinned via “${pt.label}”.`);
           } else {
-            finish(null, null, "GPS unavailable and location not found. Try a clearer KY place name.");
+            finish(
+              null,
+              null,
+              "GPS unavailable and location not found. Try a clearer KY place name.",
+            );
           }
         },
         { enableHighAccuracy: true, timeout: 12000 },
@@ -498,9 +504,13 @@ function LiveMapPage() {
       if (pt) finish(pt.lat, pt.lng, `Pinned via “${pt.label}”.`);
       else finish(null, null, "Could not resolve location. Add a clearer place name.");
     }
-  }, [label, note, state.location, setState]);
+  }, [label, note, state.location, setState, allowOrToast]);
 
   const endSession = () => {
+    if (isDemoMode) {
+      allowOrToast("map_edit");
+      return;
+    }
     setState({
       ...state,
       live: false,
@@ -514,6 +524,7 @@ function LiveMapPage() {
   };
 
   const addStop = async () => {
+    if (!allowOrToast("map_edit")) return;
     if (!stopLabel.trim() || addingStop) return;
     setAddingStop(true);
     setGeoMsg(null);
@@ -542,6 +553,7 @@ function LiveMapPage() {
   };
 
   const removeStop = (id: string) => {
+    if (!allowOrToast("map_edit")) return;
     setState({ ...state, liveStops: state.liveStops.filter((s) => s.id !== id) });
   };
 
@@ -549,6 +561,8 @@ function LiveMapPage() {
 
   return (
     <PageShell title="Live Map" eyebrow="Command center" live={isLive}>
+      {isDemoMode && <DemoInlineNotice message={DEMO_FEATURE_MESSAGES.map_edit} />}
+
       <TipCard>
         <p className="td-section-label mb-1.5">Smart Map</p>
         <p className="text-sm leading-relaxed text-[color:var(--td-ink)]">
@@ -557,7 +571,14 @@ function LiveMapPage() {
             This Week
           </Link>{" "}
           and Stops today using real Kentucky places (Monticello, Russell Springs, Jamestown, Lake
-          Cumberland). <strong>Go Live</strong> drops a gold GPS pin.
+          Cumberland).{" "}
+          {isDemoMode ? (
+            <>Browse pins in demo — full GPS &amp; stop editing unlocks with the full version.</>
+          ) : (
+            <>
+              <strong>Go Live</strong> drops a gold GPS pin.
+            </>
+          )}
         </p>
       </TipCard>
 
@@ -604,11 +625,11 @@ function LiveMapPage() {
               type="button"
               role="switch"
               aria-checked={isLive}
-              disabled={busy}
+              disabled={busy || isDemoMode}
               onClick={() => (isLive ? endSession() : void goLive())}
               className={`shrink-0 w-14 h-8 rounded-full transition relative ${
                 isLive ? "bg-brand-orange" : "bg-black/10 dark:bg-white/15"
-              }`}
+              } ${isDemoMode ? "opacity-55 cursor-not-allowed" : ""}`}
             >
               <span
                 className={`absolute top-1 size-6 rounded-full bg-white shadow transition ${
@@ -627,6 +648,7 @@ function LiveMapPage() {
               onChange={(e) => setLabel(e.target.value)}
               placeholder="e.g. Russell Springs Main St. Lot"
               className="td-input"
+              disabled={isDemoMode}
             />
           </label>
           <label className="block space-y-1.5">
@@ -638,19 +660,24 @@ function LiveMapPage() {
               onChange={(e) => setNote(e.target.value)}
               placeholder="e.g. brisket sold out, til 8pm"
               className="td-input"
+              disabled={isDemoMode}
             />
           </label>
 
           <div className="flex flex-col gap-3">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void goLive()}
-              className="w-full py-3.5 rounded-2xl bg-brand-orange text-white font-bold text-sm shadow-lg shadow-brand-orange/20 disabled:opacity-60"
-            >
-              {busy ? "Getting location…" : isLive ? "Update live pin" : "Go Live + GPS"}
-            </button>
-            {isLive && (
+            {isDemoMode ? (
+              <BuyFullVersionButton size="lg" />
+            ) : (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void goLive()}
+                className="w-full py-3.5 rounded-2xl bg-brand-orange text-white font-bold text-sm shadow-lg shadow-brand-orange/20 disabled:opacity-60"
+              >
+                {busy ? "Getting location…" : isLive ? "Update live pin" : "Go Live + GPS"}
+              </button>
+            )}
+            {isLive && !isDemoMode && (
               <button
                 type="button"
                 onClick={endSession}
@@ -668,8 +695,7 @@ function LiveMapPage() {
           {session.updatedAt && (
             <p className="text-xs text-[color:var(--td-ink-muted)]">
               Last change: {new Date(session.updatedAt).toLocaleString()}
-              {session.lat != null &&
-                ` · ${session.lat.toFixed(4)}, ${session.lng?.toFixed(4)}`}
+              {session.lat != null && ` · ${session.lat.toFixed(4)}, ${session.lng?.toFixed(4)}`}
             </p>
           )}
         </div>
@@ -692,6 +718,7 @@ function LiveMapPage() {
             onChange={(e) => setStopLabel(e.target.value)}
             placeholder="Place (e.g. Courthouse Square Monticello)"
             className="td-input"
+            disabled={isDemoMode}
             onKeyDown={(e) => {
               if (e.key === "Enter") void addStop();
             }}
@@ -701,15 +728,20 @@ function LiveMapPage() {
             onChange={(e) => setStopTime(e.target.value)}
             placeholder="Hours (e.g. 11am–2pm)"
             className="td-input"
+            disabled={isDemoMode}
           />
-          <button
-            type="button"
-            onClick={() => void addStop()}
-            disabled={addingStop || !stopLabel.trim()}
-            className="w-full rounded-xl bg-brand-deep text-white dark:bg-[#c5d9cc] dark:text-[#0f2419] font-bold text-sm py-3.5 disabled:opacity-55"
-          >
-            {addingStop ? "Finding on map…" : "+ Add stop & pin"}
-          </button>
+          {isDemoMode ? (
+            <BuyFullVersionButton size="lg" label="Unlock full map editing – $597" />
+          ) : (
+            <button
+              type="button"
+              onClick={() => void addStop()}
+              disabled={addingStop || !stopLabel.trim()}
+              className="w-full rounded-xl bg-brand-deep text-white dark:bg-[#c5d9cc] dark:text-[#0f2419] font-bold text-sm py-3.5 disabled:opacity-55"
+            >
+              {addingStop ? "Finding on map…" : "+ Add stop & pin"}
+            </button>
+          )}
         </div>
 
         <ul className="rounded-2xl border border-[color:var(--border)] overflow-hidden divide-y divide-[color:var(--border)]">
@@ -725,9 +757,7 @@ function LiveMapPage() {
             >
               <span className="min-w-0">
                 <span className="font-semibold text-[color:var(--td-ink)]">{s.label}</span>
-                {s.time && (
-                  <span className="text-[color:var(--td-ink-muted)]"> · {s.time}</span>
-                )}
+                {s.time && <span className="text-[color:var(--td-ink-muted)]"> · {s.time}</span>}
                 <span className="block text-[10px] mt-1 text-[color:var(--td-ink-muted)]">
                   {s.lat != null
                     ? `Pinned · ${s.lat.toFixed(3)}, ${s.lng?.toFixed(3)}`
@@ -757,6 +787,7 @@ function LiveMapPage() {
         </div>
         <WeekStopList schedule={state.schedule} sourceOf={scheduleSource} />
       </section>
+      <DemoToast />
     </PageShell>
   );
 }
@@ -787,10 +818,7 @@ function WeekStopList({
               <span className="text-[color:var(--td-ink)] font-medium">
                 {d.neighborhood}
                 {d.spot ? (
-                  <span className="text-[color:var(--td-ink-muted)] font-normal">
-                    {" "}
-                    · {d.spot}
-                  </span>
+                  <span className="text-[color:var(--td-ink-muted)] font-normal"> · {d.spot}</span>
                 ) : null}
                 {(d.lat != null || sourceOf(d.id)) && (
                   <span className="block text-[10px] font-normal text-[color:var(--td-ink-muted)] mt-0.5 pl-10">

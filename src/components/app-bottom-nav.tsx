@@ -4,6 +4,8 @@
  */
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
+import { BuyFullVersionButton } from "./buy-full-version-button";
+import { isDemoMode } from "@/lib/demo-mode";
 
 type NavItem = {
   id: string;
@@ -80,15 +82,18 @@ export function AppBottomNav() {
                 <p className="text-sm text-[color:var(--td-ink-muted)] mt-1.5 leading-snug">
                   Menu, flyers, listings & catering — your Kentucky command center
                 </p>
+                {isDemoMode && (
+                  <div className="mt-3">
+                    <BuyFullVersionButton size="md" className="!w-full" />
+                  </div>
+                )}
               </div>
               <ul>
                 {MORE_LINKS.map((l, i) => (
                   <li
                     key={l.to}
                     className={
-                      i < MORE_LINKS.length - 1
-                        ? "border-b border-[color:var(--border)]"
-                        : ""
+                      i < MORE_LINKS.length - 1 ? "border-b border-[color:var(--border)]" : ""
                     }
                   >
                     <Link

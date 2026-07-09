@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ThemeProvider } from "../hooks/use-theme";
+import { DemoBanner } from "../components/demo-banner";
 
 function NotFoundComponent() {
   return (
@@ -143,7 +144,10 @@ function RootShell({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
         <HeadContent />
       </head>
-      <body className="bg-brand-sand text-[color:var(--td-ink)] antialiased" suppressHydrationWarning>
+      <body
+        className="bg-brand-sand text-[color:var(--td-ink)] antialiased"
+        suppressHydrationWarning
+      >
         {children}
         <Scripts />
       </body>
@@ -157,6 +161,8 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
+        {/* Demo Mode banner — only renders when NEXT_PUBLIC_DEMO_MODE=true */}
+        <DemoBanner />
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
       </ThemeProvider>

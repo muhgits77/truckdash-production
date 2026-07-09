@@ -13,19 +13,35 @@ import { loadEnv, type Plugin } from "vite";
  * at config time (server only — do NOT add SUPABASE_ to envPrefix or it ships to the browser).
  */
 function loadSupabaseServerEnvPlugin(): Plugin {
+  const inject = (mode: string) => {
+    const env = loadEnv(mode, process.cwd(), "");
+    let loaded = 0;
+    for (const [key, value] of Object.entries(env)) {
+      if (
+        (key.startsWith("SUPABASE_") ||
+          key === "DATABASE_URL" ||
+          key.startsWith("VITE_SUPABASE_")) &&
+        value
+      ) {
+        // Always refresh from .env so restarts pick up key changes
+        process.env[key] = value;
+        loaded++;
+      }
+    }
+    const hasService = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
+    console.info(
+      `[vite] server env: loaded ${loaded} keys; SUPABASE_SERVICE_ROLE_KEY=${hasService ? "yes" : "MISSING"}`,
+    );
+  };
+
   return {
     name: "load-supabase-server-env",
     config(_config, { mode }) {
-      const env = loadEnv(mode, process.cwd(), "");
-      for (const [key, value] of Object.entries(env)) {
-        if (
-          (key.startsWith("SUPABASE_") || key === "DATABASE_URL") &&
-          value &&
-          !process.env[key]
-        ) {
-          process.env[key] = value;
-        }
-      }
+      inject(mode);
+    },
+    configureServer() {
+      // Dev server: re-assert on boot (config hook can run before cwd is final)
+      inject(process.env.NODE_ENV === "production" ? "production" : "development");
     },
   };
 }
@@ -38,5 +54,7 @@ export default defineConfig({
   },
   vite: {
     plugins: [loadSupabaseServerEnvPlugin()],
+    // Keep service role available to SSR/server-fn process.env at runtime
+    // (do NOT put SUPABASE_ in envPrefix — that would ship it to the browser).
   },
 });

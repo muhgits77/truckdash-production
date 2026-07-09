@@ -1,13 +1,8 @@
 /**
  * Server-side Storage publish (service role).
  *
- * Browser Publish calls this so writes work even before/without anon INSERT RLS.
- * Service role stays on the server only — never use a VITE_ prefix for it.
- *
- * Env loading (do not import node:fs here — this module is referenced from the client):
- *   - vite.config.ts plugin loads SUPABASE_* into process.env at startup
- *   - src/server.ts calls loadServerEnv() for SSR
- *   - Vercel/host injects SUPABASE_SERVICE_ROLE_KEY into process.env in production
+ * Browser Publish → this server fn → Storage upsert with service_role.
+ * Secrets load only inside the handler via `.server.ts` (never in the browser).
  */
 import { createServerFn } from "@tanstack/react-start";
 
@@ -27,47 +22,8 @@ export type ServerStorageUploadResult = {
   path: string;
   fullPath: string;
   status: number;
+  keyKind: "service_role" | "anon";
 };
-
-function readServerEnv(name: string): string {
-  if (typeof process === "undefined" || !process.env) return "";
-  return (process.env[name] ?? "").trim();
-}
-
-function getServerSupabaseConfig(): { url: string; key: string; keyKind: string } {
-  const url = (
-    readServerEnv("VITE_SUPABASE_URL") ||
-    readServerEnv("SUPABASE_URL")
-  ).replace(/\/+$/, "");
-
-  // Prefer service role (bypasses RLS). Fall back to anon so misconfig is obvious.
-  const service = readServerEnv("SUPABASE_SERVICE_ROLE_KEY");
-  const anon =
-    readServerEnv("VITE_SUPABASE_ANON_KEY") ||
-    readServerEnv("VITE_SUPABASE_PUBLISHABLE_KEY") ||
-    readServerEnv("SUPABASE_ANON_KEY") ||
-    readServerEnv("SUPABASE_PUBLISHABLE_KEY");
-
-  const key = service || anon;
-  if (!url || !key) {
-    throw new Error(
-      "Server Storage upload misconfigured. Set VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (preferred) or VITE_SUPABASE_ANON_KEY.",
-    );
-  }
-
-  if (!service) {
-    console.warn(
-      "[storage-publish.fn] SUPABASE_SERVICE_ROLE_KEY missing — server upload will use anon and may hit RLS. " +
-        "Add it to .env (no VITE_ prefix) and Vercel server env. Restart dev server after adding.",
-    );
-  }
-
-  return {
-    url,
-    key,
-    keyKind: service ? "service_role" : "anon",
-  };
-}
 
 /**
  * Upload (upsert) an object using the server's Supabase key.
@@ -88,7 +44,10 @@ export const serverUploadStorageObject = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data }): Promise<ServerStorageUploadResult> => {
+    // Dynamic import: server-only module with fs .env fallback (not shipped to client)
+    const { getServerSupabaseConfig } = await import("./supabase-server-config.server");
     const { url, key, keyKind } = getServerSupabaseConfig();
+
     const encodedPath = data.path.split("/").map(encodeURIComponent).join("/");
     const uploadUrl = `${url}/storage/v1/object/${encodeURIComponent(data.bucket)}/${encodedPath}`;
 
@@ -109,13 +68,25 @@ export const serverUploadStorageObject = createServerFn({ method: "POST" })
       path: data.path,
       keyKind,
       contentType: data.contentType,
-      bytes: typeof payload === "string" ? payload.length : (payload as Buffer).byteLength,
+      bytes:
+        typeof payload === "string"
+          ? payload.length
+          : (payload as Buffer).byteLength,
+      host: url.replace(/^https?:\/\//, ""),
     });
+
+    if (keyKind !== "service_role") {
+      throw new Error(
+        "SUPABASE_SERVICE_ROLE_KEY is not available on the server. " +
+          "Add it to .env (no VITE_ prefix), restart npm run dev, " +
+          "and on Vercel add it under Environment Variables (server, not VITE_). " +
+          "Or run supabase/storage_buckets.sql so anon can write.",
+      );
+    }
 
     let res = await fetch(uploadUrl, { method: "POST", headers, body: payload });
     if (!res.ok && (res.status === 400 || res.status === 409 || res.status === 405)) {
       const peek = (await res.clone().text().catch(() => "")).slice(0, 200);
-      // Retry PUT for upsert variants
       if (!/authorization/i.test(peek) || !/required property/i.test(peek)) {
         res = await fetch(uploadUrl, { method: "PUT", headers, body: payload });
       }
@@ -128,13 +99,9 @@ export const serverUploadStorageObject = createServerFn({ method: "POST" })
         keyKind,
         detail,
       });
-      if (/row-level security|violates row-level/i.test(detail) && keyKind === "anon") {
-        throw new Error(
-          `Storage RLS blocked server upload (using anon key). ` +
-            `Set SUPABASE_SERVICE_ROLE_KEY on the server, or run supabase/storage_buckets.sql. Detail: ${detail}`,
-        );
-      }
-      throw new Error(`Server storage upload failed (${res.status}): ${detail || res.statusText}`);
+      throw new Error(
+        `Server storage upload failed (${res.status}, ${keyKind}): ${detail || res.statusText}`,
+      );
     }
 
     console.info("[storage-publish.fn] upload OK", {
@@ -150,5 +117,6 @@ export const serverUploadStorageObject = createServerFn({ method: "POST" })
       path: data.path,
       fullPath: `${data.bucket}/${data.path}`,
       status: res.status,
+      keyKind,
     };
   });

@@ -7,7 +7,13 @@ import {
   DEFAULT_SCHEDULE,
   useTruckState,
 } from "@/lib/truck-state";
-import { publishData, getPublishedData, buildPublishPayloadFromState } from "@/lib/publishService";
+import {
+  publishData,
+  getPublishedData,
+  buildPublishPayloadFromState,
+  getConfiguredTruckId,
+  DEFAULT_TRUCK_ID,
+} from "@/lib/publishService";
 import { formatPublishedShort, formatPublishedTime, formatWeekOf } from "@/lib/format-local";
 import { useHydrated } from "@/hooks/use-hydrated";
 
@@ -113,16 +119,16 @@ function ThisWeekPage() {
   const handlePublishFromWeek = async () => {
     setPubBusy(true);
     try {
+      const truckId = getConfiguredTruckId().trim() || DEFAULT_TRUCK_ID || "cluckin-chaos";
       const payload = buildPublishPayloadFromState(state);
-      const result = await publishData(payload);
+      const result = await publishData(payload, { truckId });
       setLastPubLabel(formatPublishedShort(result.published.lastPublished));
       const t = formatPublishedTime(result.published.lastPublished);
       if (result.source === "storage")
-        setToast(result.message || `Published to cloud at ${t}`);
+        setToast(result.message || `Published to Supabase Storage at ${t}`);
       else if (result.source === "local+queued")
-        setToast(result.message || `Saved at ${t} — cloud pending`);
+        setToast(result.message || `Saved at ${t} — Supabase upload pending`);
       else setToast(result.message || `Saved locally at ${t}`);
-
     } catch {
       setToast("Publish failed");
     } finally {

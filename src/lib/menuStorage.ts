@@ -1,13 +1,13 @@
 /**
  * Supabase Storage — menu JSON + food photos.
- * Buckets: menu-data (JSON), menu-images (photos).
  *
- * Canonical publish path: menu-data/{truckId}/menu.json
- * Default truck: cluckin-chaos → menu-data/cluckin-chaos/menu.json
+ * Publish path (canonical):
+ *   bucket: menu-data
+ *   path:   {truckId}/menu.json
+ *   e.g.    menu-data/cluckin-chaos/menu.json
  *
- * Publish works with anon/publishable key (storage RLS).
- * Cluckin Chaos reads the public object URL with cache busting,
- * falling back to authenticated download if the bucket is still private.
+ * Uses the env-based Supabase client from ./supabase (VITE_SUPABASE_*).
+ * Does NOT use localStorage as the cloud write target.
  */
 
 import type { MenuItem, ScheduleDay } from "./truck-state";
@@ -101,7 +101,6 @@ function isLocalImage(url: string | undefined): boolean {
   return url.startsWith("data:") || url.startsWith("blob:");
 }
 
-/** Confirm the object appears in the bucket listing at {truckId}/menu.json */
 async function verifyBucketListing(bucket: string, path: string): Promise<boolean> {
   const supabase = getSupabase();
   if (!supabase) return false;
@@ -122,10 +121,6 @@ async function verifyBucketListing(bucket: string, path: string): Promise<boolea
   return found;
 }
 
-/**
- * Prove the object is publicly readable via the CDN-style public URL.
- * Uses cache busting so we never mistake a stale 404 cache for failure.
- */
 async function verifyPublicUrl(publicUrl: string): Promise<boolean> {
   const bustUrl = `${publicUrl}?verify=${Date.now()}`;
   try {
@@ -149,7 +144,6 @@ async function verifyPublicUrl(publicUrl: string): Promise<boolean> {
   }
 }
 
-/** Authenticated/object API read — works even when bucket is still private. */
 async function verifyAuthenticatedRead(bucket: string, path: string): Promise<boolean> {
   const supabase = getSupabase();
   if (!supabase) return false;
@@ -162,7 +156,7 @@ async function verifyAuthenticatedRead(bucket: string, path: string): Promise<bo
   return true;
 }
 
-/** REST fallback when the JS client upload fails for any reason. */
+/** REST fallback when the JS client upload fails. */
 async function uploadViaRest(
   bucket: string,
   path: string,
@@ -171,15 +165,21 @@ async function uploadViaRest(
 ): Promise<void> {
   const base = getSupabaseUrl();
   const anonKey = getSupabaseAnonKey();
+  if (!base || !anonKey) throw new Error("Supabase env vars missing for REST upload");
+
   const encodedPath = path.split("/").map(encodeURIComponent).join("/");
   const url = `${base}/storage/v1/object/${bucket}/${encodedPath}`;
   const isOpaqueKey =
     anonKey.startsWith("sb_publishable_") || anonKey.startsWith("sb_secret_");
 
-  console.info(LOG, "REST upload attempt", { bucket, path, url, bytes: body.size });
+  console.info(LOG, "REST upload attempt", {
+    bucket,
+    path,
+    url,
+    bytes: body.size,
+    supabaseHost: base,
+  });
 
-  // Prefer POST + x-upsert (create or overwrite). Fall back to PUT.
-  // Lovable publishable keys are opaque — send apikey only (no Bearer).
   const headers: Record<string, string> = {
     apikey: anonKey,
     "Content-Type": contentType,
@@ -211,8 +211,8 @@ async function uploadViaRest(
 }
 
 /**
- * Upload (overwrite) a file to a bucket at exactly {bucket}/{path}.
- * Strategy: client upsert → REST fallback → list + public-read verify.
+ * Upload (overwrite) to Supabase Storage at {bucket}/{path}.
+ * Uses env-based Supabase JS client → REST fallback → verify.
  */
 async function uploadObject(
   bucket: string,
@@ -220,13 +220,23 @@ async function uploadObject(
   body: Blob,
   contentType: string,
 ): Promise<UploadResult> {
+  if (!isSupabaseConfigured()) {
+    throw new Error(
+      "Supabase not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_ANON_KEY).",
+    );
+  }
+
   const supabase = getSupabase();
-  if (!supabase) throw new Error("Supabase not configured");
+  if (!supabase) {
+    throw new Error("Supabase client could not be created from env vars.");
+  }
 
   const fullPath = `${bucket}/${path}`;
   const publicUrl = publicStorageUrl(bucket, path);
+  const supabaseHost = getSupabaseUrl();
 
-  console.info(LOG, "upload start", {
+  console.info(LOG, "upload start → Supabase Storage", {
+    supabaseHost,
     bucket,
     path,
     fullPath,
@@ -235,7 +245,7 @@ async function uploadObject(
     publicUrl,
   });
 
-  // 1) Upsert via JS client
+  // 1) Supabase JS client upsert
   const first = await supabase.storage.from(bucket).upload(path, body, {
     contentType,
     cacheControl: "30",
@@ -248,6 +258,7 @@ async function uploadObject(
   if (!uploadOk) {
     console.warn(LOG, "client upload failed — trying REST fallback", {
       fullPath,
+      supabaseHost,
       message: lastMessage,
     });
     try {
@@ -257,32 +268,37 @@ async function uploadObject(
     } catch (restErr) {
       const restMsg = restErr instanceof Error ? restErr.message : String(restErr);
       throw new Error(
-        `Storage upload failed at ${fullPath}: client=${lastMessage ?? "n/a"} | REST=${restMsg}`,
+        `Supabase Storage upload failed at ${fullPath} (host ${supabaseHost}): client=${lastMessage ?? "n/a"} | REST=${restMsg}`,
       );
     }
+  } else {
+    console.info(LOG, "client upload OK", {
+      fullPath,
+      supabaseHost,
+      id: first.data?.id,
+    });
   }
-
-  console.info(LOG, "upload OK", { fullPath, publicUrl });
 
   // 2) Prove write landed
-  const listedInBucket = await verifyBucketListing(bucket, path);
+  let listedInBucket = await verifyBucketListing(bucket, path);
   if (!listedInBucket) {
-    console.error(LOG, "upload reported OK but file NOT in bucket listing", { fullPath });
-  }
-
-  // 3) Prefer public URL; fall back to authenticated existence check
-  let verified = await verifyPublicUrl(publicUrl);
-  if (!verified) {
     const authOk = await verifyAuthenticatedRead(bucket, path);
     if (authOk) {
-      console.warn(
-        LOG,
-        "file is stored and readable with API key, but public URL failed. " +
-          "Set storage.buckets.public = true for menu-data (run supabase/storage_buckets.sql).",
-        { fullPath, publicUrl },
-      );
+      listedInBucket = true;
+      console.warn(LOG, "list missed file but download OK — treating as saved", { fullPath });
+    } else {
+      console.error(LOG, "upload reported OK but file NOT readable", { fullPath, supabaseHost });
     }
-    // verified stays false unless the public URL works — website needs public
+  }
+
+  // 3) Public URL verify (Cluckin Chaos path)
+  const verified = await verifyPublicUrl(publicUrl);
+  if (!verified) {
+    console.warn(
+      LOG,
+      "file is in Supabase Storage but public URL failed — check bucket public=true",
+      { fullPath, publicUrl },
+    );
   }
 
   return { bucket, path, fullPath, publicUrl, verified, listedInBucket };
@@ -293,8 +309,7 @@ export async function uploadMenuImages(
   truckId: string,
   menu: MenuItem[],
 ): Promise<MenuItem[]> {
-  const supabase = getSupabase();
-  if (!supabase) throw new Error("Supabase not configured");
+  if (!getSupabase()) throw new Error("Supabase not configured");
 
   const id = truckId.trim();
   const updated: MenuItem[] = [];
@@ -328,18 +343,31 @@ export async function uploadMenuImages(
   return updated;
 }
 
-/** Upload full menu + schedule JSON to menu-data/{truckId}/menu.json on every publish. */
+/**
+ * Upload full menu + schedule JSON to Supabase Storage:
+ *   menu-data/{truckId}/menu.json
+ *
+ * This is the ONLY cloud write used by the Publish button.
+ */
 export async function uploadMenuJson(truckId: string, json: StoredMenuJson): Promise<UploadResult> {
   const id = truckId.trim();
   if (!id) throw new Error("truckId is required");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error(
+      "Supabase env vars missing. Set VITE_SUPABASE_URL + VITE_SUPABASE_PUBLISHABLE_KEY (or ANON_KEY).",
+    );
+  }
 
   const path = menuJsonPath(id);
   const fullPath = menuJsonFullPath(id);
   const body = JSON.stringify(json, null, 2);
   const blob = new Blob([body], { type: "application/json" });
   const publicUrl = menuJsonPublicUrl(id);
+  const supabaseHost = getSupabaseUrl();
 
-  console.info(LOG, "═══ menu.json publish START ═══", {
+  console.info(LOG, "═══ menu.json → Supabase Storage START ═══", {
+    supabaseHost,
     truckId: id,
     fullPath,
     publicUrl,
@@ -352,21 +380,14 @@ export async function uploadMenuJson(truckId: string, json: StoredMenuJson): Pro
   const result = await uploadObject(MENU_DATA_BUCKET, path, blob, "application/json");
 
   if (!result.listedInBucket) {
-    // One more authenticated check before failing hard — list can be flaky under RLS
-    const authOk = await verifyAuthenticatedRead(MENU_DATA_BUCKET, path);
-    if (!authOk) {
-      throw new Error(
-        `menu.json upload did not land at ${fullPath}. Check storage RLS / bucket exists.`,
-      );
-    }
-    console.warn(LOG, "list missed file but authenticated read OK — treating as saved", {
-      fullPath,
-    });
-    result.listedInBucket = true;
+    throw new Error(
+      `menu.json did not land in Supabase Storage at ${fullPath} (host ${supabaseHost}). Check bucket exists + storage RLS.`,
+    );
   }
 
   if (result.verified) {
-    console.info(LOG, "═══ menu.json publish SUCCESS (public) ═══", {
+    console.info(LOG, "═══ menu.json publish SUCCESS (public Supabase Storage) ═══", {
+      supabaseHost,
       fullPath: result.fullPath,
       publicUrl: result.publicUrl,
       menuItems: json.menu.length,
@@ -374,13 +395,12 @@ export async function uploadMenuJson(truckId: string, json: StoredMenuJson): Pro
       publicReadable: true,
     });
   } else {
-    console.warn(LOG, "═══ menu.json SAVED (API-readable; public URL not open yet) ═══", {
+    console.warn(LOG, "═══ menu.json SAVED to Supabase Storage (public URL not open yet) ═══", {
+      supabaseHost,
       fullPath: result.fullPath,
       publicUrl: result.publicUrl,
       menuItems: json.menu.length,
       scheduleDays: json.schedule.length,
-      hint:
-        "1) Run supabase/storage_buckets.sql. 2) Lovable Cloud: Settings → Privacy & security → disable “Block public storage buckets”. Cluckin Chaos still loads via authenticated download until then.",
     });
   }
 
@@ -390,13 +410,13 @@ export async function uploadMenuJson(truckId: string, json: StoredMenuJson): Pro
 /**
  * Read menu.json for TruckDash preview + Cluckin Chaos public pages.
  *
- * Order (reliable):
- *   1. Public URL with cache busting (what the live website should use)
- *   2. Authenticated storage download (works while bucket is still private)
+ * Order:
+ *   1. Public URL with cache busting (preferred for Cluckin Chaos)
+ *   2. Authenticated storage download via env-based Supabase client
  */
 export async function fetchMenuJson(truckId: string): Promise<StoredMenuJson | null> {
   if (!isSupabaseConfigured()) {
-    console.warn(LOG, "fetch skipped — Supabase not configured");
+    console.warn(LOG, "fetch skipped — Supabase env not configured");
     return null;
   }
 
@@ -405,8 +425,9 @@ export async function fetchMenuJson(truckId: string): Promise<StoredMenuJson | n
   const fullPath = menuJsonFullPath(id);
   const publicUrl = menuJsonPublicUrl(id);
   const bustUrl = menuJsonPublicUrlWithCacheBust(id);
+  const supabaseHost = getSupabaseUrl();
 
-  console.info(LOG, "fetch menu.json START", { fullPath, publicUrl, bustUrl });
+  console.info(LOG, "fetch menu.json START", { supabaseHost, fullPath, publicUrl, bustUrl });
 
   // 1) Public URL first — cache-busted
   try {
@@ -433,14 +454,14 @@ export async function fetchMenuJson(truckId: string): Promise<StoredMenuJson | n
     console.warn(LOG, "public fetch threw — trying authenticated download", { fullPath, err });
   }
 
-  // 2) Authenticated / object API (works with publishable or anon key + SELECT policy)
+  // 2) Env-based Supabase client download
   const supabase = getSupabase();
   if (supabase) {
     const { data, error } = await supabase.storage.from(MENU_DATA_BUCKET).download(path);
     if (!error && data) {
       try {
         const parsed = JSON.parse(await data.text()) as StoredMenuJson;
-        console.info(LOG, "✓ fetch OK (authenticated download)", {
+        console.info(LOG, "✓ fetch OK (Supabase client download)", {
           fullPath,
           menu: parsed.menu?.length ?? 0,
           schedule: parsed.schedule?.length ?? 0,
@@ -455,6 +476,6 @@ export async function fetchMenuJson(truckId: string): Promise<StoredMenuJson | n
     }
   }
 
-  console.error(LOG, "fetch menu.json FAILED — no public or auth read", { fullPath, publicUrl });
+  console.error(LOG, "fetch menu.json FAILED", { fullPath, publicUrl, supabaseHost });
   return null;
 }

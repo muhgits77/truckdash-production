@@ -391,8 +391,17 @@ function Dashboard() {
   const handlePublishToWebsite = async () => {
     setPublishBusy(true);
     try {
+      // Explicit truck path: menu-data/cluckin-chaos/menu.json (or Settings truck id)
+      const truckId = getConfiguredTruckId().trim() || DEFAULT_TRUCK_ID || "cluckin-chaos";
       const payload = buildPublishPayloadFromState(state);
-      const result = await publishData(payload);
+      console.info("[Publish] button clicked → Supabase Storage", {
+        truckId,
+        targetPath: `menu-data/${truckId}/menu.json`,
+        menuItems: payload.menu.length,
+        scheduleDays: payload.schedule.length,
+      });
+
+      const result = await publishData(payload, { truckId });
       setLastPublished(result.published.lastPublished);
       setCloudEnabled(canUseSupabaseSync());
       setCloudPending(hasPendingCloudSync() || result.source === "local+queued");
@@ -401,22 +410,24 @@ function Dashboard() {
       if (result.source === "storage") {
         setPublishToast(
           result.message ||
-            `Published at ${time}! menu-data/cluckin-chaos/menu.json is live.`,
+            `Published at ${time}! menu-data/${truckId}/menu.json is live on Supabase Storage.`,
         );
         setCloudPending(false);
       } else if (result.source === "local+queued") {
-        setPublishToast(result.message || `Saved at ${time} — storage upload pending`);
+        setPublishToast(result.message || `Saved at ${time} — Supabase Storage upload pending`);
       } else {
         setPublishToast(
           result.message ||
-            `Saved locally at ${time}. Add VITE_SUPABASE_URL + key to push to menu-data.`,
+            `Saved locally at ${time}. Add VITE_SUPABASE_URL + key to upload to menu-data.`,
         );
       }
-      setTimeout(() => setPublishToast(null), 3600);
+      setTimeout(() => setPublishToast(null), 5000);
     } catch (e) {
-      console.error(e);
-      setPublishToast("Publish failed — please try again");
-      setTimeout(() => setPublishToast(null), 2600);
+      console.error("[Publish] failed", e);
+      setPublishToast(
+        e instanceof Error ? `Publish failed: ${e.message}` : "Publish failed — please try again",
+      );
+      setTimeout(() => setPublishToast(null), 5000);
     } finally {
       setPublishBusy(false);
     }
@@ -849,13 +860,12 @@ function PublishToWebsiteCard({
           </div>
           <h3 className="font-display text-xl mt-1">Publish Updates to My Website</h3>
           <p className="text-sm text-brand-green/70 mt-1 pr-2">
-            Saves your full menu + schedule to{" "}
-            <code className="text-[11px] bg-brand-sand px-1 rounded">menu-data/cluckin-chaos/menu.json</code>{" "}
-            (public) and food photos to <strong>menu-images</strong>. Cluckin Chaos fetches that
-            public URL with cache busting.{" "}
-            {cloudEnabled
-              ? "Supabase Storage sync is on."
-              : "Publish still uploads when Supabase env is set."}
+            Uploads full menu + schedule via the Supabase client to{" "}
+            <code className="text-[11px] bg-brand-sand px-1 rounded">
+              menu-data/cluckin-chaos/menu.json
+            </code>{" "}
+            (env: <code className="text-[11px] bg-brand-sand px-1 rounded">VITE_SUPABASE_URL</code>
+            ). Cluckin Chaos reads that public URL with cache busting.
           </p>
           {formatted && (
             <p className="text-[11px] text-brand-green/50 mt-2" suppressHydrationWarning>
@@ -978,22 +988,23 @@ function MenuManager({
         </button>
       </div>
 
-      {/* Prominent publish also available while editing the menu (busy owners can publish directly) */}
+      {/* Same path as home Publish: Supabase Storage menu-data/{truckId}/menu.json */}
       <button
         onClick={async () => {
           try {
+            const truckId = getConfiguredTruckId().trim() || DEFAULT_TRUCK_ID || "cluckin-chaos";
             const payload = buildPublishPayloadFromState(state);
-            const result = await publishData(payload);
+            const result = await publishData(payload, { truckId });
             const t = formatPublishedTime(result.published.lastPublished);
-            const extra =
-              result.source === "storage"
-                ? " (Supabase Storage)"
-                : result.source === "local+queued"
-                  ? " — upload pending"
-                  : "";
-            alert(`Published! Menu + schedule live as of ${t}${extra}`);
-          } catch {
-            alert("Could not publish. Try again in a moment.");
+            if (result.source === "storage") {
+              alert(
+                `Published to Supabase Storage!\nmenu-data/${truckId}/menu.json\nLive as of ${t}`,
+              );
+            } else {
+              alert(result.message || `Saved at ${t} — Supabase upload did not complete.`);
+            }
+          } catch (err) {
+            alert(err instanceof Error ? err.message : "Could not publish. Try again.");
           }
         }}
         className="w-full py-3 rounded-2xl bg-brand-orange text-white font-bold text-sm active:scale-[0.985] transition"
@@ -2555,7 +2566,7 @@ function SettingsSheet({
           {syncOn && (
             <div className="space-y-2 pt-1 border-t border-brand-green/10">
               <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand-green/50">
-                Owner sign-in (required to publish)
+                Owner sign-in (optional)
               </p>
               {ownerEmail ? (
                 <div className="flex items-center justify-between gap-2 text-sm">

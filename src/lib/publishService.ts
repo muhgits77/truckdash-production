@@ -1,17 +1,19 @@
 /**
- * Publish Service — TruckDash → website via Supabase Storage.
+ * Publish Service — TruckDash → Supabase Storage (env-based client).
  *
  * On "Publish Updates to My Website":
- *   1. Save full menu + schedule to localStorage (offline-friendly)
- *   2. Upload menu.json → menu-data/{truckId}/menu.json  (default: cluckin-chaos)
+ *   1. Snapshot menu + schedule to localStorage (offline cache only)
+ *   2. Upload menu.json → Supabase Storage menu-data/{truckId}/menu.json
+ *      default: menu-data/cluckin-chaos/menu.json
  *   3. Upload food photos → menu-images (non-fatal)
  *   4. Re-upload menu.json if image URLs changed
  *
- * Cluckin Chaos reads the public URL with cache busting (see menuStorage.fetchMenuJson).
+ * Cloud writes always go through the Supabase JS client + VITE_SUPABASE_* env vars.
+ * localStorage is never the website source of truth.
  */
 
 import type { MenuItem, ScheduleDay, TruckState } from "./truck-state";
-import { getSupabase, isSupabaseConfigured } from "./supabase";
+import { getSupabase, getSupabaseUrl, isSupabaseConfigured } from "./supabase";
 import {
   fetchMenuJson,
   menuJsonFullPath,
@@ -183,16 +185,14 @@ function ensureOnlineHook() {
 // ── Storage publish ──────────────────────────────────────────────────────────
 
 /**
- * Upload full menu + schedule (+ images) to Supabase Storage.
- * Writes menu-data/{truckId}/menu.json (default truckId: cluckin-chaos).
- * Anon/publishable key is enough when storage RLS policies are in place.
+ * Upload full menu + schedule (+ images) to Supabase Storage via env-based client.
+ * Always writes menu-data/{truckId}/menu.json (default: cluckin-chaos).
  */
 export async function publishToStorage(
   truckId: string,
   payload: PublishedPayload | Omit<PublishedPayload, "lastPublished" | "version">,
 ): Promise<PublishedPayload> {
-  const supabase = getSupabase();
-  if (!supabase) {
+  if (!isSupabaseConfigured() || !getSupabase()) {
     throw new Error(
       "Supabase not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_ANON_KEY).",
     );
@@ -207,11 +207,13 @@ export async function publishToStorage(
           version: PUBLISHED_VERSION,
         };
 
-  const id = truckId.trim() || DEFAULT_TRUCK_ID;
+  const id = (truckId.trim() || DEFAULT_TRUCK_ID || "cluckin-chaos").trim();
   const targetPath = menuJsonFullPath(id);
   const publicUrl = menuJsonPublicUrl(id);
+  const supabaseHost = getSupabaseUrl();
 
-  console.info("[publishService] ═══ publish START ═══", {
+  console.info("[publishService] ═══ Supabase Storage publish START ═══", {
+    supabaseHost,
     truckId: id,
     targetPath,
     publicUrl,
@@ -220,11 +222,12 @@ export async function publishToStorage(
     special: published.special?.slice(0, 80),
   });
 
-  // 1) Full menu + schedule JSON first — must land before images
+  // 1) Full menu + schedule JSON → menu-data/{id}/menu.json
   const initialJson = storedJsonFromPayload(id, published);
   let upload = await uploadMenuJson(id, initialJson);
 
-  console.info("[publishService] menu.json uploaded (initial)", {
+  console.info("[publishService] ✓ menu.json in Supabase Storage", {
+    supabaseHost,
     truckId: id,
     fullPath: upload.fullPath,
     publicUrl: upload.publicUrl,
@@ -255,17 +258,18 @@ export async function publishToStorage(
   }
 
   if (!upload.listedInBucket) {
-    throw new Error(`menu.json missing from bucket after publish (${targetPath})`);
+    throw new Error(`menu.json missing from Supabase Storage after publish (${targetPath})`);
   }
 
   if (!upload.verified) {
     console.warn(
-      "[publishService] menu.json in bucket but public URL not verified — run supabase/storage_buckets.sql so the bucket is public",
+      "[publishService] menu.json in bucket but public URL not verified — ensure storage.buckets.public = true for menu-data",
       upload.publicUrl,
     );
   }
 
-  console.info("[publishService] ═══ publish SUCCESS ═══", {
+  console.info("[publishService] ═══ Supabase Storage publish SUCCESS ═══", {
+    supabaseHost,
     truckId: id,
     fullPath: upload.fullPath,
     publicUrl: upload.publicUrl,
@@ -368,20 +372,41 @@ export async function publishData(
     version: PUBLISHED_VERSION,
   };
 
+  // Local cache only — never the website source of truth
   writeLocalPublished(published);
-  const truckId = options?.truckId?.trim() || getConfiguredTruckId();
 
-  if (!isSupabaseConfigured() || options?.skipCloud) {
+  // Always prefer cluckin-chaos unless an explicit truckId option is passed
+  const truckId =
+    options?.truckId?.trim() || getConfiguredTruckId().trim() || DEFAULT_TRUCK_ID || "cluckin-chaos";
+  const fullPath = menuJsonFullPath(truckId);
+  const publicUrl = menuJsonPublicUrl(truckId);
+  const supabaseHost = getSupabaseUrl();
+
+  if (options?.skipCloud) {
     return {
       published,
       source: "local",
-      message: "Saved locally. Add VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY to push to menu-data.",
+      message: "Saved locally only (skipCloud).",
     };
   }
 
+  if (!isSupabaseConfigured()) {
+    console.error("[publishService] Publish blocked — Supabase env vars missing", {
+      targetPath: fullPath,
+    });
+    return {
+      published,
+      source: "local",
+      message:
+        "Saved locally only. Set VITE_SUPABASE_URL + VITE_SUPABASE_PUBLISHABLE_KEY to upload to Supabase Storage.",
+    };
+  }
+
+  // Sync toggle is optional UX — Publish always uploads when env is set
   if (!isSupabaseSyncEnabled()) {
-    console.warn(
-      "[publishService] Supabase Sync toggle is off — still uploading menu.json (sign in as owner required)",
+    console.info(
+      "[publishService] Supabase Sync toggle is off — still uploading menu.json to Supabase Storage",
+      { supabaseHost, fullPath },
     );
   }
 
@@ -395,12 +420,17 @@ export async function publishData(
   }
 
   try {
+    console.info("[publishService] Publish button → Supabase Storage upload", {
+      supabaseHost,
+      truckId,
+      fullPath,
+      publicUrl,
+    });
     const uploaded = await publishToStorage(truckId, published);
     writeLocalPublished(uploaded);
     setPendingSync(null);
-    const fullPath = menuJsonFullPath(truckId);
-    const publicUrl = menuJsonPublicUrl(truckId);
-    console.info("[publishService] ✓ Publish Updates complete", {
+    console.info("[publishService] ✓ Publish Updates complete (Supabase Storage)", {
+      supabaseHost,
       fullPath,
       publicUrl,
       menuItems: uploaded.menu.length,
@@ -410,22 +440,23 @@ export async function publishData(
     return {
       published: uploaded,
       source: "storage",
-      message: `Published! Saved full menu + schedule to ${fullPath}`,
+      message: `Published to Supabase Storage: ${fullPath}`,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Cloud publish failed";
     setPendingSync({ truckId, payload: published, queuedAt: new Date().toISOString() });
-    console.error("[publishService] cloud publish FAILED", {
+    console.error("[publishService] Supabase Storage publish FAILED", {
+      supabaseHost,
       truckId,
-      targetPath: menuJsonFullPath(truckId),
-      publicUrl: menuJsonPublicUrl(truckId),
+      targetPath: fullPath,
+      publicUrl,
       error: message,
       err,
     });
     return {
       published,
       source: "local+queued",
-      message: `Storage upload failed: ${message}`,
+      message: `Supabase Storage upload failed: ${message}`,
     };
   }
 }

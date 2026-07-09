@@ -1,4 +1,7 @@
 import "./lib/error-capture";
+// Load SUPABASE_SERVICE_ROLE_KEY etc. before any server fn runs (Vite only auto-loads VITE_*).
+import { loadServerEnv } from "./lib/load-server-env";
+loadServerEnv();
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";

@@ -44,7 +44,7 @@ import {
   signOutOwner,
   DEFAULT_TRUCK_ID,
 } from "@/lib/publishService";
-import { isSupabaseConfigured, getSupabaseConfigHint } from "@/lib/supabase";
+import { isSupabaseConfigured, getSupabaseConfigHint, getSupabaseUrl } from "@/lib/supabase";
 import { formatPublishedShort, formatPublishedTime, formatWeekOf } from "@/lib/format-local";
 import { useHydrated } from "@/hooks/use-hydrated";
 
@@ -480,6 +480,12 @@ function Dashboard() {
               onPublish={handlePublishToWebsite}
               cloudEnabled={cloudEnabled}
               cloudPending={cloudPending}
+              truckId={
+                hydrated
+                  ? getConfiguredTruckId().trim() || DEFAULT_TRUCK_ID
+                  : DEFAULT_TRUCK_ID
+              }
+              supabaseReady={hydrated ? isSupabaseConfigured() : false}
             />
 
             <QuickActions
@@ -838,15 +844,20 @@ function PublishToWebsiteCard({
   onPublish,
   cloudEnabled,
   cloudPending,
+  truckId,
+  supabaseReady,
 }: {
   lastPublished: string | null;
   busy: boolean;
   onPublish: () => void;
   cloudEnabled: boolean;
   cloudPending: boolean;
+  truckId: string;
+  supabaseReady: boolean;
 }) {
   // lastPublished is always null on SSR/first paint (loaded in useEffect) — safe to format
   const formatted = lastPublished ? formatPublishedShort(lastPublished) : null;
+  const storagePath = `menu-data/${truckId}/menu.json`;
 
   return (
     <section className="bg-white rounded-3xl border border-brand-green/10 shadow-sm p-5">
@@ -860,21 +871,30 @@ function PublishToWebsiteCard({
           </div>
           <h3 className="font-display text-xl mt-1">Publish Updates to My Website</h3>
           <p className="text-sm text-brand-green/70 mt-1 pr-2">
-            Uploads full menu + schedule via the Supabase client to{" "}
-            <code className="text-[11px] bg-brand-sand px-1 rounded">
-              menu-data/cluckin-chaos/menu.json
-            </code>{" "}
-            (env: <code className="text-[11px] bg-brand-sand px-1 rounded">VITE_SUPABASE_URL</code>
-            ). Cluckin Chaos reads that public URL with cache busting.
+            One tap uploads your full menu + schedule to{" "}
+            <code className="text-[11px] bg-brand-sand px-1 rounded">{storagePath}</code>. Your
+            public site loads that file automatically.
+          </p>
+          <p className="text-[11px] mt-2" suppressHydrationWarning>
+            {supabaseReady ? (
+              <span className="text-brand-green/70 font-medium">
+                Connected · {getSupabaseConfigHint()}
+              </span>
+            ) : (
+              <span className="text-brand-orange font-medium">
+                Not connected — add Supabase keys to .env, then run{" "}
+                <code className="bg-brand-sand px-1 rounded">npm run setup</code>
+              </span>
+            )}
           </p>
           {formatted && (
-            <p className="text-[11px] text-brand-green/50 mt-2" suppressHydrationWarning>
+            <p className="text-[11px] text-brand-green/50 mt-1" suppressHydrationWarning>
               Last published: {formatted}
               {cloudEnabled && (
-                <span className="ml-1 text-brand-orange/80">· Supabase sync on</span>
+                <span className="ml-1 text-brand-orange/80">· sync on</span>
               )}
               {cloudPending && (
-                <span className="ml-1 text-brand-orange font-semibold">· Cloud pending</span>
+                <span className="ml-1 text-brand-orange font-semibold">· pending</span>
               )}
             </p>
           )}
@@ -892,6 +912,7 @@ function PublishToWebsiteCard({
       <div className="mt-3 flex items-center justify-center gap-4 text-xs flex-wrap">
         <Link
           to="/website"
+          search={{ truck: truckId }}
           target="_blank"
           className="text-brand-orange font-bold underline underline-offset-2"
         >
@@ -921,7 +942,7 @@ function PublishToWebsiteCard({
       </div>
 
       <p className="text-center text-[10px] text-brand-green/50 mt-2">
-        One tap keeps customers up to date. Works offline — syncs when you reconnect.
+        Works offline — queues and syncs when you reconnect. Setup guide: docs/CONNECT.md
       </p>
     </section>
   );
@@ -2626,38 +2647,48 @@ function SettingsSheet({
 
           <details className="text-xs text-brand-green/65">
             <summary className="cursor-pointer font-semibold text-brand-green list-none flex items-center gap-1">
-              <span className="text-brand-orange">▸</span> Connection instructions
+              <span className="text-brand-orange">▸</span> Connect a new truck (plug-and-play)
             </summary>
             <ol className="mt-2 space-y-1.5 list-decimal list-inside leading-relaxed pl-0.5">
               <li>
-                SQL → run{" "}
+                Create a free Supabase project → <strong>Settings → API</strong>.
+              </li>
+              <li>
+                Copy{" "}
+                <code className="text-[10px] bg-brand-sand px-1 rounded">.env.example</code> →{" "}
+                <code className="text-[10px] bg-brand-sand px-1 rounded">.env</code> and paste:
+                <br />
+                <code className="text-[10px] bg-brand-sand px-1 rounded">VITE_SUPABASE_URL</code>,{" "}
+                <code className="text-[10px] bg-brand-sand px-1 rounded">VITE_SUPABASE_ANON_KEY</code>
+                ,{" "}
                 <code className="text-[10px] bg-brand-sand px-1 rounded">
-                  supabase/storage_buckets.sql
+                  SUPABASE_SERVICE_ROLE_KEY
                 </code>{" "}
+                (server-only), and your{" "}
+                <code className="text-[10px] bg-brand-sand px-1 rounded">VITE_DEFAULT_TRUCK_ID</code>.
+              </li>
+              <li>
+                Run <code className="text-[10px] bg-brand-sand px-1 rounded">npm run setup</code>{" "}
                 (creates public <strong>menu-data</strong> + <strong>menu-images</strong>).
               </li>
               <li>
-                <strong>Lovable Cloud:</strong> Workspace Settings → Privacy &amp; security → turn{" "}
-                <em>off</em> “Block public storage buckets” so Cluckin Chaos can use the public URL.
+                Restart <code className="text-[10px] bg-brand-sand px-1 rounded">npm run dev</code> →
+                home → <strong>Publish Updates to My Website</strong>.
               </li>
               <li>
-                Env:{" "}
-                <code className="text-[10px] bg-brand-sand px-1 rounded">VITE_SUPABASE_URL</code>{" "}
-                +{" "}
+                Publishes to{" "}
                 <code className="text-[10px] bg-brand-sand px-1 rounded">
-                  VITE_SUPABASE_PUBLISHABLE_KEY
-                </code>{" "}
-                (or ANON_KEY). Default truck id:{" "}
-                <code className="text-[10px] bg-brand-sand px-1 rounded">cluckin-chaos</code>.
-              </li>
-              <li>
-                Home → <strong>Publish Updates to My Website</strong> → writes{" "}
-                <code className="text-[10px] bg-brand-sand px-1 rounded">
-                  menu-data/cluckin-chaos/menu.json
+                  menu-data/{truckId || "your-truck"}/menu.json
                 </code>
+                . Full guide: <code className="text-[10px] bg-brand-sand px-1 rounded">docs/CONNECT.md</code>
                 .
               </li>
             </ol>
+            {configured && (
+              <p className="mt-2 text-[10px] text-brand-green/55 break-all">
+                Host: {getSupabaseUrl().replace(/^https?:\/\//, "")}
+              </p>
+            )}
           </details>
         </div>
 

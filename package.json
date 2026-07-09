@@ -10,9 +10,12 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "storage:setup": "tsx scripts/setup-storage.mts",
-    "storage:test": "tsx scripts/test-menu-upload.ts",
-    "storage:e2e": "tsx scripts/e2e-publish.mts"
+    "setup": "npx tsx scripts/setup.mts",
+    "setup:test": "npx tsx scripts/test-menu-upload.ts",
+    "setup:e2e": "npx tsx scripts/e2e-publish.mts",
+    "storage:setup": "npx tsx scripts/setup.mts",
+    "storage:test": "npx tsx scripts/test-menu-upload.ts",
+    "storage:e2e": "npx tsx scripts/e2e-publish.mts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

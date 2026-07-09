@@ -206,7 +206,7 @@ export async function publishToStorage(
 ): Promise<PublishedPayload> {
   if (!isSupabaseConfigured() || !getSupabase()) {
     throw new Error(
-      "Supabase not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_ANON_KEY).",
+      "Supabase not configured. Copy .env.example → .env, add your keys, run npm run setup.",
     );
   }
 
@@ -429,7 +429,7 @@ export async function publishData(
       published,
       source: "local",
       message:
-        "Saved locally only. Set VITE_SUPABASE_URL + VITE_SUPABASE_PUBLISHABLE_KEY to upload to Supabase Storage.",
+        "Saved locally only. Add VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY to .env, then run npm run setup.",
     };
   }
 

@@ -389,7 +389,8 @@ export function getSupabase(): SupabaseClient | null {
 
 export function getSupabaseConfigHint(): string {
   if (isSupabaseConfigured()) {
-    return `Connected → ${url.replace(/^https?:\/\//, "")}`;
+    const host = url.replace(/^https?:\/\//, "").split("/")[0] || url;
+    return host;
   }
-  return "Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY / VITE_SUPABASE_ANON_KEY";
+  return "Add VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY to .env · npm run setup";
 }

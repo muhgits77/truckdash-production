@@ -3,6 +3,11 @@
  *
  * Browser Publish calls this so writes work even before/without anon INSERT RLS.
  * Service role stays on the server only — never use a VITE_ prefix for it.
+ *
+ * Env loading (do not import node:fs here — this module is referenced from the client):
+ *   - vite.config.ts plugin loads SUPABASE_* into process.env at startup
+ *   - src/server.ts calls loadServerEnv() for SSR
+ *   - Vercel/host injects SUPABASE_SERVICE_ROLE_KEY into process.env in production
  */
 import { createServerFn } from "@tanstack/react-start";
 
@@ -47,6 +52,13 @@ function getServerSupabaseConfig(): { url: string; key: string; keyKind: string 
   if (!url || !key) {
     throw new Error(
       "Server Storage upload misconfigured. Set VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (preferred) or VITE_SUPABASE_ANON_KEY.",
+    );
+  }
+
+  if (!service) {
+    console.warn(
+      "[storage-publish.fn] SUPABASE_SERVICE_ROLE_KEY missing — server upload will use anon and may hit RLS. " +
+        "Add it to .env (no VITE_ prefix) and Vercel server env. Restart dev server after adding.",
     );
   }
 

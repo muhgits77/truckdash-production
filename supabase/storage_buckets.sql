@@ -1,15 +1,15 @@
 -- =============================================================================
 -- TruckDash · Supabase Storage buckets + RLS
--- Run once in Supabase Dashboard → SQL Editor → Run
+-- Run once: Dashboard → SQL Editor → paste → Run
 --
--- Project: oaoqvowghshyjqhaeubx (your Vercel / non-Lovable project)
+-- Or: npm run setup  (with SUPABASE_SERVICE_ROLE_KEY in .env)
 --
 -- Canonical publish object:
---   menu-data/cluckin-chaos/menu.json
---   public URL:
---   {SUPABASE_URL}/storage/v1/object/public/menu-data/cluckin-chaos/menu.json
+--   menu-data/{truckId}/menu.json
+--   public:
+--   {SUPABASE_URL}/storage/v1/object/public/menu-data/{truckId}/menu.json
 --
--- After this SQL, Publish works with the anon key alone (no owner sign-in).
+-- After this SQL, Publish can use the public anon key (no sign-in required).
 -- =============================================================================
 
 -- 1) Buckets (public = anonymous read via /storage/v1/object/public/...)
@@ -59,7 +59,7 @@ drop policy if exists "Owners delete menu-images" on storage.objects;
 drop policy if exists menu_images_anon_delete on storage.objects;
 drop policy if exists menu_images_public_all on storage.objects;
 
--- to public: classic anon JWT + authenticated sessions (upsert needs INSERT+UPDATE)
+-- public role: classic anon JWT + authenticated sessions (upsert needs INSERT+UPDATE)
 create policy menu_data_public_read
   on storage.objects for select
   to public

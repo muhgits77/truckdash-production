@@ -524,111 +524,12 @@ const BUCKET_SPECS: Record<
   },
 };
 
-function storageAdminHeaders(fallbackAuth: Record<string, string>): Record<string, string> {
-  const serviceKey =
-    (typeof process !== "undefined" &&
-      (process.env.SUPABASE_SERVICE_ROLE_KEY || "")?.trim()) ||
-    "";
-  const bearer =
-    serviceKey ||
-    fallbackAuth.Authorization?.replace(/^Bearer\s+/i, "").trim() ||
-    getSupabaseAnonKey();
-  const apikey = serviceKey || fallbackAuth.apikey || getSupabaseAnonKey();
-  return {
-    apikey,
-    Authorization: `Bearer ${bearer}`,
-    "Content-Type": "application/json",
-  };
-}
-
 /**
- * Create bucket if missing. Anon usually cannot insert into storage.buckets —
- * service role or storage_buckets.sql is required for a fresh project.
- */
-async function ensureBucketExists(
-  bucket: string,
-  authHeaders: Record<string, string>,
-): Promise<"ready" | "created" | "missing"> {
-  const base = getSupabaseUrl();
-  const spec = BUCKET_SPECS[bucket] ?? {
-    public: true,
-    fileSizeLimit: 5_242_880,
-    allowedMimeTypes: ["*/*"],
-  };
-  const headers = storageAdminHeaders(authHeaders);
-  const usingService = Boolean(
-    typeof process !== "undefined" && process.env.SUPABASE_SERVICE_ROLE_KEY?.trim(),
-  );
-
-  // GET /bucket/{id} is the reliable missing-bucket signal on stock Supabase
-  const infoRes = await fetch(`${base}/storage/v1/bucket/${encodeURIComponent(bucket)}`, {
-    headers,
-  });
-  if (infoRes.ok) {
-    const info = (await infoRes.json().catch(() => null)) as { public?: boolean } | null;
-    console.info(LOG, "ensureBucket: exists", {
-      bucket,
-      public: info?.public,
-      usingServiceRole: usingService,
-    });
-    if (info && info.public === false) {
-      console.warn(
-        LOG,
-        `bucket "${bucket}" is private — public menu URLs may fail. Re-run storage_buckets.sql (public=true).`,
-      );
-    }
-    return "ready";
-  }
-
-  const infoBody = (await infoRes.text().catch(() => "")).slice(0, 200);
-  console.info(LOG, "ensureBucket: not found or inaccessible — attempting create", {
-    bucket,
-    status: infoRes.status,
-    infoBody,
-    usingServiceRole: usingService,
-  });
-
-  const createRes = await fetch(`${base}/storage/v1/bucket`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      id: bucket,
-      name: bucket,
-      public: spec.public,
-      file_size_limit: spec.fileSizeLimit,
-      allowed_mime_types: spec.allowedMimeTypes,
-    }),
-  });
-
-  if (createRes.ok || createRes.status === 200 || createRes.status === 201) {
-    console.info(LOG, "ensureBucket: created", { bucket, status: createRes.status });
-    return "created";
-  }
-
-  const detail = (await createRes.text().catch(() => "")).slice(0, 300);
-  if (/already exists|duplicate/i.test(detail) || createRes.status === 409) {
-    console.info(LOG, "ensureBucket: already exists (race)", { bucket });
-    return "ready";
-  }
-
-  console.warn(LOG, "ensureBucket: create blocked — run SQL setup", {
-    bucket,
-    status: createRes.status,
-    detail,
-    hint: usingService
-      ? "Service role create failed — check project URL/key"
-      : "Anon cannot create buckets. Run supabase/storage_buckets.sql or set SUPABASE_SERVICE_ROLE_KEY and run scripts/setup-storage.mts",
-  });
-  return "missing";
-}
-
-/**
- * Preflight: Authorization present + bucket usable.
+ * Preflight: Authorization present + bucket listable.
  *
- * Stock Supabase quirk: anon GET /bucket/{id} often returns 404 even when the
- * public bucket exists. Prefer:
- *   1) service-role GET/create when available
- *   2) POST /object/list as the anon existence signal
+ * Browser/anon: GET /bucket/{id} often 404s even when the bucket works — do NOT
+ * attempt create (also 403 for anon). List is the reliable probe.
+ * Server/service-role: optional create if truly missing.
  */
 async function assertStorageReady(bucket: string): Promise<void> {
   const base = getSupabaseUrl();
@@ -641,18 +542,14 @@ async function assertStorageReady(bucket: string): Promise<void> {
     );
   }
 
-  const status = await ensureBucketExists(bucket, authHeaders);
-  if (status === "ready" || status === "created") {
-    console.info(LOG, "bucket ready", {
-      bucket,
-      status,
-      supabaseHost: base,
-      auth: describeBearerForLog(bearer),
-    });
-    return;
-  }
+  const inBrowser = typeof window !== "undefined";
+  const serviceKey =
+    (!inBrowser &&
+      typeof process !== "undefined" &&
+      process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) ||
+    "";
 
-  // Anon cannot always GET /bucket/{id} — list is the real probe
+  // Prefer list probe — works for anon when bucket exists + SELECT policy
   const listRes = await fetch(`${base}/storage/v1/object/list/${encodeURIComponent(bucket)}`, {
     method: "POST",
     headers: {
@@ -664,7 +561,7 @@ async function assertStorageReady(bucket: string): Promise<void> {
   });
 
   if (listRes.ok) {
-    console.info(LOG, "bucket ready (anon list probe)", {
+    console.info(LOG, "bucket ready (list probe)", {
       bucket,
       supabaseHost: base,
       auth: describeBearerForLog(bearer),
@@ -672,11 +569,43 @@ async function assertStorageReady(bucket: string): Promise<void> {
     return;
   }
 
+  // Server-only: try create with service role
+  if (serviceKey) {
+    const spec = BUCKET_SPECS[bucket] ?? {
+      public: true,
+      fileSizeLimit: 5_242_880,
+      allowedMimeTypes: ["*/*"],
+    };
+    const createRes = await fetch(`${base}/storage/v1/bucket`, {
+      method: "POST",
+      headers: {
+        apikey: serviceKey,
+        Authorization: `Bearer ${serviceKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id: bucket,
+        name: bucket,
+        public: spec.public,
+        file_size_limit: spec.fileSizeLimit,
+        allowed_mime_types: spec.allowedMimeTypes,
+      }),
+    });
+    if (
+      createRes.ok ||
+      createRes.status === 201 ||
+      createRes.status === 409 ||
+      /already exists|duplicate/i.test(await createRes.clone().text().catch(() => ""))
+    ) {
+      console.info(LOG, "bucket ready after service-role create/exists", { bucket });
+      return;
+    }
+  }
+
   const detail = (await listRes.text().catch(() => "")).slice(0, 240);
   throw new Error(
     `Storage bucket "${bucket}" is not usable on ${base} (list ${listRes.status}). ` +
-      `Run supabase/storage_buckets.sql or: SUPABASE_SERVICE_ROLE_KEY=... npx tsx scripts/setup-storage.mts. ` +
-      `Detail: ${detail}`,
+      `Run supabase/storage_buckets.sql or: npm run storage:setup. Detail: ${detail}`,
   );
 }
 

@@ -17,6 +17,7 @@ import {
 import { formatPublishedShort, formatPublishedTime, formatWeekOf } from "@/lib/format-local";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { AppBottomNav } from "@/components/app-bottom-nav";
+import { ThemeToggle } from "@/hooks/use-theme";
 
 export const Route = createFileRoute("/this-week")({
   head: () => ({
@@ -265,12 +266,12 @@ function ThisWeekPage() {
   };
 
   return (
-    <div className="min-h-screen bg-brand-sand text-brand-green pb-24">
+    <div className="min-h-screen bg-brand-sand text-[color:var(--td-ink)] transition-colors duration-200 pb-24">
       {/* Top nav / branding */}
-      <header className="sticky top-0 z-40 bg-brand-sand/90 backdrop-blur-md border-b border-brand-green/10 px-4 py-3">
+      <header className="sticky top-0 z-40 bg-brand-sand/90 backdrop-blur-md border-b border-[color:var(--border)] px-4 py-3">
         <div className="mx-auto max-w-3xl flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link to="/" className="text-brand-green/60 hover:text-brand-green transition">
+            <Link to="/" className="text-[color:var(--td-ink-muted)] hover:text-brand-orange transition">
               ← Home
             </Link>
             <div>
@@ -287,15 +288,17 @@ function ThisWeekPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <button
+              type="button"
               onClick={resetWeek}
-              className="text-[11px] px-3 py-1.5 rounded-full border border-brand-green/15 text-brand-green/70 hover:bg-white/60 transition"
+              className="text-[11px] px-3 py-1.5 rounded-full border border-[color:var(--border)] text-[color:var(--td-ink-muted)] hover:bg-[color:var(--surface-2)] transition"
             >
               Reset week
             </button>
             <Link
               to="/"
-              className="text-[11px] px-3 py-1.5 rounded-full bg-white border border-brand-green/10 text-brand-green font-semibold"
+              className="text-[11px] px-3 py-1.5 rounded-full bg-[color:var(--surface)] border border-[color:var(--border)] text-[color:var(--td-ink)] font-semibold"
             >
               Dashboard
             </Link>
@@ -307,7 +310,7 @@ function ThisWeekPage() {
         {/* Intro + actions */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
-            <p className="text-sm text-brand-green/70 max-w-prose">
+            <p className="text-sm text-[color:var(--td-ink-muted)] max-w-prose">
               Update locations, hours, and notes for the week. Everything saves automatically to
               this device. Perfect for printing or posting on social each Monday.
             </p>
@@ -320,13 +323,13 @@ function ThisWeekPage() {
           <div className="flex flex-wrap gap-2">
             <button
               onClick={handleSave}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white border border-brand-green/10 px-4 py-2 text-sm font-bold active:scale-[0.985] transition"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[color:var(--surface)] border border-[color:var(--border)] px-4 py-2 text-sm font-bold active:scale-[0.985] transition"
             >
               Save Changes
             </button>
             <button
               onClick={copyTextSchedule}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white border border-brand-green/10 px-4 py-2 text-sm font-bold active:scale-[0.985] transition"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[color:var(--surface)] border border-[color:var(--border)] px-4 py-2 text-sm font-bold active:scale-[0.985] transition"
             >
               Copy as Text
             </button>
@@ -376,23 +379,23 @@ function ThisWeekPage() {
           </button>
         </div>
 
-        <p className="text-center text-[11px] text-brand-green/50 max-w-md mx-auto">
+        <p className="text-center text-[11px] text-[color:var(--td-ink-muted)] max-w-md mx-auto">
           Print creates a clean professional table with Bluegrass Kitchen branding.
           <br />
           Social creates beautiful image cards sized for Instagram &amp; Facebook.
         </p>
 
         {/* Helpful Kentucky-local tip */}
-        <div className="mx-auto max-w-md text-center text-xs text-brand-green/60 pt-2">
+        <div className="mx-auto max-w-md text-center text-xs text-[color:var(--td-ink-muted)] pt-2">
           Tip: Keep neighborhood names short and recognizable (Downtown Monticello, Lake Cumberland,
           etc.). Add festival or event names in the Notes field.
         </div>
 
         {/* Integration: Link from This Week to Catering (per spec) */}
-        <div className="mt-2 bg-white border border-brand-green/10 rounded-3xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+        <div className="mt-2 bg-[color:var(--surface)] border border-[color:var(--border)] rounded-3xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <div className="flex-1">
             <div className="font-semibold">Hosting an event?</div>
-            <p className="text-sm text-brand-green/70">
+            <p className="text-sm text-[color:var(--td-ink-muted)]">
               Book {state.name} for private catering or a full truck experience.
             </p>
           </div>
@@ -443,13 +446,13 @@ function ThisWeekPage() {
                   </div>
                   <h3 className="font-display text-2xl">Share This Week</h3>
                 </div>
-                <button onClick={closeSocial} className="text-brand-green/60 font-bold px-2">
+                <button onClick={closeSocial} className="text-[color:var(--td-ink-muted)] font-bold px-2">
                   Done
                 </button>
               </div>
 
               <div className="mb-4">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-brand-green/60 mb-1.5">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-[color:var(--td-ink-muted)] mb-1.5">
                   Image size
                 </div>
                 <div className="flex gap-2">
@@ -462,7 +465,7 @@ function ThisWeekPage() {
                         className={`flex-1 py-2.5 rounded-2xl border text-sm font-bold transition ${
                           active
                             ? "bg-brand-green text-white border-brand-green"
-                            : "bg-white text-brand-green border-brand-green/10"
+                            : "bg-[color:var(--surface)] text-[color:var(--td-ink)] border-[color:var(--border)]"
                         }`}
                       >
                         {fmt.label}
@@ -470,7 +473,7 @@ function ThisWeekPage() {
                     );
                   })}
                 </div>
-                <p className="text-[11px] text-brand-green/50 mt-1.5">
+                <p className="text-[11px] text-[color:var(--td-ink-muted)] mt-1.5">
                   {SOCIAL_FORMATS.find((f) => f.id === socialFormat)?.description}
                 </p>
               </div>
@@ -479,14 +482,14 @@ function ThisWeekPage() {
 
           <div className={socialOpen ? "mb-4" : ""}>
             {socialOpen && (
-              <div className="text-[10px] font-bold uppercase tracking-wider text-brand-green/60 mb-2">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[color:var(--td-ink-muted)] mb-2">
                 Preview
               </div>
             )}
             <div
               className={
                 socialOpen
-                  ? "rounded-3xl overflow-hidden ring-1 ring-brand-green/10 bg-white p-1.5"
+                  ? "rounded-3xl overflow-hidden ring-1 ring-[color:var(--border)] bg-[color:var(--surface)] p-1.5"
                   : ""
               }
             >
@@ -519,13 +522,13 @@ function ThisWeekPage() {
                 </button>
                 <button
                   onClick={copyTextSchedule}
-                  className="w-full border border-brand-green/20 text-brand-green font-semibold py-3 rounded-2xl active:scale-[0.985]"
+                  className="w-full border border-[color:var(--border)] text-[color:var(--td-ink)] font-semibold py-3 rounded-2xl active:scale-[0.985]"
                 >
                   Copy Caption
                 </button>
               </div>
 
-              <p className="text-center text-[10px] text-brand-green/50 pt-4">
+              <p className="text-center text-[10px] text-[color:var(--td-ink-muted)] pt-4">
                 High-resolution export. Use on Instagram, Facebook, or stories. Looks great printed
                 too.
               </p>
@@ -541,7 +544,7 @@ function ThisWeekPage() {
       )}
 
       {/* Footer */}
-      <footer className="text-center pt-8 pb-24 text-[10px] text-brand-green/40">
+      <footer className="text-center pt-8 pb-24 text-[10px] text-[color:var(--td-ink-muted)]">
         TruckDash · Bluegrass Kitchen · Kentucky
       </footer>
       <AppBottomNav />
@@ -562,7 +565,7 @@ function ScheduleDayCard({
 
   return (
     <article
-      className={`bg-white rounded-3xl border border-brand-green/8 shadow-sm overflow-hidden transition ${isClosed ? "opacity-80" : ""}`}
+      className={`bg-[color:var(--surface)] rounded-3xl border border-[color:var(--border)] shadow-sm overflow-hidden transition ${isClosed ? "opacity-80" : ""}`}
     >
       <div className="flex flex-col sm:flex-row">
         {/* Day badge — warm accent */}
@@ -580,7 +583,7 @@ function ScheduleDayCard({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Neighborhood / Location */}
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-[0.18em] text-brand-green/60 mb-1">
+              <label className="block text-[10px] font-bold uppercase tracking-[0.18em] text-[color:var(--td-ink-muted)] mb-1">
                 Neighborhood / Area
               </label>
               <input
@@ -593,7 +596,7 @@ function ScheduleDayCard({
 
             {/* Specific Spot */}
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-[0.18em] text-brand-green/60 mb-1">
+              <label className="block text-[10px] font-bold uppercase tracking-[0.18em] text-[color:var(--td-ink-muted)] mb-1">
                 Specific Spot
               </label>
               <input
@@ -608,7 +611,7 @@ function ScheduleDayCard({
           {/* Hours */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-[0.18em] text-brand-green/60 mb-1">
+              <label className="block text-[10px] font-bold uppercase tracking-[0.18em] text-[color:var(--td-ink-muted)] mb-1">
                 Opens
               </label>
               <input
@@ -619,7 +622,7 @@ function ScheduleDayCard({
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-[0.18em] text-brand-green/60 mb-1">
+              <label className="block text-[10px] font-bold uppercase tracking-[0.18em] text-[color:var(--td-ink-muted)] mb-1">
                 Closes
               </label>
               <input
@@ -633,7 +636,7 @@ function ScheduleDayCard({
 
           {/* Notes — e.g. "Festival", "Prep day", "Closed", event info */}
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-[0.18em] text-brand-green/60 mb-1">
+            <label className="block text-[10px] font-bold uppercase tracking-[0.18em] text-[color:var(--td-ink-muted)] mb-1">
               Notes (visible on print &amp; social)
             </label>
             <input
@@ -652,7 +655,7 @@ function ScheduleDayCard({
               onChange={(e) => onChange({ closed: e.target.checked })}
               className="size-4 accent-brand-orange"
             />
-            <span className="font-medium text-brand-green/80">Closed / prep / off this day</span>
+            <span className="font-medium text-[color:var(--td-ink)]">Closed / prep / off this day</span>
           </label>
         </div>
       </div>

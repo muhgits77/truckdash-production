@@ -1,6 +1,6 @@
 /**
  * Shared chrome for operator tools (Live Map, Calendar, Listings).
- * Theme-aware with high-contrast ink tokens and generous spacing.
+ * Theme-aware with high-contrast ink tokens, spacing, and soft motion.
  */
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
@@ -21,7 +21,7 @@ export function PageShell({
   return (
     <div className="min-h-screen bg-brand-sand pb-28 transition-colors duration-200">
       <header
-        className="sticky top-0 z-30 backdrop-blur-xl border-b border-[color:var(--border)]"
+        className="sticky top-0 z-30 backdrop-blur-xl border-b border-[color:var(--border)] transition-colors duration-200"
         style={{ background: "color-mix(in srgb, var(--brand-sand) 92%, transparent)" }}
       >
         <div className="mx-auto max-w-md px-4 py-4 flex items-center justify-between gap-3">
@@ -44,7 +44,7 @@ export function PageShell({
           <div className="flex items-center gap-2.5 shrink-0">
             {live != null && (
               <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${
                   live
                     ? "bg-brand-orange text-white shadow-md shadow-brand-orange/25"
                     : "bg-[color:var(--surface)] text-[color:var(--td-ink-muted)] border border-[color:var(--border)]"
@@ -60,7 +60,7 @@ export function PageShell({
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-md px-4 pt-5 space-y-5 pb-2">{children}</main>
+      <main className="mx-auto max-w-md px-4 pt-5 space-y-5 pb-2 td-rise">{children}</main>
       <AppBottomNav />
     </div>
   );

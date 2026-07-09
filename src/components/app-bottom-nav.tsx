@@ -121,7 +121,7 @@ export function AppBottomNav() {
       )}
 
       <nav
-        className="fixed bottom-0 inset-x-0 z-40 border-t border-[color:var(--border)] px-2 pt-2.5 pb-[max(0.85rem,env(safe-area-inset-bottom))] print:hidden"
+        className="fixed bottom-0 inset-x-0 z-40 border-t border-[color:var(--border)] px-2 pt-2.5 pb-[max(0.85rem,env(safe-area-inset-bottom))] print:hidden transition-colors duration-200"
         style={{
           background: "color-mix(in srgb, var(--surface) 94%, transparent)",
           backdropFilter: "blur(16px)",

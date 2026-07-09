@@ -140,9 +140,9 @@ function PublicWebsitePreview() {
   const openToday = todaysSchedule && !todaysSchedule.closed;
 
   return (
-    <div className="min-h-screen bg-brand-sand text-brand-green">
+    <div className="min-h-screen bg-brand-sand text-[color:var(--td-ink)] transition-colors duration-200">
       {/* Warm public header — premium but approachable */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-brand-green/10">
+      <header className="sticky top-0 z-40 bg-[color:var(--surface)]/92 backdrop-blur border-b border-[color:var(--border)]">
         <div className="mx-auto max-w-3xl px-4 py-4 flex items-center justify-between">
           <div>
             <Link
@@ -157,7 +157,7 @@ function PublicWebsitePreview() {
                 {data?.truckName || "Our Truck"}
               </span>
             </div>
-            <p className="text-[10px] text-brand-green/60 tracking-[0.15em] -mt-0.5">
+            <p className="text-[10px] text-[color:var(--td-ink-muted)] tracking-[0.15em] -mt-0.5">
               LAKE CUMBERLAND • KENTUCKY
             </p>
           </div>
@@ -175,7 +175,7 @@ function PublicWebsitePreview() {
 
       <main className="mx-auto max-w-3xl px-4 pt-6 pb-20 space-y-8">
         {loading ? (
-          <div className="py-12 text-center text-brand-green/60">Loading today's menu…</div>
+          <div className="py-12 text-center text-[color:var(--td-ink-muted)]">Loading today's menu…</div>
         ) : error || !data?.lastPublished ? (
           <EmptyState message={error || "No menu published yet."} />
         ) : (
@@ -188,7 +188,7 @@ function PublicWebsitePreview() {
                   {publishedDayLabel ? ` · ${publishedDayLabel}` : ""}
                 </div>
                 {source && (
-                  <span className="text-[10px] uppercase tracking-wider text-brand-green/45 font-semibold">
+                  <span className="text-[10px] uppercase tracking-wider text-[color:var(--td-ink-muted)] font-semibold">
                     via {source === "supabase" ? "Supabase" : "this device"}
                   </span>
                 )}
@@ -199,10 +199,10 @@ function PublicWebsitePreview() {
               </h1>
 
               <div className="flex items-center gap-2 text-lg">
-                <span className="text-brand-green/70">📍</span>
+                <span className="text-[color:var(--td-ink-muted)]">📍</span>
                 <span className="font-medium">{data.location}</span>
               </div>
-              <div className="text-brand-green/70 mt-0.5">
+              <div className="text-[color:var(--td-ink-muted)] mt-0.5">
                 {data.hoursStart} — {data.hoursEnd}
                 {data.phone && (
                   <>
@@ -220,12 +220,12 @@ function PublicWebsitePreview() {
             <section>
               <div className="flex items-baseline justify-between mb-3">
                 <h2 className="font-display text-2xl">Menu</h2>
-                <span className="text-xs uppercase tracking-widest text-brand-green/50">
+                <span className="text-xs uppercase tracking-widest text-[color:var(--td-ink-muted)]">
                   Updated live from TruckDash
                 </span>
               </div>
 
-              <div className="bg-white rounded-3xl border border-brand-green/10 divide-y divide-brand-green/5 overflow-hidden">
+              <div className="bg-[color:var(--surface)] rounded-3xl border border-[color:var(--border)] divide-y divide-[color:var(--border)] overflow-hidden">
                 {data.menu.length > 0 ? (
                   data.menu.map((item: MenuItem) => (
                     <div key={item.id} className="flex items-center justify-between px-5 py-3.5">
@@ -236,7 +236,7 @@ function PublicWebsitePreview() {
                     </div>
                   ))
                 ) : (
-                  <div className="px-5 py-8 text-brand-green/60 text-sm">Menu coming soon.</div>
+                  <div className="px-5 py-8 text-[color:var(--td-ink-muted)] text-sm">Menu coming soon.</div>
                 )}
               </div>
             </section>
@@ -252,15 +252,15 @@ function PublicWebsitePreview() {
                   return (
                     <div
                       key={day.id}
-                      className={`bg-white rounded-2xl border px-4 py-3 flex gap-3 ${
+                      className={`bg-[color:var(--surface)] rounded-2xl border px-4 py-3 flex gap-3 ${
                         isToday
                           ? "border-brand-orange ring-1 ring-brand-orange/20"
-                          : "border-brand-green/10"
+                          : "border-[color:var(--border)]"
                       }`}
                     >
                       <div
                         className={`w-12 shrink-0 font-bold text-sm pt-0.5 ${
-                          isToday ? "text-brand-orange" : "text-brand-green/80"
+                          isToday ? "text-brand-orange" : "text-[color:var(--td-ink)]"
                         }`}
                       >
                         {day.day}
@@ -270,13 +270,13 @@ function PublicWebsitePreview() {
                           {closed ? day.note || "Closed" : day.neighborhood}
                         </div>
                         {!closed && (
-                          <div className="text-sm text-brand-green/70 truncate">{day.spot}</div>
+                          <div className="text-sm text-[color:var(--td-ink-muted)] truncate">{day.spot}</div>
                         )}
                         {day.note && !closed && (
-                          <div className="text-xs text-brand-green/60 mt-0.5">{day.note}</div>
+                          <div className="text-xs text-[color:var(--td-ink-muted)] mt-0.5">{day.note}</div>
                         )}
                       </div>
-                      <div className="text-right text-sm font-medium whitespace-nowrap text-brand-green/80">
+                      <div className="text-right text-sm font-medium whitespace-nowrap text-[color:var(--td-ink)]">
                         {closed ? "—" : `${day.hoursStart}–${day.hoursEnd}`}
                       </div>
                     </div>
@@ -284,7 +284,7 @@ function PublicWebsitePreview() {
                 })}
               </div>
 
-              <p className="text-center text-xs text-brand-green/50 mt-3">
+              <p className="text-center text-xs text-[color:var(--td-ink-muted)] mt-3">
                 Schedule pulled from TruckDash publish. Hours can change — call ahead.
               </p>
             </section>
@@ -299,7 +299,7 @@ function PublicWebsitePreview() {
               >
                 Order Ahead or Call {data.phone || "Us"}
               </a>
-              <div className="text-center text-[10px] text-brand-green/50 mt-3">
+              <div className="text-center text-[10px] text-[color:var(--td-ink-muted)] mt-3">
                 Changes made in TruckDash appear here after the owner hits “Publish”.
                 {truckId ? (
                   <>
@@ -313,7 +313,7 @@ function PublicWebsitePreview() {
         )}
       </main>
 
-      <footer className="text-center text-[10px] py-8 border-t border-brand-green/10 text-brand-green/40">
+      <footer className="text-center text-[10px] py-8 border-t border-[color:var(--border)] text-[color:var(--td-ink-muted)]">
         Authentic Kentucky cooking • Lake Cumberland &amp; Central Kentucky
         <br />
         <Link to="/menu" className="underline">
@@ -339,11 +339,11 @@ function EmptyState({ message }: { message: string }) {
         🍂
       </div>
       <h2 className="font-display text-3xl tracking-tight">Menu not live yet</h2>
-      <p className="mt-3 text-brand-green/70">{message}</p>
+      <p className="mt-3 text-[color:var(--td-ink-muted)]">{message}</p>
 
-      <div className="mt-8 bg-white border border-brand-green/10 rounded-3xl p-5 text-left text-sm">
+      <div className="mt-8 bg-[color:var(--surface)] border border-[color:var(--border)] rounded-3xl p-5 text-left text-sm">
         <div className="font-semibold mb-2 text-brand-green">Truck owner?</div>
-        <ol className="list-decimal list-inside space-y-1 text-brand-green/70">
+        <ol className="list-decimal list-inside space-y-1 text-[color:var(--td-ink-muted)]">
           <li>Open TruckDash</li>
           <li>Update your Menu or This Week schedule</li>
           <li>Enable Supabase Sync in Settings (optional, for any device)</li>

@@ -77,8 +77,8 @@ function PublicSchedulePage() {
   const hasData = !!data?.lastPublished && (data.schedule?.length ?? 0) > 0;
 
   return (
-    <div className="min-h-screen bg-brand-sand text-brand-green">
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-brand-green/10">
+    <div className="min-h-screen bg-brand-sand text-[color:var(--td-ink)] transition-colors duration-200">
+      <header className="sticky top-0 z-40 bg-[color:var(--surface)]/92 backdrop-blur-md border-b border-[color:var(--border)]">
         <div className="mx-auto max-w-3xl px-4 py-4 flex items-center justify-between">
           <div>
             <Link
@@ -93,7 +93,7 @@ function PublicSchedulePage() {
                 {hasData ? data!.truckName : "Cluckin Chaos"}
               </span>
             </div>
-            <p className="text-[10px] text-brand-green/60 tracking-[0.2em] -mt-0.5">
+            <p className="text-[10px] text-[color:var(--td-ink-muted)] tracking-[0.2em] -mt-0.5">
               THIS WEEK • LAKE CUMBERLAND
             </p>
           </div>
@@ -111,14 +111,14 @@ function PublicSchedulePage() {
 
       <main className="mx-auto max-w-3xl px-4 pt-6 pb-16">
         {loading ? (
-          <div className="py-10 text-center text-brand-green/60">Loading schedule…</div>
+          <div className="py-10 text-center text-[color:var(--td-ink-muted)]">Loading schedule…</div>
         ) : !hasData ? (
           <NoScheduleState />
         ) : (
           <>
             <div className="mb-5">
               <h1 className="font-display text-3xl tracking-tight">This Week</h1>
-              <p className="text-brand-green/70 mt-1 text-sm">
+              <p className="text-[color:var(--td-ink-muted)] mt-1 text-sm">
                 Locations, hours &amp; notes. All pulled from TruckDash publish.
               </p>
             </div>
@@ -131,10 +131,10 @@ function PublicSchedulePage() {
                 return (
                   <div
                     key={day.id}
-                    className={`bg-white rounded-3xl border px-4 py-4 flex gap-4 transition ${isToday ? "border-brand-orange ring-1 ring-brand-orange/25" : "border-brand-green/10"}`}
+                    className={`bg-[color:var(--surface)] rounded-3xl border px-4 py-4 flex gap-4 transition ${isToday ? "border-brand-orange ring-1 ring-brand-orange/25" : "border-[color:var(--border)]"}`}
                   >
                     <div
-                      className={`w-12 shrink-0 font-bold text-sm tracking-wider pt-0.5 ${isToday ? "text-brand-orange" : "text-brand-green/70"}`}
+                      className={`w-12 shrink-0 font-bold text-sm tracking-wider pt-0.5 ${isToday ? "text-brand-orange" : "text-[color:var(--td-ink-muted)]"}`}
                     >
                       {day.day}
                       {isToday && (
@@ -152,7 +152,7 @@ function PublicSchedulePage() {
                       </div>
 
                       {!isClosed && (
-                        <div className="text-sm text-brand-green/70 truncate mt-px">{day.spot}</div>
+                        <div className="text-sm text-[color:var(--td-ink-muted)] truncate mt-px">{day.spot}</div>
                       )}
 
                       {day.note && !isClosed && (
@@ -162,7 +162,7 @@ function PublicSchedulePage() {
                       )}
                     </div>
 
-                    <div className="text-right text-sm font-medium whitespace-nowrap text-brand-green/80 pt-0.5">
+                    <div className="text-right text-sm font-medium whitespace-nowrap text-[color:var(--td-ink)] pt-0.5">
                       {isClosed ? "—" : `${day.hoursStart}–${day.hoursEnd}`}
                     </div>
                   </div>
@@ -173,18 +173,18 @@ function PublicSchedulePage() {
             {/* Subtle last updated */}
             {lastUpdated && (
               <div
-                className="mt-6 text-center text-[10px] text-brand-green/40"
+                className="mt-6 text-center text-[10px] text-[color:var(--td-ink-muted)]"
                 suppressHydrationWarning
               >
                 Last updated from TruckDash:{" "}
-                <span className="font-medium text-brand-green/60">{lastUpdated}</span>
+                <span className="font-medium text-[color:var(--td-ink-muted)]">{lastUpdated}</span>
               </div>
             )}
 
             {/* Contact / CTA */}
-            <div className="mt-8 bg-white border border-brand-green/10 rounded-3xl p-5 text-sm">
+            <div className="mt-8 bg-[color:var(--surface)] border border-[color:var(--border)] rounded-3xl p-5 text-sm">
               <div className="font-semibold mb-1">Questions or want to book us?</div>
-              <div className="text-brand-green/70">
+              <div className="text-[color:var(--td-ink-muted)]">
                 {data!.phone && <>Call {data!.phone} · </>}
                 {data!.orderUrl && (
                   <a
@@ -197,7 +197,7 @@ function PublicSchedulePage() {
                   </a>
                 )}
               </div>
-              <div className="mt-3 text-xs text-brand-green/50">
+              <div className="mt-3 text-xs text-[color:var(--td-ink-muted)]">
                 Schedule subject to weather and events. Always best to confirm.
               </div>
             </div>
@@ -205,7 +205,7 @@ function PublicSchedulePage() {
         )}
       </main>
 
-      <footer className="text-center text-[10px] text-brand-green/40 border-t border-brand-green/10 py-6">
+      <footer className="text-center text-[10px] text-[color:var(--td-ink-muted)] border-t border-[color:var(--border)] py-6">
         Cluckin Chaos • Honest food from the Bluegrass
         <br />
         <Link to="/menu" className="underline hover:text-brand-green">
@@ -223,18 +223,18 @@ function NoScheduleState() {
         🗓️
       </div>
       <h2 className="font-display text-2xl tracking-tight">Schedule not published yet</h2>
-      <p className="mt-2 text-brand-green/70">
+      <p className="mt-2 text-[color:var(--td-ink-muted)]">
         The owner will publish their weekly locations from TruckDash.
       </p>
 
       <Link
         to="/menu"
-        className="mt-8 inline-block rounded-2xl border border-brand-green/15 bg-white px-5 py-2 text-sm font-semibold"
+        className="mt-8 inline-block rounded-2xl border border-[color:var(--border)] bg-white px-5 py-2 text-sm font-semibold"
       >
         View Menu
       </Link>
 
-      <div className="mt-10 text-xs text-brand-green/50">
+      <div className="mt-10 text-xs text-[color:var(--td-ink-muted)]">
         Truck owners: publish from the dashboard to make this live.
       </div>
     </div>

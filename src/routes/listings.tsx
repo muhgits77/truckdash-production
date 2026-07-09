@@ -1,6 +1,7 @@
 /**
  * My Listings Manager — personal vendor profile for the public site.
  * Edit tagline, description, cuisine, photos; live toggle syncs to state.live.
+ * High-contrast Kentucky palette (light + dark).
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
@@ -59,7 +60,6 @@ function ListingsPage() {
     reader.onload = () => {
       const url = String(reader.result || "");
       if (!url) return;
-      // First photo becomes hero if empty
       setState({
         ...state,
         heroPhoto: state.heroPhoto || url,
@@ -83,62 +83,70 @@ function ListingsPage() {
     <PageShell title="My Listings" eyebrow="Public profile" live={isLive}>
       <TipCard>
         Your listing card feeds the public website after{" "}
-        <strong className="text-brand-green">Publish</strong>. Live toggle matches Live Map.
+        <strong className="text-brand-orange">Publish</strong>. Live toggle matches Live Map.
       </TipCard>
 
       <section className="td-card overflow-hidden">
         <div
-          className="h-28 bg-gradient-to-br from-brand-green via-[#2a5a42] to-brand-walnut relative"
+          className="h-32 bg-gradient-to-br from-[#1a3d2e] via-[#2a5a42] to-[#4a2c1a] relative"
           style={
             state.heroPhoto
               ? {
-                  backgroundImage: `linear-gradient(to top, rgba(26,61,46,0.85), transparent), url(${state.heroPhoto})`,
+                  backgroundImage: `linear-gradient(to top, rgba(12,31,22,0.88), transparent 55%), url(${state.heroPhoto})`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                 }
               : undefined
           }
         >
-          <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
-            <div>
+          <div className="absolute bottom-3.5 left-4 right-4 flex items-end justify-between gap-3">
+            <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-gold">
                 {listing.cuisine || "Food truck"}
               </p>
-              <h2 className="font-display text-2xl text-white leading-tight">{state.name}</h2>
+              <h2 className="font-display text-2xl text-white leading-tight truncate">
+                {state.name}
+              </h2>
             </div>
             {isLive && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-brand-orange text-white text-[10px] font-bold uppercase px-2.5 py-1 shadow">
+              <span className="inline-flex items-center gap-1 rounded-full bg-brand-orange text-white text-[10px] font-bold uppercase px-2.5 py-1 shadow shrink-0">
                 <span className="size-1.5 rounded-full bg-white animate-pulse" /> Live
               </span>
             )}
           </div>
         </div>
-        <div className="p-4 space-y-3">
-          <p className="text-sm font-medium text-brand-green/80">{listing.tagline}</p>
-          <p className="text-sm text-brand-green/65 leading-relaxed">{listing.description}</p>
-          <p className="text-xs text-brand-green/45">{listing.serviceArea}</p>
+        <div className="p-5 space-y-3.5">
+          <p className="text-sm font-semibold text-[color:var(--td-ink)] leading-snug">
+            {listing.tagline}
+          </p>
+          <p className="text-sm text-[color:var(--td-ink-muted)] leading-relaxed">
+            {listing.description}
+          </p>
+          <p className="text-xs font-medium text-[color:var(--td-ink-muted)]">
+            {listing.serviceArea}
+          </p>
           {highlights.length > 0 && (
             <ul className="flex flex-wrap gap-2">
               {highlights.map((m) => (
                 <li
                   key={m.id}
-                  className="rounded-full bg-brand-sand border border-brand-green/10 px-2.5 py-1 text-[11px] font-semibold"
+                  className="rounded-full bg-[color:var(--surface-2)] border border-[color:var(--border)] px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--td-ink)]"
                 >
                   {m.name} · ${m.price}
                 </li>
               ))}
             </ul>
           )}
-          <div className="flex gap-2 pt-1">
+          <div className="flex gap-2.5 pt-1">
             <Link
               to="/website"
-              className="flex-1 text-center py-2.5 rounded-xl bg-brand-orange text-white text-xs font-bold"
+              className="flex-1 text-center py-3 rounded-xl bg-brand-orange text-white text-xs font-bold shadow-md shadow-brand-orange/20"
             >
               Preview public site
             </Link>
             <Link
               to="/live-map"
-              className="flex-1 text-center py-2.5 rounded-xl border border-brand-green/15 text-xs font-bold text-brand-green/70"
+              className="flex-1 text-center py-3 rounded-xl border border-[color:var(--border)] text-xs font-bold text-[color:var(--td-ink)] bg-[color:var(--surface)]"
             >
               Live Map
             </Link>
@@ -146,10 +154,12 @@ function ListingsPage() {
         </div>
       </section>
 
-      <section className="td-card td-card-pad flex items-center justify-between gap-3">
+      <section className="td-card td-card-pad flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <h3 className="font-display text-lg tracking-tight">Live on public site</h3>
-          <p className="text-xs text-brand-green/50 mt-0.5">
+          <h3 className="font-display text-lg tracking-tight text-[color:var(--td-ink)]">
+            Live on public site
+          </h3>
+          <p className="text-sm text-[color:var(--td-ink-muted)] mt-1 leading-snug">
             Syncs with Live Map · {isLive ? "Customers can find you" : "Hidden as offline"}
           </p>
         </div>
@@ -159,7 +169,7 @@ function ListingsPage() {
           aria-checked={isLive}
           onClick={toggleLive}
           className={`shrink-0 w-14 h-8 rounded-full transition relative ${
-            isLive ? "bg-brand-orange" : "bg-brand-green/15"
+            isLive ? "bg-brand-orange" : "bg-black/10 dark:bg-white/15"
           }`}
         >
           <span
@@ -170,20 +180,22 @@ function ListingsPage() {
         </button>
       </section>
 
-      <section className="td-card td-card-pad space-y-3.5">
-        <h3 className="font-display text-lg tracking-tight">Edit profile</h3>
+      <section className="td-card td-card-pad space-y-4">
+        <h3 className="font-display text-lg tracking-tight text-[color:var(--td-ink)]">
+          Edit profile
+        </h3>
         <Field label="Truck name">
           <input
             value={state.name}
             onChange={(e) => setState({ ...state, name: e.target.value })}
-            className="field"
+            className="td-input"
           />
         </Field>
         <Field label="Tagline">
           <input
             value={listing.tagline}
             onChange={(e) => updateListing({ tagline: e.target.value })}
-            className="field"
+            className="td-input"
             placeholder="Lake Cumberland BBQ · Kentucky soul"
           />
         </Field>
@@ -191,7 +203,7 @@ function ListingsPage() {
           <input
             value={listing.cuisine}
             onChange={(e) => updateListing({ cuisine: e.target.value })}
-            className="field"
+            className="td-input"
             placeholder="BBQ · Southern"
           />
         </Field>
@@ -200,49 +212,52 @@ function ListingsPage() {
             value={listing.description}
             onChange={(e) => updateListing({ description: e.target.value })}
             rows={3}
-            className="field resize-none"
+            className="td-input resize-none"
           />
         </Field>
         <Field label="Service area">
           <input
             value={listing.serviceArea}
             onChange={(e) => updateListing({ serviceArea: e.target.value })}
-            className="field"
+            className="td-input"
           />
         </Field>
         <Field label="Phone">
           <input
             value={state.phone}
             onChange={(e) => setState({ ...state, phone: e.target.value })}
-            className="field"
+            className="td-input"
           />
         </Field>
-        <Field label="Todays location">
+        <Field label="Today's location">
           <input
             value={state.location}
             onChange={(e) => setState({ ...state, location: e.target.value })}
-            className="field"
+            className="td-input"
           />
         </Field>
         <Field label="Special">
           <input
             value={state.special}
             onChange={(e) => setState({ ...state, special: e.target.value })}
-            className="field"
+            className="td-input"
           />
         </Field>
 
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-brand-green/45 mb-1">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[color:var(--td-ink-muted)] mb-2">
             Photos
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2.5">
             {listing.photos.map((p, i) => (
-              <div key={i} className="relative size-16 rounded-xl overflow-hidden border border-brand-green/10">
+              <div
+                key={i}
+                className="relative size-16 rounded-xl overflow-hidden border border-[color:var(--border)]"
+              >
                 <img src={p} alt="" className="size-full object-cover" />
                 <button
                   type="button"
-                  className="absolute top-0.5 right-0.5 size-5 rounded-full bg-brand-green/80 text-white text-[10px]"
+                  className="absolute top-0.5 right-0.5 size-5 rounded-full bg-[#1a3d2e]/90 text-white text-[10px]"
                   onClick={() =>
                     updateListing({ photos: listing.photos.filter((_, j) => j !== i) })
                   }
@@ -254,7 +269,7 @@ function ListingsPage() {
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="size-16 rounded-xl border-2 border-dashed border-brand-green/20 text-brand-green/40 text-xs font-bold"
+              className="size-16 rounded-xl border-2 border-dashed border-[color:var(--border)] text-[color:var(--td-ink-muted)] text-xs font-bold hover:border-brand-orange/40 transition"
             >
               + Add
             </button>
@@ -268,50 +283,30 @@ function ListingsPage() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={flashSave}
-          className="w-full py-3 rounded-2xl bg-brand-green text-white font-bold text-sm"
-        >
+        <button type="button" onClick={flashSave} className="td-btn-primary">
           {savedFlash ? "Saved to this device ✓" : "Save profile"}
         </button>
-        <p className="text-[11px] text-center text-brand-green/45">
+        <p className="text-[11px] text-center text-[color:var(--td-ink-muted)] leading-relaxed">
           Auto-saves as you type. Publish from Home to push menu/schedule to the website.
         </p>
       </section>
 
       {isSupabaseConfigured() && (
-        <p className="text-[11px] text-center text-brand-green/40 break-all px-2">
+        <p className="text-[11px] text-center text-[color:var(--td-ink-muted)] break-all px-2 leading-relaxed">
           Public menu JSON: {menuJsonPublicUrl(truckId)}
         </p>
       )}
-
-      <style>{`
-        .field {
-          width: 100%;
-          border-radius: 0.85rem;
-          border: 1px solid var(--border);
-          background: var(--brand-sand);
-          color: var(--foreground);
-          padding: 0.7rem 0.9rem;
-          font-size: 0.875rem;
-          outline: none;
-        }
-        .field:focus {
-          border-color: var(--brand-orange);
-        }
-      `}</style>
     </PageShell>
   );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="block">
-      <span className="text-[10px] font-bold uppercase tracking-wider text-brand-green/45">
+    <label className="block space-y-1.5">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-[color:var(--td-ink-muted)]">
         {label}
       </span>
-      <div className="mt-1">{children}</div>
+      {children}
     </label>
   );
 }

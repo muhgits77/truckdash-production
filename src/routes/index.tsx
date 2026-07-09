@@ -10,6 +10,7 @@ import {
   type TemplateId,
   type ShareFormat,
   type BackgroundId,
+  type AppMode,
   DEFAULT_SCHEDULE,
   DEFAULT_STATE,
   APP_VERSION,
@@ -132,6 +133,9 @@ const GRID_SVG =
   "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><path d='M24 0H0V24' fill='none' stroke='%231b4332' stroke-opacity='0.08' stroke-width='1'/></svg>\")";
 const LINEN_SVG =
   "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='6' height='6'><path d='M0 3h6M3 0v6' stroke='%231b4332' stroke-opacity='0.09' stroke-width='0.5'/></svg>\")";
+/** Soft wood-ring texture (SVG, exports offline) — rustic barrel / dock boards */
+const WOOD_SVG =
+  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><filter id='w'><feTurbulence type='fractalNoise' baseFrequency='0.04 0.4' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.35  0 0 0 0 0.22  0 0 0 0 0.1  0 0 0 0.45 0'/></filter><rect width='100%' height='100%' filter='url(%23w)'/></svg>\")";
 
 type BackgroundPreset = {
   id: BackgroundId;
@@ -189,6 +193,65 @@ const BACKGROUNDS: Record<BackgroundId, BackgroundPreset> = {
     },
     darkText: true,
   },
+  /* Premium Kentucky-inspired paper panels (CSS only — offline, no stock AI art) */
+  "lake-dusk": {
+    id: "lake-dusk",
+    label: "Lake Dusk",
+    swatch: "#1a3a4a",
+    css: {
+      background: `
+        linear-gradient(180deg, rgba(15,30,40,0.15) 0%, rgba(15,30,40,0.55) 100%),
+        linear-gradient(165deg, #3d6a8a 0%, #c47a3a 38%, #e8a040 62%, #1a3d2e 100%)
+      `,
+    },
+    darkText: true,
+  },
+  "bourbon-oak": {
+    id: "bourbon-oak",
+    label: "Bourbon Oak",
+    swatch: "#5c3a1e",
+    css: {
+      backgroundColor: "#6b4423",
+      backgroundImage: WOOD_SVG,
+      backgroundBlendMode: "multiply",
+    },
+    darkText: true,
+  },
+  "bluegrass-field": {
+    id: "bluegrass-field",
+    label: "Bluegrass",
+    swatch: "#2d5a3d",
+    css: {
+      background: `
+        linear-gradient(180deg, #e8f0d8 0%, #a8c478 35%, #3d6b45 70%, #1a3d2e 100%)
+      `,
+    },
+  },
+  "festival-lights": {
+    id: "festival-lights",
+    label: "Festival Night",
+    swatch: "#1a1530",
+    css: {
+      background: `
+        radial-gradient(ellipse at 20% 10%, rgba(212,164,55,0.45) 0%, transparent 45%),
+        radial-gradient(ellipse at 80% 20%, rgba(184,114,44,0.35) 0%, transparent 40%),
+        radial-gradient(ellipse at 50% 90%, rgba(26,61,46,0.5) 0%, transparent 50%),
+        linear-gradient(160deg, #1a1530 0%, #12283f 50%, #0f2419 100%)
+      `,
+    },
+    darkText: true,
+  },
+  "dock-mist": {
+    id: "dock-mist",
+    label: "Dock Mist",
+    swatch: "#7a9aad",
+    css: {
+      background: `
+        linear-gradient(180deg, #c5d4dc 0%, #8fa8b5 40%, #4a6a78 75%, #2a4050 100%)
+      `,
+    },
+    darkText: true,
+  },
 };
 
 function validateUrl(u: string): { ok: boolean; reason?: string } {
@@ -233,6 +296,20 @@ const TEMPLATES: Record<TemplateId, TemplateTheme> = {
     hero: "photo",
     swatch: ["#1a3d2e", "#b8722c", "#f5efe1"],
   },
+  lakesunset: {
+    id: "lakesunset",
+    label: "Lake Sunset",
+    frame: "#1a2840",
+    paper: "#fdf6eb",
+    ink: "#1a2840",
+    inkSoft: "rgba(26,40,64,0.65)",
+    accent: "#e07a2f",
+    accentText: "#fffdf6",
+    divider: "rgba(26,40,64,0.14)",
+    serif: '"Fraunces", Georgia, serif',
+    hero: "photo",
+    swatch: ["#1a2840", "#e07a2f", "#fdf6eb"],
+  },
   festival: {
     id: "festival",
     label: "Festival Ready",
@@ -260,6 +337,48 @@ const TEMPLATES: Record<TemplateId, TemplateTheme> = {
     serif: '"Fraunces", Georgia, serif',
     hero: "photo",
     swatch: ["#4a2c1a", "#b8722c", "#f0dfb8"],
+  },
+  dockside: {
+    id: "dockside",
+    label: "State Dock",
+    frame: "#1e3a4c",
+    paper: "#eef4f6",
+    ink: "#1e3a4c",
+    inkSoft: "rgba(30,58,76,0.65)",
+    accent: "#c17f3a",
+    accentText: "#fffdf6",
+    divider: "rgba(30,58,76,0.14)",
+    serif: '"Fraunces", Georgia, serif',
+    hero: "photo",
+    swatch: ["#1e3a4c", "#c17f3a", "#eef4f6"],
+  },
+  bluegrassnight: {
+    id: "bluegrassnight",
+    label: "Bluegrass Night",
+    frame: "#0f2419",
+    paper: "#152b20",
+    ink: "#f2f7f3",
+    inkSoft: "rgba(242,247,243,0.7)",
+    accent: "#d4a437",
+    accentText: "#0f2419",
+    divider: "rgba(242,247,243,0.14)",
+    serif: '"Fraunces", Georgia, serif',
+    hero: "photo",
+    swatch: ["#0f2419", "#d4a437", "#c5d9cc"],
+  },
+  harvestfair: {
+    id: "harvestfair",
+    label: "Harvest Fair",
+    frame: "#5c2e12",
+    paper: "#faf0d8",
+    ink: "#3d1f0a",
+    inkSoft: "rgba(61,31,10,0.68)",
+    accent: "#c45c26",
+    accentText: "#fffdf6",
+    divider: "rgba(61,31,10,0.16)",
+    serif: '"Fraunces", Georgia, serif',
+    hero: "photo",
+    swatch: ["#5c2e12", "#c45c26", "#faf0d8"],
   },
   bright: {
     id: "bright",
@@ -483,35 +602,76 @@ function Dashboard() {
         <Header state={state} setState={setState} onOpenSettings={() => setSettingsOpen(true)} />
       </div>
 
-      <main className="mx-auto max-w-md px-4 pt-5 space-y-5 print:hidden">
+      <main className="mx-auto max-w-md px-4 pt-5 space-y-5 print:hidden td-rise">
         {tab === "home" && (
           <>
-            <StatusCard state={state} setState={setState} />
-
-            {/* PROMINENT: Publish to My Website — core new feature */}
-            <PublishToWebsiteCard
-              lastPublished={lastPublished}
-              busy={publishBusy}
-              onPublish={handlePublishToWebsite}
-              cloudEnabled={cloudEnabled}
-              cloudPending={cloudPending}
-              truckId={
-                hydrated
-                  ? getConfiguredTruckId().trim() || DEFAULT_TRUCK_ID
-                  : DEFAULT_TRUCK_ID
-              }
-              supabaseReady={hydrated ? isSupabaseConfigured() : false}
+            <AppModeToggle
+              mode={state.appMode ?? "full-sync"}
+              onChange={(mode) => setState({ ...state, appMode: mode })}
             />
 
-            <QuickActions
-              onOpenMenu={() => setTab("menu")}
-              onOpenFlyer={() => setTab("flyer")}
-              onOpenCatering={() => setTab("catering")}
-            />
-            <CommandCenterLinks />
-            <WeekPreviewCard schedule={state.schedule} />
-            <MenuHighlightsCard items={menuHighlights} onEdit={() => setTab("menu")} />
-            <FlyerSection state={state} setState={setState} flyerRef={flyerRef} />
+            {state.appMode === "social-flyer" ? (
+              <>
+                <SocialFlyerHero
+                  state={state}
+                  setState={setState}
+                  onOpenStudio={() => setTab("flyer")}
+                />
+                <FlyerSection
+                  state={state}
+                  setState={setState}
+                  flyerRef={flyerRef}
+                  standalone
+                  socialFocus
+                />
+                <details className="td-card td-card-pad group">
+                  <summary className="cursor-pointer list-none flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-[color:var(--td-ink)]">
+                      Full operator tools
+                    </span>
+                    <span className="text-xs font-bold text-brand-orange">Show</span>
+                  </summary>
+                  <div className="mt-4 space-y-4 border-t border-[color:var(--border)] pt-4">
+                    <StatusCard state={state} setState={setState} />
+                    <QuickActions
+                      onOpenMenu={() => setTab("menu")}
+                      onOpenFlyer={() => setTab("flyer")}
+                      onOpenCatering={() => setTab("catering")}
+                    />
+                    <CommandCenterLinks />
+                    <WeekPreviewCard schedule={state.schedule} />
+                  </div>
+                </details>
+              </>
+            ) : (
+              <>
+                <StatusCard state={state} setState={setState} />
+
+                <PublishToWebsiteCard
+                  lastPublished={lastPublished}
+                  busy={publishBusy}
+                  onPublish={handlePublishToWebsite}
+                  cloudEnabled={cloudEnabled}
+                  cloudPending={cloudPending}
+                  truckId={
+                    hydrated
+                      ? getConfiguredTruckId().trim() || DEFAULT_TRUCK_ID
+                      : DEFAULT_TRUCK_ID
+                  }
+                  supabaseReady={hydrated ? isSupabaseConfigured() : false}
+                />
+
+                <QuickActions
+                  onOpenMenu={() => setTab("menu")}
+                  onOpenFlyer={() => setTab("flyer")}
+                  onOpenCatering={() => setTab("catering")}
+                />
+                <CommandCenterLinks />
+                <WeekPreviewCard schedule={state.schedule} />
+                <MenuHighlightsCard items={menuHighlights} onEdit={() => setTab("menu")} />
+                <FlyerSection state={state} setState={setState} flyerRef={flyerRef} />
+              </>
+            )}
           </>
         )}
 
@@ -520,7 +680,13 @@ function Dashboard() {
         )}
 
         {tab === "flyer" && (
-          <FlyerSection state={state} setState={setState} flyerRef={flyerRef} standalone />
+          <FlyerSection
+            state={state}
+            setState={setState}
+            flyerRef={flyerRef}
+            standalone
+            socialFocus={state.appMode === "social-flyer"}
+          />
         )}
 
         {tab === "catering" && (
@@ -528,7 +694,7 @@ function Dashboard() {
         )}
 
         <footer className="pt-6 pb-2 text-center">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-green/40">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--td-ink-muted)]">
             TruckDash · v{APP_VERSION}
           </p>
         </footer>
@@ -620,6 +786,166 @@ function OnboardingModal({ onDone, onSkip }: { onDone: () => void; onSkip: () =>
   );
 }
 
+function AppModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: AppMode;
+  onChange: (m: AppMode) => void;
+}) {
+  return (
+    <section className="td-card p-1.5">
+      <div className="grid grid-cols-2 gap-1">
+        <button
+          type="button"
+          onClick={() => onChange("full-sync")}
+          className={`rounded-2xl px-3 py-3 text-left transition ${
+            mode === "full-sync"
+              ? "bg-brand-deep text-white dark:bg-brand-orange dark:text-[#0f2419] shadow-md"
+              : "text-[color:var(--td-ink-muted)] hover:bg-[color:var(--surface-2)]"
+          }`}
+        >
+          <span className="block text-[11px] font-bold uppercase tracking-wider">Full Sync</span>
+          <span
+            className={`block text-[10px] mt-0.5 leading-snug ${
+              mode === "full-sync" ? "opacity-85" : "text-[color:var(--td-ink-muted)]"
+            }`}
+          >
+            Website · map · week
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange("social-flyer")}
+          className={`rounded-2xl px-3 py-3 text-left transition ${
+            mode === "social-flyer"
+              ? "bg-brand-orange text-white shadow-md shadow-brand-orange/25"
+              : "text-[color:var(--td-ink-muted)] hover:bg-[color:var(--surface-2)]"
+          }`}
+        >
+          <span className="block text-[11px] font-bold uppercase tracking-wider">
+            Social &amp; Flyer
+          </span>
+          <span
+            className={`block text-[10px] mt-0.5 leading-snug ${
+              mode === "social-flyer" ? "opacity-90" : "text-[color:var(--td-ink-muted)]"
+            }`}
+          >
+            Studio · QR · share
+          </span>
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function SocialFlyerHero({
+  state,
+  setState,
+  onOpenStudio,
+}: {
+  state: TruckState;
+  setState: (s: TruckState) => void;
+  onOpenStudio: () => void;
+}) {
+  const caption = buildCaption(state);
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <section className="td-card overflow-hidden">
+      <div
+        className="px-5 pt-5 pb-4 space-y-3"
+        style={{
+          background:
+            "linear-gradient(145deg, color-mix(in srgb, var(--brand-orange) 12%, var(--surface)) 0%, var(--surface) 55%)",
+        }}
+      >
+        <p className="td-section-label">Social studio</p>
+        <h2 className="font-display text-2xl tracking-tight text-[color:var(--td-ink)] leading-snug">
+          Kentucky flyers, one-tap share
+        </h2>
+        <p className="text-sm text-[color:var(--td-ink-muted)] leading-relaxed">
+          Pick a template, scan-ready QR, copy a caption, and post to Facebook or Stories — no
+          website publish required.
+        </p>
+        <div className="flex flex-wrap gap-2 pt-1">
+          {(["lakecumberland", "lakesunset", "bourbonbarrel", "festival", "rustic"] as TemplateId[]).map(
+            (id) => {
+              const t = TEMPLATES[id];
+              if (!t) return null;
+              const active = state.template === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() =>
+                    setState({
+                      ...state,
+                      template: id,
+                      background:
+                        id === "lakesunset"
+                          ? "lake-dusk"
+                          : id === "bourbonbarrel"
+                            ? "bourbon-oak"
+                            : id === "festival"
+                              ? "festival-lights"
+                              : id === "rustic"
+                                ? "kraft"
+                                : "sage-linen",
+                    })
+                  }
+                  className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border transition ${
+                    active
+                      ? "bg-brand-orange text-white border-brand-orange"
+                      : "bg-[color:var(--surface)] text-[color:var(--td-ink)] border-[color:var(--border)]"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              );
+            },
+          )}
+        </div>
+      </div>
+      <div className="px-5 py-4 border-t border-[color:var(--border)] space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[color:var(--td-ink-muted)]">
+            Caption generator
+          </p>
+          <button
+            type="button"
+            className="text-[11px] font-bold text-brand-orange"
+            onClick={async () => {
+              await copyText(caption);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1800);
+            }}
+          >
+            {copied ? "Copied!" : "Copy"}
+          </button>
+        </div>
+        <textarea
+          value={state.socialCaption ?? ""}
+          onChange={(e) => setState({ ...state, socialCaption: e.target.value })}
+          placeholder={caption}
+          rows={4}
+          className="td-input resize-y min-h-[5.5rem] font-medium leading-relaxed"
+        />
+        <p className="text-[11px] text-[color:var(--td-ink-muted)] leading-snug">
+          Leave blank to use the auto caption (location, hours, special, order link).
+        </p>
+        <button
+          type="button"
+          onClick={onOpenStudio}
+          className="w-full py-3.5 rounded-2xl bg-brand-deep text-white dark:bg-[#c5d9cc] dark:text-[#0f2419] font-bold text-sm"
+        >
+          Open full Flyer Studio →
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function Header({
   state,
   setState,
@@ -630,33 +956,42 @@ function Header({
   onOpenSettings: () => void;
 }) {
   const isLive = state.liveSession?.isLive || state.live;
+  const social = state.appMode === "social-flyer";
   return (
-    <header className="sticky top-0 z-40 bg-brand-sand/90 backdrop-blur-xl border-b border-brand-green/8 dark:border-white/8 px-4 py-3.5">
+    <header className="sticky top-0 z-40 bg-brand-sand/92 backdrop-blur-xl border-b border-[color:var(--border)] px-4 py-3.5 transition-colors duration-200">
       <div className="max-w-md mx-auto flex items-center gap-2.5">
         <div className="min-w-0 flex-1 pl-0.5">
           <div className="flex items-center gap-1.5">
             <span className="size-1.5 rounded-full bg-brand-orange shrink-0" />
             <span className="text-[9px] font-bold uppercase tracking-[0.22em] text-brand-orange">
               TruckDash
+              {social ? " · Social" : ""}
             </span>
           </div>
           <div className="flex items-baseline gap-2 min-w-0 mt-0.5">
-            <h1 className="font-display text-xl font-bold tracking-tight truncate leading-snug">
+            <h1 className="font-display text-xl font-bold tracking-tight truncate leading-snug text-[color:var(--td-ink)]">
               {state.name}
             </h1>
-            <Link
-              to="/this-week"
-              className="text-[9px] font-bold uppercase tracking-[0.14em] text-brand-orange/90 hover:underline shrink-0 hidden xs:inline sm:inline"
-            >
-              Week →
-            </Link>
+            {!social && (
+              <Link
+                to="/this-week"
+                className="text-[9px] font-bold uppercase tracking-[0.14em] text-brand-orange hover:underline shrink-0 hidden xs:inline sm:inline"
+              >
+                Week →
+              </Link>
+            )}
           </div>
-          <p className="text-[9px] font-semibold text-brand-green/50 dark:text-brand-green/45 uppercase tracking-[0.16em] mt-0.5">
-            {isLive ? "Active session" : "Off the clock"}
+          <p className="text-[9px] font-semibold text-[color:var(--td-ink-muted)] uppercase tracking-[0.16em] mt-0.5">
+            {social
+              ? "Flyer & share mode"
+              : isLive
+                ? "Active session"
+                : "Off the clock"}
           </p>
         </div>
 
         <button
+          type="button"
           onClick={() => {
             const next = !isLive;
             setState({
@@ -671,14 +1006,14 @@ function Header({
             });
           }}
           aria-pressed={isLive}
-          className={`shrink-0 flex items-center gap-1.5 pl-2.5 pr-3 py-2 rounded-full border transition-colors ${
+          className={`shrink-0 flex items-center gap-1.5 pl-2.5 pr-3 py-2 rounded-full border transition-all duration-200 ${
             isLive
-              ? "bg-brand-green text-white border-brand-green dark:bg-brand-orange dark:border-brand-orange dark:text-[#0f2419]"
-              : "bg-surface text-brand-green/55 border-brand-green/10 dark:border-white/10"
+              ? "bg-brand-deep text-white border-brand-deep dark:bg-brand-orange dark:border-brand-orange dark:text-[color:var(--td-cta-on-gold)] shadow-md shadow-brand-orange/15"
+              : "bg-[color:var(--surface)] text-[color:var(--td-ink-muted)] border-[color:var(--border)]"
           }`}
         >
           <span
-            className={`size-2 rounded-full ${isLive ? "bg-brand-gold animate-pulse" : "bg-brand-green/25"}`}
+            className={`size-2 rounded-full ${isLive ? "bg-brand-gold animate-pulse" : "bg-[color:var(--td-ink-muted)]/40"}`}
           />
           <span className="text-[10px] font-bold uppercase tracking-wider">
             {isLive ? "Live" : "Off"}
@@ -686,9 +1021,10 @@ function Header({
         </button>
         <ThemeToggle />
         <button
+          type="button"
           onClick={onOpenSettings}
           aria-label="Settings"
-          className="shrink-0 size-10 grid place-items-center rounded-full bg-surface border border-brand-green/10 dark:border-white/10 text-brand-green"
+          className="shrink-0 size-10 grid place-items-center rounded-full bg-[color:var(--surface)] border border-[color:var(--border)] text-[color:var(--td-ink)] transition hover:border-brand-orange/35"
         >
           <GearIcon className="size-5" />
         </button>
@@ -747,11 +1083,11 @@ function StatusCard({ state, setState }: { state: TruckState; setState: (s: Truc
   };
 
   return (
-    <section className="bg-brand-deep text-white rounded-3xl p-6 shadow-xl shadow-black/20">
-      <div className="flex justify-between items-start mb-4 gap-3">
-        <div className="min-w-0 space-y-1 flex-1">
+    <section className="td-rise bg-brand-deep text-white rounded-[1.35rem] p-6 shadow-xl shadow-black/25 dark:shadow-black/50 border border-white/8">
+      <div className="flex justify-between items-start mb-5 gap-3">
+        <div className="min-w-0 space-y-1.5 flex-1">
           <p className="text-brand-gold text-[10px] font-bold uppercase tracking-[0.2em]">
-            Today's Location
+            Today&apos;s Location
           </p>
           {editing ? (
             <input
@@ -760,47 +1096,51 @@ function StatusCard({ state, setState }: { state: TruckState; setState: (s: Truc
               onChange={(e) => setState({ ...state, location: e.target.value })}
               onBlur={() => setEditing(false)}
               onKeyDown={(e) => e.key === "Enter" && setEditing(false)}
-              className="font-display text-xl bg-transparent border-b border-white/30 focus:border-brand-gold outline-none w-full py-0.5"
+              className="font-display text-xl bg-transparent border-b border-white/35 focus:border-brand-gold outline-none w-full py-0.5 text-white"
             />
           ) : (
-            <h2 className="font-display text-xl truncate">{state.location}</h2>
+            <h2 className="font-display text-xl truncate text-white">{state.location}</h2>
           )}
-          <p className="text-white/70 text-sm">
+          <p className="text-white/80 text-sm font-medium">
             {state.hoursStart} — {state.hoursEnd}
           </p>
         </div>
         <button
+          type="button"
           onClick={() => setEditing((e) => !e)}
           aria-label="Edit location"
-          className="shrink-0 bg-white/10 hover:bg-white/15 transition p-2.5 rounded-xl border border-white/10"
+          className="shrink-0 bg-white/12 hover:bg-white/18 transition p-2.5 rounded-xl border border-white/12"
         >
           <PencilIcon className="size-4" />
         </button>
       </div>
 
       <button
+        type="button"
         onClick={useCurrentLocation}
         disabled={gpsBusy}
-        className="w-full mb-4 flex items-center justify-center gap-2 bg-brand-gold text-brand-green font-bold uppercase tracking-wider text-xs py-3 rounded-2xl shadow-lg shadow-brand-gold/20 active:scale-[0.98] transition disabled:opacity-70"
+        className="w-full mb-4 flex items-center justify-center gap-2 bg-brand-gold text-[color:var(--td-cta-on-gold)] font-bold uppercase tracking-wider text-xs py-3.5 rounded-2xl shadow-lg shadow-brand-gold/25 active:scale-[0.98] transition disabled:opacity-70"
       >
         <PinIcon className="size-4" />
         {gpsBusy ? "Getting GPS…" : (gpsMsg ?? "Use my current location")}
       </button>
 
       <div className="grid grid-cols-2 gap-3">
-        <label className="bg-white/5 rounded-2xl p-4 border border-white/10 cursor-text block">
-          <p className="text-[10px] uppercase opacity-60 mb-1 font-semibold tracking-wider">
+        <label className="bg-white/8 rounded-2xl p-4 border border-white/12 cursor-text block">
+          <p className="text-[10px] uppercase text-white/70 mb-1.5 font-semibold tracking-wider">
             Special
           </p>
           <input
             value={state.special}
             onChange={(e) => setState({ ...state, special: e.target.value })}
-            className="text-sm font-medium bg-transparent outline-none w-full"
+            className="text-sm font-medium bg-transparent outline-none w-full text-white placeholder:text-white/40"
           />
         </label>
-        <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
-          <p className="text-[10px] uppercase opacity-60 mb-1 font-semibold tracking-wider">Menu</p>
-          <p className="text-sm font-medium">{state.menu.length} items</p>
+        <div className="bg-white/8 rounded-2xl p-4 border border-white/12">
+          <p className="text-[10px] uppercase text-white/70 mb-1.5 font-semibold tracking-wider">
+            Menu
+          </p>
+          <p className="text-sm font-medium text-white">{state.menu.length} items</p>
         </div>
       </div>
     </section>
@@ -880,49 +1220,52 @@ function QuickActions({
     <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
       <Link
         to="/this-week"
-        className="flex flex-col items-center justify-center gap-2 td-card p-4 active:scale-[0.98] transition"
+        className="flex flex-col items-center justify-center gap-2.5 td-card p-4 active:scale-[0.98]"
       >
-        <div className="size-11 rounded-2xl bg-brand-green/10 dark:bg-white/8 flex items-center justify-center text-brand-green">
+        <div className="size-11 rounded-2xl bg-[color:var(--surface-2)] border border-[color:var(--border)] flex items-center justify-center text-brand-orange">
           <CalendarIcon className="size-5" />
         </div>
-        <span className="text-xs font-semibold text-brand-green">This Week</span>
+        <span className="text-xs font-semibold text-[color:var(--td-ink)]">This Week</span>
       </Link>
       <button
+        type="button"
         onClick={onOpenCatering}
-        className="flex flex-col items-center justify-center gap-2 td-card p-4 active:scale-[0.98] transition"
+        className="flex flex-col items-center justify-center gap-2.5 td-card p-4 active:scale-[0.98]"
       >
-        <div className="size-11 rounded-2xl bg-brand-orange/10 flex items-center justify-center text-brand-orange">
+        <div className="size-11 rounded-2xl bg-brand-orange/12 flex items-center justify-center text-brand-orange">
           <CateringIcon className="size-5" />
         </div>
-        <span className="text-xs font-semibold text-brand-green">Catering</span>
+        <span className="text-xs font-semibold text-[color:var(--td-ink)]">Catering</span>
       </button>
       <button
+        type="button"
         onClick={onOpenMenu}
-        className="flex flex-col items-center justify-center gap-2 td-card p-4 active:scale-[0.98] transition"
+        className="flex flex-col items-center justify-center gap-2.5 td-card p-4 active:scale-[0.98]"
       >
-        <div className="size-11 rounded-2xl bg-brand-orange/10 flex items-center justify-center text-brand-orange">
+        <div className="size-11 rounded-2xl bg-brand-orange/12 flex items-center justify-center text-brand-orange">
           <ForkKnifeIcon className="size-5" />
         </div>
-        <span className="text-xs font-semibold text-brand-green">Menu</span>
+        <span className="text-xs font-semibold text-[color:var(--td-ink)]">Menu</span>
       </button>
       <button
+        type="button"
         onClick={onOpenFlyer}
-        className="flex flex-col items-center justify-center gap-2 td-card p-4 active:scale-[0.98] transition"
+        className="flex flex-col items-center justify-center gap-2.5 td-card p-4 active:scale-[0.98]"
       >
-        <div className="size-11 rounded-2xl bg-brand-gold/15 flex items-center justify-center text-brand-green">
+        <div className="size-11 rounded-2xl bg-brand-gold/18 flex items-center justify-center text-brand-orange">
           <SparklesIcon className="size-5" />
         </div>
-        <span className="text-xs font-semibold text-brand-green">Flyer</span>
+        <span className="text-xs font-semibold text-[color:var(--td-ink)]">Flyer</span>
       </button>
       <Link
         to="/menu"
         target="_blank"
-        className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-3xl border border-brand-green/5 shadow-sm active:scale-[0.98] transition"
+        className="flex flex-col items-center justify-center gap-2.5 td-card p-4 active:scale-[0.98] sm:col-span-2"
       >
-        <div className="size-11 rounded-2xl bg-brand-green/10 flex items-center justify-center text-brand-green">
+        <div className="size-11 rounded-2xl bg-[color:var(--surface-2)] border border-[color:var(--border)] flex items-center justify-center text-brand-orange">
           <GlobeIcon className="size-5" />
         </div>
-        <span className="text-xs font-semibold text-brand-green">My Website</span>
+        <span className="text-xs font-semibold text-[color:var(--td-ink)]">My Website</span>
       </Link>
     </section>
   );
@@ -958,36 +1301,34 @@ function PublishToWebsiteCard({
           <span className="text-brand-orange" aria-hidden>
             🌾
           </span>
-          <span className="td-section-label text-brand-green/50 dark:text-brand-green/45 !tracking-[0.18em]">
-            Shared with your website
-          </span>
+          <span className="td-section-label !tracking-[0.18em]">Shared with your website</span>
         </div>
-        <h3 className="font-display text-xl mt-2 tracking-tight leading-snug">
+        <h3 className="font-display text-xl mt-2 tracking-tight leading-snug text-[color:var(--td-ink)]">
           Publish Updates to My Website
         </h3>
-        <p className="text-sm text-brand-green/65 dark:text-brand-green/55 mt-2 leading-relaxed">
+        <p className="text-sm text-[color:var(--td-ink-muted)] mt-2 leading-relaxed">
           One tap uploads your full menu + schedule to{" "}
-          <code className="text-[11px] bg-brand-sand dark:bg-white/8 px-1.5 py-0.5 rounded-md">
+          <code className="text-[11px] bg-[color:var(--surface-2)] border border-[color:var(--border)] px-1.5 py-0.5 rounded-md text-[color:var(--td-ink)]">
             {storagePath}
           </code>
           . Your public site loads that file automatically.
         </p>
         <p className="text-[11px] mt-2.5" suppressHydrationWarning>
           {supabaseReady ? (
-            <span className="text-brand-green/60 font-medium">
+            <span className="text-[color:var(--td-ink-muted)] font-medium">
               Connected · {getSupabaseConfigHint()}
             </span>
           ) : (
             <span className="text-brand-orange font-medium">
               Not connected — add Supabase keys, then{" "}
-              <code className="bg-brand-sand dark:bg-white/8 px-1 rounded">npm run setup</code>
+              <code className="bg-[color:var(--surface-2)] px-1 rounded">npm run setup</code>
             </span>
           )}
         </p>
         {formatted && (
-          <p className="text-[11px] text-brand-green/45 mt-1" suppressHydrationWarning>
+          <p className="text-[11px] text-[color:var(--td-ink-muted)] mt-1" suppressHydrationWarning>
             Last published: {formatted}
-            {cloudEnabled && <span className="ml-1 text-brand-orange/80">· sync on</span>}
+            {cloudEnabled && <span className="ml-1 text-brand-orange">· sync on</span>}
             {cloudPending && (
               <span className="ml-1 text-brand-orange font-semibold">· pending</span>
             )}
@@ -996,9 +1337,10 @@ function PublishToWebsiteCard({
       </div>
 
       <button
+        type="button"
         onClick={onPublish}
         disabled={busy}
-        className="mt-5 w-full flex items-center justify-center gap-2 bg-brand-orange hover:brightness-95 active:scale-[0.985] transition text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-brand-orange/20 disabled:opacity-70"
+        className="td-btn-primary mt-5"
       >
         {busy ? "Publishing…" : "Publish Updates to My Website"}
       </button>
@@ -1012,24 +1354,25 @@ function PublishToWebsiteCard({
         >
           Preview website ↗
         </Link>
-        <span className="text-brand-green/25">·</span>
+        <span className="text-[color:var(--td-ink-muted)]">·</span>
         <Link
           to="/menu"
           target="_blank"
-          className="text-brand-green/60 hover:text-brand-green font-medium"
+          className="text-[color:var(--td-ink-muted)] hover:text-brand-orange font-medium transition-colors"
         >
           Live menu
         </Link>
-        <span className="text-brand-green/25">·</span>
+        <span className="text-[color:var(--td-ink-muted)]">·</span>
         <Link
           to="/schedule"
           target="_blank"
-          className="text-brand-green/60 hover:text-brand-green font-medium"
+          className="text-[color:var(--td-ink-muted)] hover:text-brand-orange font-medium transition-colors"
         >
           Schedule
         </Link>
-        <span className="text-brand-green/25">·</span>
+        <span className="text-[color:var(--td-ink-muted)]">·</span>
         <button
+          type="button"
           onClick={async () => {
             try {
               await exportPublishedJSON();
@@ -1037,13 +1380,13 @@ function PublishToWebsiteCard({
               alert("Publish first, then you can export the JSON for other websites.");
             }
           }}
-          className="text-brand-green/60 hover:text-brand-green font-medium"
+          className="text-[color:var(--td-ink-muted)] hover:text-brand-orange font-medium transition-colors"
         >
           Export JSON
         </button>
       </div>
 
-      <p className="text-center text-[10px] text-brand-green/40 mt-3 leading-relaxed">
+      <p className="text-center text-[10px] text-[color:var(--td-ink-muted)] mt-3 leading-relaxed">
         Works offline — queues and syncs when you reconnect.
       </p>
     </section>
@@ -1244,19 +1587,30 @@ function MenuManager({
 
 /* ------------------------------- Flyer ------------------------------- */
 
+function resolveTemplate(id: TemplateId): TemplateTheme {
+  return TEMPLATES[id] ?? TEMPLATES.lakecumberland;
+}
+
+function resolveBackground(id: BackgroundId): BackgroundPreset {
+  return BACKGROUNDS[id] ?? BACKGROUNDS.paper;
+}
+
 function FlyerSection({
   state,
   setState,
   flyerRef,
   standalone = false,
+  socialFocus = false,
 }: {
   state: TruckState;
   setState: (s: TruckState) => void;
   flyerRef: React.MutableRefObject<HTMLDivElement | null>;
   standalone?: boolean;
+  socialFocus?: boolean;
 }) {
-  const [busy, setBusy] = useState<null | "png" | "share" | "fb">(null);
+  const [busy, setBusy] = useState<null | "png" | "share" | "fb" | "ig">(null);
   const [toast, setToast] = useState<string | null>(null);
+  const theme = resolveTemplate(state.template);
 
   useEffect(() => {
     if (!toast) return;
@@ -1266,11 +1620,10 @@ function FlyerSection({
 
   const captureBlob = async () => {
     if (!flyerRef.current) return null;
-    // pixelRatio 3 → ~1170x1462, plenty for social.
     return await toBlob(flyerRef.current, {
       pixelRatio: 3,
       cacheBust: true,
-      backgroundColor: TEMPLATES[state.template].frame,
+      backgroundColor: theme.frame,
     });
   };
 
@@ -1281,7 +1634,7 @@ function FlyerSection({
       const dataUrl = await toPng(flyerRef.current, {
         pixelRatio: 3,
         cacheBust: true,
-        backgroundColor: TEMPLATES[state.template].frame,
+        backgroundColor: theme.frame,
       });
       const a = document.createElement("a");
       a.href = dataUrl;
@@ -1305,6 +1658,7 @@ function FlyerSection({
         const file = new File([blob], `${slug(state.name)}-flyer.png`, { type: "image/png" });
         if (navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file], title: state.name, text: caption });
+          setToast("Shared");
           return;
         }
       }
@@ -1340,14 +1694,47 @@ function FlyerSection({
     }
   };
 
+  /** One-tap: download + copy caption for Stories / Instagram paste flow */
+  const shareStoriesReady = async () => {
+    if (!flyerRef.current) return;
+    setBusy("ig");
+    try {
+      const dataUrl = await toPng(flyerRef.current, {
+        pixelRatio: 3,
+        cacheBust: true,
+        backgroundColor: theme.frame,
+      });
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `${slug(state.name)}-story.png`;
+      a.click();
+      await copyText(buildCaption(state));
+      setToast("PNG saved · caption copied — open Stories & paste");
+    } catch (e) {
+      console.error(e);
+      setToast("Couldn't prepare Stories pack");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <section className="space-y-4">
-      <div className="flex justify-between items-baseline">
-        <h3 className="font-display text-lg">{standalone ? "Flyer Studio" : "Daily Flyer"}</h3>
-        <span className="text-[11px] text-brand-orange font-bold uppercase tracking-wider">
+      <div className="flex justify-between items-baseline gap-3">
+        <h3 className="font-display text-lg tracking-tight text-[color:var(--td-ink)]">
+          {standalone || socialFocus ? "Flyer Studio" : "Daily Flyer"}
+        </h3>
+        <span className="text-[11px] text-brand-orange font-bold uppercase tracking-wider shrink-0">
           Live preview
         </span>
       </div>
+
+      {(standalone || socialFocus) && (
+        <p className="text-sm text-[color:var(--td-ink-muted)] leading-relaxed -mt-1">
+          Kentucky templates · photoreal food hero · scannable QR · captions ready for Facebook
+          &amp; Stories.
+        </p>
+      )}
 
       <FormatPicker
         value={state.shareFormat}
@@ -1357,6 +1744,7 @@ function FlyerSection({
       <TemplatePicker
         value={state.template}
         onChange={(t) => setState({ ...state, template: t })}
+        featuredFirst={socialFocus || standalone}
       />
 
       <BackgroundPicker
@@ -1364,36 +1752,45 @@ function FlyerSection({
         onChange={(b) => setState({ ...state, background: b })}
       />
 
-      {standalone && (
+      {(standalone || socialFocus) && (
         <>
           <QrPreviewCard state={state} setState={setState} />
           <FlyerCustomizer state={state} setState={setState} />
+          <CaptionCard state={state} setState={setState} />
         </>
       )}
 
       <Flyer state={state} ref={flyerRef} />
 
       <button
-        onClick={shareNative}
+        type="button"
+        onClick={() => void shareNative()}
         disabled={busy !== null}
         className="w-full bg-brand-orange text-white font-bold py-4 rounded-2xl shadow-lg shadow-brand-orange/25 active:scale-[0.98] transition disabled:opacity-60"
       >
         {busy === "share"
           ? "Preparing flyer…"
-          : `Share ${SHARE_FORMATS.find((f) => f.id === state.shareFormat)?.label ?? "Flyer"}`}
+          : `One-tap share · ${SHARE_FORMATS.find((f) => f.id === state.shareFormat)?.label ?? "Flyer"}`}
       </button>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className={`grid gap-2 ${socialFocus || standalone ? "grid-cols-2" : "grid-cols-3"}`}>
         <ShareChip
-          label={busy === "png" ? "Rendering…" : "Download"}
-          onClick={downloadPng}
+          label={busy === "png" ? "Rendering…" : "Download PNG"}
+          onClick={() => void downloadPng()}
           disabled={busy !== null}
         />
         <ShareChip
           label={busy === "fb" ? "…" : "Facebook"}
-          onClick={shareFacebook}
+          onClick={() => void shareFacebook()}
           disabled={busy !== null}
         />
+        {(socialFocus || standalone) && (
+          <ShareChip
+            label={busy === "ig" ? "…" : "Stories pack"}
+            onClick={() => void shareStoriesReady()}
+            disabled={busy !== null}
+          />
+        )}
         <ShareChip
           label="Copy Caption"
           onClick={async () => {
@@ -1407,11 +1804,49 @@ function FlyerSection({
       {toast && (
         <div
           role="status"
-          className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-brand-green text-white text-sm font-medium px-4 py-2.5 rounded-full shadow-xl shadow-brand-green/30 z-50 max-w-[90vw] text-center"
+          className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-brand-deep text-white text-sm font-medium px-4 py-2.5 rounded-full shadow-xl z-50 max-w-[90vw] text-center"
         >
           {toast}
         </div>
       )}
+    </section>
+  );
+}
+
+function CaptionCard({
+  state,
+  setState,
+}: {
+  state: TruckState;
+  setState: (s: TruckState) => void;
+}) {
+  const preview = buildCaption(state);
+  return (
+    <section className="td-card td-card-pad space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-brand-orange">
+          Caption generator
+        </h4>
+        <button
+          type="button"
+          className="text-[11px] font-bold text-brand-orange"
+          onClick={async () => {
+            await copyText(preview);
+          }}
+        >
+          Copy
+        </button>
+      </div>
+      <textarea
+        value={state.socialCaption ?? ""}
+        onChange={(e) => setState({ ...state, socialCaption: e.target.value })}
+        placeholder={preview}
+        rows={3}
+        className="td-input resize-y text-sm leading-relaxed"
+      />
+      <p className="text-[11px] text-[color:var(--td-ink-muted)] leading-snug">
+        Custom caption overrides the auto text used for share &amp; Facebook.
+      </p>
     </section>
   );
 }
@@ -1506,43 +1941,47 @@ function FlyerCustomizer({
 function TemplatePicker({
   value,
   onChange,
+  featuredFirst = false,
 }: {
   value: TemplateId;
   onChange: (t: TemplateId) => void;
+  featuredFirst?: boolean;
 }) {
-  const ids: TemplateId[] = [
+  const featured: TemplateId[] = [
     "lakecumberland",
-    "festival",
+    "lakesunset",
     "bourbonbarrel",
-    "bright",
-    "boldbbq",
+    "festival",
+    "dockside",
+    "bluegrassnight",
     "rustic",
-    "clean",
-    "bbq",
-    "moody",
-    "minimal",
+    "harvestfair",
   ];
+  const rest: TemplateId[] = ["bright", "boldbbq", "clean", "bbq", "moody", "minimal"];
+  const ids = featuredFirst ? [...featured, ...rest] : [...featured, ...rest];
   return (
     <div className="-mx-4 px-4 overflow-x-auto no-scrollbar">
       <div className="flex gap-2.5 pb-1">
         {ids.map((id) => {
           const t = TEMPLATES[id];
+          if (!t) return null;
           const active = value === id;
           return (
             <button
               key={id}
+              type="button"
               onClick={() => onChange(id)}
               className={`shrink-0 flex items-center gap-2.5 pl-1.5 pr-3.5 py-1.5 rounded-full border transition ${
                 active
-                  ? "bg-brand-green text-white border-brand-green shadow-md shadow-brand-green/20"
-                  : "bg-white text-brand-green/70 border-brand-green/10"
+                  ? "bg-brand-deep text-white border-brand-deep shadow-md dark:bg-brand-orange dark:text-[#0f2419] dark:border-brand-orange"
+                  : "bg-[color:var(--surface)] text-[color:var(--td-ink-muted)] border-[color:var(--border)]"
               }`}
             >
               <span className="flex -space-x-1">
                 {t.swatch.map((c, i) => (
                   <span
                     key={i}
-                    className="size-5 rounded-full ring-2 ring-white"
+                    className="size-5 rounded-full ring-2 ring-white dark:ring-[#173024]"
                     style={{ backgroundColor: c }}
                   />
                 ))}
@@ -1569,9 +2008,10 @@ function ShareChip({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
-      className="bg-white border border-brand-green/5 rounded-full py-3 text-xs font-semibold text-brand-green active:scale-[0.97] transition disabled:opacity-50"
+      className="bg-[color:var(--surface)] border border-[color:var(--border)] rounded-full py-3 text-xs font-semibold text-[color:var(--td-ink)] active:scale-[0.97] transition disabled:opacity-50"
     >
       {label}
     </button>
@@ -1592,11 +2032,12 @@ function FormatPicker({
         return (
           <button
             key={f.id}
+            type="button"
             onClick={() => onChange(f.id)}
-            className={`flex-1 py-2 rounded-full border text-[11px] font-bold uppercase tracking-wider transition ${
+            className={`flex-1 py-2.5 rounded-full border text-[11px] font-bold uppercase tracking-wider transition-all duration-200 ${
               active
-                ? "bg-brand-green text-white border-brand-green shadow-md shadow-brand-green/20"
-                : "bg-white text-brand-green/70 border-brand-green/10"
+                ? "bg-brand-deep text-white border-brand-deep shadow-md dark:bg-brand-orange dark:text-[color:var(--td-cta-on-gold)] dark:border-brand-orange"
+                : "bg-[color:var(--surface)] text-[color:var(--td-ink-muted)] border-[color:var(--border)] hover:border-brand-orange/30"
             }`}
           >
             {f.label}
@@ -1722,8 +2163,8 @@ const Flyer = ({
   state: TruckState;
   ref: React.MutableRefObject<HTMLDivElement | null>;
 }) => {
-  const t = TEMPLATES[state.template];
-  const bg = BACKGROUNDS[state.background];
+  const t = resolveTemplate(state.template);
+  const bg = resolveBackground(state.background);
   const format = SHARE_FORMATS.find((f) => f.id === state.shareFormat) ?? SHARE_FORMATS[0];
   const qrTarget = state.qrUrl.trim() || state.orderUrl.trim() || "https://truckdash.app";
   const paperInk = bg.darkText ? "#f6efe1" : t.ink;
@@ -2612,9 +3053,27 @@ function SettingsSheet({
             </button>
           </div>
         </div>
-        <p className="text-xs text-brand-green/50 -mt-2">
-          Appearance, truck profile, and cloud website sync.
+        <p className="text-xs text-[color:var(--td-ink-muted)] -mt-2">
+          Appearance, workspace mode, truck profile, and cloud website sync.
         </p>
+
+        <div className="rounded-2xl bg-[color:var(--surface)] border border-[color:var(--border)] p-4 space-y-3">
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-orange">
+              Workspace
+            </div>
+            <h3 className="font-display text-lg mt-0.5 text-[color:var(--td-ink)]">App mode</h3>
+            <p className="text-xs text-[color:var(--td-ink-muted)] mt-1 leading-relaxed">
+              <strong>Social &amp; Flyer Only</strong> highlights Flyer Studio, QR codes, captions,
+              and one-tap sharing. <strong>Full Sync</strong> keeps website publish, Live Map, and
+              weekly tools front and center.
+            </p>
+          </div>
+          <AppModeToggle
+            mode={state.appMode ?? "full-sync"}
+            onChange={(mode) => setState({ ...state, appMode: mode })}
+          />
+        </div>
 
         <Field label="Truck name">
           <input
@@ -3051,11 +3510,15 @@ function PrintableSchedule({ state }: { state: TruckState }) {
 /* ------------------------------- Helpers ------------------------------- */
 
 function buildCaption(state: TruckState) {
+  const custom = state.socialCaption?.trim();
+  if (custom) return custom;
+  const isLive = state.liveSession?.isLive || state.live;
   const parts = [
-    `🚚 ${state.name} — ${state.live ? "OPEN today" : "Today's menu"}`,
+    `🚚 ${state.name} — ${isLive ? "OPEN today" : "Today's menu"}`,
     `📍 ${state.location}`,
     `🕐 ${state.hoursStart} – ${state.hoursEnd}`,
     `⭐️ Special: ${state.special}`,
+    `Kentucky · Lake Cumberland area`,
   ];
   if (state.orderUrl) parts.push(`Order ahead → ${state.orderUrl}`);
   return parts.join("\n");

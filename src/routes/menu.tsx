@@ -80,9 +80,9 @@ function PublicMenuPage() {
   const hasData = !!data?.lastPublished && data.menu.length > 0;
 
   return (
-    <div className="min-h-screen bg-brand-sand text-brand-green">
+    <div className="min-h-screen bg-brand-sand text-[color:var(--td-ink)] transition-colors duration-200">
       {/* Public header — warm, local, premium */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-brand-green/10">
+      <header className="sticky top-0 z-40 bg-[color:var(--surface)]/92 backdrop-blur-md border-b border-[color:var(--border)]">
         <div className="mx-auto max-w-3xl px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
@@ -98,7 +98,7 @@ function PublicMenuPage() {
                   {hasData ? data!.truckName : "Cluckin Chaos"}
                 </span>
               </div>
-              <p className="text-[10px] text-brand-green/60 tracking-[0.2em] -mt-0.5">
+              <p className="text-[10px] text-[color:var(--td-ink-muted)] tracking-[0.2em] -mt-0.5">
                 LAKE CUMBERLAND • MONTICELLO • KENTUCKY
               </p>
             </div>
@@ -125,7 +125,7 @@ function PublicMenuPage() {
 
       <main className="mx-auto max-w-3xl px-4 pt-7 pb-16">
         {loading ? (
-          <div className="py-10 text-center text-brand-green/60">Loading fresh menu…</div>
+          <div className="py-10 text-center text-[color:var(--td-ink-muted)]">Loading fresh menu…</div>
         ) : !hasData ? (
           <NoMenuState />
         ) : (
@@ -137,7 +137,7 @@ function PublicMenuPage() {
                   TODAY
                 </span>
                 {data!.special && (
-                  <span className="text-xs uppercase tracking-widest text-brand-green/50">
+                  <span className="text-xs uppercase tracking-widest text-[color:var(--td-ink-muted)]">
                     Special
                   </span>
                 )}
@@ -152,7 +152,7 @@ function PublicMenuPage() {
                   <span className="mt-0.5 text-brand-orange">📍</span>
                   <div>
                     <div className="font-medium">{data!.location}</div>
-                    <div className="text-brand-green/70">
+                    <div className="text-[color:var(--td-ink-muted)]">
                       {data!.hoursStart} — {data!.hoursEnd}
                       {data!.phone && (
                         <>
@@ -176,12 +176,12 @@ function PublicMenuPage() {
             <section>
               <div className="flex items-baseline justify-between mb-3 px-1">
                 <h2 className="font-display text-2xl">Menu</h2>
-                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-green/50">
+                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[color:var(--td-ink-muted)]">
                   Updated from TruckDash
                 </span>
               </div>
 
-              <div className="bg-white rounded-3xl border border-brand-green/10 shadow-sm overflow-hidden divide-y divide-brand-green/5">
+              <div className="bg-[color:var(--surface)] rounded-3xl border border-[color:var(--border)] shadow-sm overflow-hidden divide-y divide-[color:var(--border)]">
                 {data!.menu.length > 0 ? (
                   data!.menu.map((item: MenuItem, idx: number) => (
                     <div
@@ -197,13 +197,13 @@ function PublicMenuPage() {
                     </div>
                   ))
                 ) : (
-                  <div className="px-5 py-8 text-brand-green/60">
+                  <div className="px-5 py-8 text-[color:var(--td-ink-muted)]">
                     Menu items will appear here after publish.
                   </div>
                 )}
               </div>
 
-              <p className="mt-3 text-xs text-center text-brand-green/50 px-2">
+              <p className="mt-3 text-xs text-center text-[color:var(--td-ink-muted)] px-2">
                 Prices and availability can change. Call or check with us on site.
               </p>
             </section>
@@ -212,11 +212,11 @@ function PublicMenuPage() {
             {lastUpdated && (
               <div className="mt-8 text-center">
                 <p
-                  className="text-[10px] text-brand-green/40 tracking-[0.5px]"
+                  className="text-[10px] text-[color:var(--td-ink-muted)] tracking-[0.5px]"
                   suppressHydrationWarning
                 >
                   Last updated from TruckDash:{" "}
-                  <span className="font-medium text-brand-green/60">{lastUpdated}</span>
+                  <span className="font-medium text-[color:var(--td-ink-muted)]">{lastUpdated}</span>
                 </p>
               </div>
             )}
@@ -236,7 +236,7 @@ function PublicMenuPage() {
         )}
       </main>
 
-      <footer className="border-t border-brand-green/10 py-6 text-center text-[10px] text-brand-green/40">
+      <footer className="border-t border-[color:var(--border)] py-6 text-center text-[10px] text-[color:var(--td-ink-muted)]">
         Authentic Kentucky soul • Lake Cumberland region
         <br />
         <Link to="/schedule" className="underline hover:text-brand-green">
@@ -254,15 +254,15 @@ function NoMenuState() {
         🍂
       </div>
       <h2 className="font-display text-3xl tracking-tight">Menu coming soon</h2>
-      <p className="mt-3 text-brand-green/70 leading-relaxed">
+      <p className="mt-3 text-[color:var(--td-ink-muted)] leading-relaxed">
         The truck owner hasn’t published their latest menu yet.
         <br />
         Check back after they tap “Publish Updates to My Website” in TruckDash.
       </p>
 
-      <div className="mt-8 bg-white border border-brand-green/10 rounded-3xl p-5 text-left text-sm">
+      <div className="mt-8 bg-[color:var(--surface)] border border-[color:var(--border)] rounded-3xl p-5 text-left text-sm">
         <div className="font-semibold mb-2">For the truck team:</div>
-        <p className="text-brand-green/70 text-sm">
+        <p className="text-[color:var(--td-ink-muted)] text-sm">
           Open TruckDash → update your menu or schedule → hit Publish. Your customers will see it
           here right away.
         </p>

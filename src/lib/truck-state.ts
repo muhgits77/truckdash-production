@@ -15,6 +15,11 @@ export type ScheduleDay = {
   hoursEnd: string;
   closed?: boolean;
   note?: string; // e.g. "Festival", "Prep day", "Closed", "Family day"
+  /** Smart Map: geocoded coordinates (persisted after lookup) */
+  lat?: number | null;
+  lng?: number | null;
+  /** Query string used for last geocode — invalidates coords when location text changes */
+  geoQuery?: string | null;
 };
 
 export type MenuItem = {
@@ -28,19 +33,40 @@ export type MenuItem = {
 
 export type TemplateId =
   | "lakecumberland"
+  | "lakesunset"
   | "festival"
   | "bourbonbarrel"
+  | "dockside"
+  | "bluegrassnight"
   | "bright"
   | "bbq"
   | "moody"
   | "minimal"
   | "boldbbq"
   | "rustic"
-  | "clean";
+  | "clean"
+  | "harvestfair";
 
 export type ShareFormat = "portrait" | "story" | "square";
 export type BackgroundId =
-  "paper" | "cream-grid" | "kraft" | "sunset-gradient" | "sage-linen" | "charcoal-grain";
+  | "paper"
+  | "cream-grid"
+  | "kraft"
+  | "sunset-gradient"
+  | "sage-linen"
+  | "charcoal-grain"
+  | "lake-dusk"
+  | "bourbon-oak"
+  | "bluegrass-field"
+  | "festival-lights"
+  | "dock-mist";
+
+/**
+ * Workspace mode:
+ * - full-sync: full operator HQ (publish, map, week, menu, flyer)
+ * - social-flyer: focused studio for flyers, QR, captions, one-tap share
+ */
+export type AppMode = "full-sync" | "social-flyer";
 
 /** Live “I’m open now” session (GPS / pin + note) — operator command center */
 export type LiveSession = {
@@ -117,6 +143,13 @@ export type TruckState = {
   events: TruckEvent[];
   /** My Listings profile for public-facing card */
   listing: ListingProfile;
+  /**
+   * full-sync = website publish + command center
+   * social-flyer = Flyer Studio focused (QR, captions, share)
+   */
+  appMode: AppMode;
+  /** Optional custom social caption (empty → auto-generated) */
+  socialCaption?: string;
 };
 
 export type CateringSettings = {
@@ -315,9 +348,11 @@ export const DEFAULT_STATE: TruckState = {
   liveStops: [],
   events: DEFAULT_EVENTS,
   listing: DEFAULT_LISTING,
+  appMode: "full-sync",
+  socialCaption: "",
 };
 
-export const APP_VERSION = "0.6.0";
+export const APP_VERSION = "0.9.0";
 export const STORAGE_KEY = "truckdash.state.v1";
 export const VERSION_KEY = "truckdash.version";
 export const ONBOARD_KEY = "truckdash.onboarded.v6";
@@ -348,6 +383,14 @@ export function useTruckState() {
           liveStops: parsed.liveStops ?? DEFAULT_STATE.liveStops,
           events: parsed.events ?? DEFAULT_STATE.events,
           listing: { ...DEFAULT_LISTING, ...(parsed.listing ?? {}) },
+          appMode:
+            parsed.appMode === "social-flyer" || parsed.appMode === "full-sync"
+              ? parsed.appMode
+              : DEFAULT_STATE.appMode,
+          socialCaption:
+            typeof parsed.socialCaption === "string"
+              ? parsed.socialCaption
+              : DEFAULT_STATE.socialCaption,
         });
       }
     } catch {

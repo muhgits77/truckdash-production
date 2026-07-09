@@ -145,9 +145,9 @@ function CateringPublicPage() {
   const packages = profile?.signaturePackages || [];
 
   return (
-    <div className="min-h-screen bg-brand-sand text-brand-green">
+    <div className="min-h-screen bg-brand-sand text-[color:var(--td-ink)] transition-colors duration-200">
       {/* Warm, premium header */}
-      <header className="border-b border-brand-green/10 bg-white/70 backdrop-blur">
+      <header className="border-b border-[color:var(--border)] bg-[color:var(--surface)]/90 backdrop-blur">
         <div className="mx-auto max-w-3xl px-4 py-5 flex items-center justify-between">
           <div>
             <Link to="/" className="text-xs uppercase tracking-[0.2em] text-brand-orange font-bold">
@@ -157,14 +157,14 @@ function CateringPublicPage() {
               <span className="size-2 rounded-full bg-brand-orange" />
               <span className="font-display text-2xl font-bold tracking-tight">{truckName}</span>
             </div>
-            <p className="text-xs text-brand-green/60 tracking-wider">
+            <p className="text-xs text-[color:var(--td-ink-muted)] tracking-wider">
               CATERING &amp; PRIVATE EVENTS
             </p>
           </div>
 
           <a
             href={`tel:${contactPhone.replace(/[^\d]/g, "")}`}
-            className="text-sm font-semibold px-4 py-2 rounded-2xl border border-brand-green/15 bg-white hover:bg-brand-sand transition"
+            className="text-sm font-semibold px-4 py-2 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] hover:bg-[color:var(--surface-2)] transition"
           >
             Call {contactPhone}
           </a>
@@ -184,8 +184,8 @@ function CateringPublicPage() {
                 <br />
                 to your next event.
               </h1>
-              <p className="max-w-md mx-auto text-brand-green/70">{introMessage}</p>
-              <p className="mt-3 text-sm font-medium text-brand-green/60">
+              <p className="max-w-md mx-auto text-[color:var(--td-ink-muted)]">{introMessage}</p>
+              <p className="mt-3 text-sm font-medium text-[color:var(--td-ink-muted)]">
                 Weddings • Corporate • Festivals • Private Parties • Family Gatherings
               </p>
             </div>
@@ -193,10 +193,10 @@ function CateringPublicPage() {
             {/* Signature packages preview (warm & honest) */}
             <div className="mb-8 grid gap-3 sm:grid-cols-3">
               {packages.slice(0, 3).map((pkg) => (
-                <div key={pkg.id} className="bg-white rounded-3xl p-4 border border-brand-green/10">
+                <div key={pkg.id} className="bg-[color:var(--surface)] rounded-3xl p-4 border border-[color:var(--border)]">
                   <div className="font-semibold text-base">{pkg.name}</div>
                   <div className="text-xs text-brand-orange font-medium mt-0.5">{pkg.serves}</div>
-                  <p className="mt-2 text-sm text-brand-green/70 leading-snug">{pkg.description}</p>
+                  <p className="mt-2 text-sm text-[color:var(--td-ink-muted)] leading-snug">{pkg.description}</p>
                 </div>
               ))}
             </div>
@@ -204,7 +204,7 @@ function CateringPublicPage() {
             {/* The actual inquiry form — clean, conversion focused */}
             <form
               onSubmit={handleSubmit}
-              className="bg-white rounded-3xl border border-brand-green/10 shadow-sm p-6 space-y-6"
+              className="bg-[color:var(--surface)] rounded-3xl border border-[color:var(--border)] shadow-sm p-6 space-y-6"
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <Field label="Your Name">
@@ -212,7 +212,7 @@ function CateringPublicPage() {
                     required
                     value={form.name}
                     onChange={(e) => update("name", e.target.value)}
-                    className="w-full rounded-2xl border border-brand-green/15 bg-brand-sand px-4 py-3 text-sm focus:outline-none focus:border-brand-orange"
+                    className="w-full rounded-2xl border border-[color:var(--border)] bg-brand-sand px-4 py-3 text-sm focus:outline-none focus:border-brand-orange"
                     placeholder="Alex Rivera"
                   />
                 </Field>
@@ -222,7 +222,7 @@ function CateringPublicPage() {
                     type="email"
                     value={form.email}
                     onChange={(e) => update("email", e.target.value)}
-                    className="w-full rounded-2xl border border-brand-green/15 bg-brand-sand px-4 py-3 text-sm focus:outline-none focus:border-brand-orange"
+                    className="w-full rounded-2xl border border-[color:var(--border)] bg-brand-sand px-4 py-3 text-sm focus:outline-none focus:border-brand-orange"
                     placeholder="you@email.com"
                   />
                 </Field>
@@ -233,7 +233,7 @@ function CateringPublicPage() {
                   <input
                     value={form.phone}
                     onChange={(e) => update("phone", e.target.value)}
-                    className="w-full rounded-2xl border border-brand-green/15 bg-brand-sand px-4 py-3 text-sm focus:outline-none focus:border-brand-orange"
+                    className="w-full rounded-2xl border border-[color:var(--border)] bg-brand-sand px-4 py-3 text-sm focus:outline-none focus:border-brand-orange"
                     placeholder="(555) 867-5309"
                   />
                 </Field>
@@ -243,7 +243,7 @@ function CateringPublicPage() {
                     min={10}
                     value={form.guests}
                     onChange={(e) => update("guests", e.target.value)}
-                    className="w-full rounded-2xl border border-brand-green/15 bg-brand-sand px-4 py-3 text-sm focus:outline-none focus:border-brand-orange"
+                    className="w-full rounded-2xl border border-[color:var(--border)] bg-brand-sand px-4 py-3 text-sm focus:outline-none focus:border-brand-orange"
                     placeholder="35"
                   />
                 </Field>
@@ -256,7 +256,7 @@ function CateringPublicPage() {
                     type="date"
                     value={form.eventDate}
                     onChange={(e) => update("eventDate", e.target.value)}
-                    className="w-full rounded-2xl border border-brand-green/15 bg-brand-sand px-4 py-3 text-sm focus:outline-none focus:border-brand-orange"
+                    className="w-full rounded-2xl border border-[color:var(--border)] bg-brand-sand px-4 py-3 text-sm focus:outline-none focus:border-brand-orange"
                   />
                 </Field>
                 <Field label="Event Time (approx)">
@@ -264,7 +264,7 @@ function CateringPublicPage() {
                     type="time"
                     value={form.eventTime}
                     onChange={(e) => update("eventTime", e.target.value)}
-                    className="w-full rounded-2xl border border-brand-green/15 bg-brand-sand px-4 py-3 text-sm focus:outline-none focus:border-brand-orange"
+                    className="w-full rounded-2xl border border-[color:var(--border)] bg-brand-sand px-4 py-3 text-sm focus:outline-none focus:border-brand-orange"
                   />
                 </Field>
               </div>
@@ -274,7 +274,7 @@ function CateringPublicPage() {
                   required
                   value={form.location}
                   onChange={(e) => update("location", e.target.value)}
-                  className="w-full rounded-2xl border border-brand-green/15 bg-brand-sand px-4 py-3 text-sm focus:outline-none focus:border-brand-orange"
+                  className="w-full rounded-2xl border border-[color:var(--border)] bg-brand-sand px-4 py-3 text-sm focus:outline-none focus:border-brand-orange"
                   placeholder="Private farm • Lake Cumberland State Dock • Your backyard in Monticello..."
                 />
               </Field>
@@ -284,7 +284,7 @@ function CateringPublicPage() {
                   <select
                     value={form.eventType}
                     onChange={(e) => update("eventType", e.target.value)}
-                    className="w-full rounded-2xl border border-brand-green/15 bg-brand-sand px-4 py-3 text-sm focus:outline-none focus:border-brand-orange"
+                    className="w-full rounded-2xl border border-[color:var(--border)] bg-brand-sand px-4 py-3 text-sm focus:outline-none focus:border-brand-orange"
                   >
                     {eventTypes.map((t) => (
                       <option key={t} value={t}>
@@ -297,7 +297,7 @@ function CateringPublicPage() {
                   <select
                     value={form.budget}
                     onChange={(e) => update("budget", e.target.value)}
-                    className="w-full rounded-2xl border border-brand-green/15 bg-brand-sand px-4 py-3 text-sm focus:outline-none focus:border-brand-orange"
+                    className="w-full rounded-2xl border border-[color:var(--border)] bg-brand-sand px-4 py-3 text-sm focus:outline-none focus:border-brand-orange"
                   >
                     {budgetOptions.map((b) => (
                       <option key={b} value={b}>
@@ -313,7 +313,7 @@ function CateringPublicPage() {
                   value={form.menuInterests}
                   onChange={(e) => update("menuInterests", e.target.value)}
                   rows={2}
-                  className="w-full rounded-2xl border border-brand-green/15 bg-brand-sand px-4 py-3 text-sm focus:outline-none focus:border-brand-orange"
+                  className="w-full rounded-2xl border border-[color:var(--border)] bg-brand-sand px-4 py-3 text-sm focus:outline-none focus:border-brand-orange"
                   placeholder="Vegetarian options, bourbon-glazed pork, gluten-free desserts, heavy apps only..."
                 />
               </Field>
@@ -323,7 +323,7 @@ function CateringPublicPage() {
                   value={form.notes}
                   onChange={(e) => update("notes", e.target.value)}
                   rows={3}
-                  className="w-full rounded-2xl border border-brand-green/15 bg-brand-sand px-4 py-3 text-sm focus:outline-none focus:border-brand-orange"
+                  className="w-full rounded-2xl border border-[color:var(--border)] bg-brand-sand px-4 py-3 text-sm focus:outline-none focus:border-brand-orange"
                   placeholder="Tell us more about the vibe, setup needs, or special requests..."
                 />
               </Field>
@@ -336,13 +336,13 @@ function CateringPublicPage() {
                 {submitting ? "Sending your inquiry..." : "Request Catering Quote"}
               </button>
 
-              <p className="text-center text-xs text-brand-green/50">
+              <p className="text-center text-xs text-[color:var(--td-ink-muted)]">
                 We usually reply within 24 hours. No obligation — just good conversation about great
                 food.
               </p>
             </form>
 
-            <div className="mt-6 text-center text-xs text-brand-green/50">
+            <div className="mt-6 text-center text-xs text-[color:var(--td-ink-muted)]">
               Serving the Lake Cumberland region with pride • {contactPhone}
               {profile?.notificationEmail ? ` • ${profile.notificationEmail}` : ""}
             </div>
@@ -356,7 +356,7 @@ function CateringPublicPage() {
             <h2 className="font-display text-3xl tracking-tight">
               Thank you, {form.name.split(" ")[0]}.
             </h2>
-            <p className="mt-3 text-lg text-brand-green/70">
+            <p className="mt-3 text-lg text-[color:var(--td-ink-muted)]">
               Your inquiry has been received. We’ll reach out within a day to talk through the
               details and lock in your date.
             </p>
@@ -366,11 +366,11 @@ function CateringPublicPage() {
               </p>
             )}
 
-            <div className="mt-8 bg-white rounded-3xl p-5 text-left border border-brand-green/10">
+            <div className="mt-8 bg-[color:var(--surface)] rounded-3xl p-5 text-left border border-[color:var(--border)]">
               <div className="uppercase text-[10px] tracking-widest text-brand-orange font-bold mb-1">
                 Next steps
               </div>
-              <ul className="text-sm space-y-1.5 text-brand-green/80">
+              <ul className="text-sm space-y-1.5 text-[color:var(--td-ink)]">
                 <li>• We’ll call or email to confirm availability and discuss menu.</li>
                 <li>• You’ll receive a simple proposal with pricing and timing.</li>
                 <li>• Once confirmed, we handle the rest — you just enjoy your event.</li>
@@ -395,7 +395,7 @@ function CateringPublicPage() {
             </button>
 
             <div className="mt-10">
-              <Link to="/" className="text-xs text-brand-green/50 hover:text-brand-green">
+              <Link to="/" className="text-xs text-[color:var(--td-ink-muted)] hover:text-brand-green">
                 Back to TruckDash home
               </Link>
             </div>
@@ -403,7 +403,7 @@ function CateringPublicPage() {
         )}
       </main>
 
-      <footer className="text-center text-[10px] py-6 text-brand-green/40 border-t border-brand-green/10">
+      <footer className="text-center text-[10px] py-6 text-[color:var(--td-ink-muted)] border-t border-[color:var(--border)]">
         Bluegrass Kitchen • Authentic Kentucky cooking for the moments that matter
       </footer>
     </div>
@@ -413,7 +413,7 @@ function CateringPublicPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <div className="text-xs font-bold uppercase tracking-[0.18em] text-brand-green/60 mb-1.5">
+      <div className="text-xs font-bold uppercase tracking-[0.18em] text-[color:var(--td-ink-muted)] mb-1.5">
         {label}
       </div>
       {children}

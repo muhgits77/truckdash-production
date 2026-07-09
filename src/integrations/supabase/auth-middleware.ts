@@ -6,27 +6,43 @@ import type { Database } from './types'
 
 
 
-function isNewSupabaseApiKey(value: string): boolean {
-  return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
-}
-
 function createSupabaseFetch(supabaseKey: string): typeof fetch {
   return (input, init) => {
-    const headers = new Headers(
-      typeof Request !== 'undefined' && input instanceof Request ? input.headers : undefined,
-    );
+    const headers = new Headers();
+
+    if (typeof Request !== 'undefined' && input instanceof Request) {
+      input.headers.forEach((value, key) => headers.set(key, value));
+    }
 
     if (init?.headers) {
       new Headers(init.headers).forEach((value, key) => headers.set(key, value));
     }
 
-    // New Supabase API keys are opaque strings, not bearer JWTs.
-    if (isNewSupabaseApiKey(supabaseKey) && headers.get('Authorization') === `Bearer ${supabaseKey}`) {
-      headers.delete('Authorization');
+    const bare = (headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
+    if (!bare) {
+      headers.set('Authorization', `Bearer ${supabaseKey}`);
     }
 
     headers.set('apikey', supabaseKey);
-    return fetch(input, { ...init, headers });
+
+    const requestUrl =
+      typeof input === 'string'
+        ? input
+        : input instanceof Request
+          ? input.url
+          : String(input);
+
+    return fetch(requestUrl, {
+      ...init,
+      method: init?.method ?? (input instanceof Request ? input.method : undefined),
+      body:
+        init?.body !== undefined
+          ? init.body
+          : input instanceof Request
+            ? input.body
+            : undefined,
+      headers,
+    } as RequestInit);
   };
 }
 

@@ -1,18 +1,12 @@
 -- =============================================================================
--- TruckDash · Supabase Storage buckets + RLS
--- Run once in Supabase Dashboard → SQL Editor → Run
+-- Ensure menu-data is PUBLIC and fully readable/writable for Publish + Cluckin
+-- Chaos. Target object: menu-data/cluckin-chaos/menu.json
 --
--- Project: oaoqvowghshyjqhaeubx (your Vercel / non-Lovable project)
---
--- Canonical publish object:
---   menu-data/cluckin-chaos/menu.json
---   public URL:
---   {SUPABASE_URL}/storage/v1/object/public/menu-data/cluckin-chaos/menu.json
---
--- After this SQL, Publish works with the anon key alone (no owner sign-in).
+-- Post-upload the app runs storage.list('cluckin-chaos') and requires menu.json
+-- to appear — SELECT RLS must allow anon + authenticated.
 -- =============================================================================
 
--- 1) Buckets (public = anonymous read via /storage/v1/object/public/...)
+-- 1) Buckets exist and are PUBLIC (anonymous /object/public/... reads)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values
   (
@@ -38,7 +32,7 @@ update storage.buckets
 set public = true
 where id in ('menu-data', 'menu-images');
 
--- 2) Drop known policy aliases, then re-create
+-- 2) Drop ALL known policy aliases so we re-create cleanly
 drop policy if exists "Public read menu-data" on storage.objects;
 drop policy if exists menu_data_public_read on storage.objects;
 drop policy if exists "Owners insert menu-data" on storage.objects;
@@ -47,7 +41,6 @@ drop policy if exists "Owners update menu-data" on storage.objects;
 drop policy if exists menu_data_anon_update on storage.objects;
 drop policy if exists "Owners delete menu-data" on storage.objects;
 drop policy if exists menu_data_anon_delete on storage.objects;
-drop policy if exists menu_data_public_all on storage.objects;
 
 drop policy if exists "Public read menu-images" on storage.objects;
 drop policy if exists menu_images_public_read on storage.objects;
@@ -57,50 +50,48 @@ drop policy if exists "Owners update menu-images" on storage.objects;
 drop policy if exists menu_images_anon_update on storage.objects;
 drop policy if exists "Owners delete menu-images" on storage.objects;
 drop policy if exists menu_images_anon_delete on storage.objects;
-drop policy if exists menu_images_public_all on storage.objects;
 
--- to public: classic anon JWT + authenticated sessions (upsert needs INSERT+UPDATE)
+-- 3) menu-data: public read (list + download + /object/public/...) + anon write
+--    SELECT is required for storage.list() verification after Publish
 create policy menu_data_public_read
   on storage.objects for select
-  to public
+  to anon, authenticated, service_role
   using (bucket_id = 'menu-data');
 
 create policy menu_data_anon_insert
   on storage.objects for insert
-  to public
+  to anon, authenticated, service_role
   with check (bucket_id = 'menu-data');
 
 create policy menu_data_anon_update
   on storage.objects for update
-  to public
+  to anon, authenticated, service_role
   using (bucket_id = 'menu-data')
   with check (bucket_id = 'menu-data');
 
 create policy menu_data_anon_delete
   on storage.objects for delete
-  to public
+  to anon, authenticated, service_role
   using (bucket_id = 'menu-data');
 
+-- 4) menu-images (same pattern)
 create policy menu_images_public_read
   on storage.objects for select
-  to public
+  to anon, authenticated, service_role
   using (bucket_id = 'menu-images');
 
 create policy menu_images_anon_insert
   on storage.objects for insert
-  to public
+  to anon, authenticated, service_role
   with check (bucket_id = 'menu-images');
 
 create policy menu_images_anon_update
   on storage.objects for update
-  to public
+  to anon, authenticated, service_role
   using (bucket_id = 'menu-images')
   with check (bucket_id = 'menu-images');
 
 create policy menu_images_anon_delete
   on storage.objects for delete
-  to public
+  to anon, authenticated, service_role
   using (bucket_id = 'menu-images');
-
--- Verify:
---   select id, name, public from storage.buckets where id in ('menu-data','menu-images');

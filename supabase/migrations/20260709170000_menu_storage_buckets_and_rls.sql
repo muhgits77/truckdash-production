@@ -1,18 +1,7 @@
--- =============================================================================
--- TruckDash · Supabase Storage buckets + RLS
--- Run once in Supabase Dashboard → SQL Editor → Run
---
--- Project: oaoqvowghshyjqhaeubx (your Vercel / non-Lovable project)
---
--- Canonical publish object:
---   menu-data/cluckin-chaos/menu.json
---   public URL:
---   {SUPABASE_URL}/storage/v1/object/public/menu-data/cluckin-chaos/menu.json
---
--- After this SQL, Publish works with the anon key alone (no owner sign-in).
--- =============================================================================
+-- Ensure menu-data + menu-images exist, are PUBLIC, and allow anon API key
+-- uploads (no owner sign-in). Target: menu-data/{truckId}/menu.json
+-- For project oaoqvowghshyjqhaeubx (Vercel) — apply via SQL Editor if not migrated.
 
--- 1) Buckets (public = anonymous read via /storage/v1/object/public/...)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values
   (
@@ -38,7 +27,6 @@ update storage.buckets
 set public = true
 where id in ('menu-data', 'menu-images');
 
--- 2) Drop known policy aliases, then re-create
 drop policy if exists "Public read menu-data" on storage.objects;
 drop policy if exists menu_data_public_read on storage.objects;
 drop policy if exists "Owners insert menu-data" on storage.objects;
@@ -59,7 +47,7 @@ drop policy if exists "Owners delete menu-images" on storage.objects;
 drop policy if exists menu_images_anon_delete on storage.objects;
 drop policy if exists menu_images_public_all on storage.objects;
 
--- to public: classic anon JWT + authenticated sessions (upsert needs INSERT+UPDATE)
+-- to public: covers anon JWT, authenticated JWT, and publishable API keys
 create policy menu_data_public_read
   on storage.objects for select
   to public
@@ -101,6 +89,3 @@ create policy menu_images_anon_delete
   on storage.objects for delete
   to public
   using (bucket_id = 'menu-images');
-
--- Verify:
---   select id, name, public from storage.buckets where id in ('menu-data','menu-images');

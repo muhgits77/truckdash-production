@@ -9,7 +9,10 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "storage:setup": "tsx scripts/setup-storage.mts",
+    "storage:test": "tsx scripts/test-menu-upload.ts",
+    "storage:e2e": "tsx scripts/e2e-publish.mts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

@@ -13,7 +13,13 @@
  */
 
 import type { MenuItem, ScheduleDay, TruckState } from "./truck-state";
-import { getSupabase, getSupabaseUrl, isSupabaseConfigured } from "./supabase";
+import {
+  ensureFreshSession,
+  getAuthStatus,
+  getSupabase,
+  getSupabaseUrl,
+  isSupabaseConfigured,
+} from "./supabase";
 import {
   fetchMenuJson,
   menuJsonFullPath,
@@ -44,7 +50,13 @@ const PENDING_SYNC_KEY = "truckdash.supabase.pendingSync";
 const PUBLISHED_VERSION = 1;
 
 export const DEFAULT_TRUCK_ID =
-  (import.meta.env.VITE_DEFAULT_TRUCK_ID as string | undefined)?.trim() || "cluckin-chaos";
+  (
+    (typeof import.meta !== "undefined" && import.meta.env
+      ? (import.meta.env.VITE_DEFAULT_TRUCK_ID as string | undefined)
+      : undefined) ||
+    (typeof process !== "undefined" ? process.env.VITE_DEFAULT_TRUCK_ID : undefined) ||
+    "cluckin-chaos"
+  ).trim() || "cluckin-chaos";
 
 export const DEFAULT_PUBLISHED: PublishedPayload = {
   truckName: "",
@@ -212,6 +224,8 @@ export async function publishToStorage(
   const publicUrl = menuJsonPublicUrl(id);
   const supabaseHost = getSupabaseUrl();
 
+  await ensureFreshSession();
+  const auth = await getAuthStatus();
   console.info("[publishService] ═══ Supabase Storage publish START ═══", {
     supabaseHost,
     truckId: id,
@@ -220,19 +234,36 @@ export async function publishToStorage(
     menuItems: published.menu.length,
     scheduleDays: published.schedule.length,
     special: published.special?.slice(0, 80),
+    auth: {
+      signedIn: auth.signedIn,
+      email: auth.email,
+      userId: auth.userId,
+      hasJwt: auth.hasJwt,
+      keyType: auth.keyType,
+      tokenKind: auth.tokenKind,
+    },
   });
 
   // 1) Full menu + schedule JSON → menu-data/{id}/menu.json
   const initialJson = storedJsonFromPayload(id, published);
   let upload = await uploadMenuJson(id, initialJson);
 
-  console.info("[publishService] ✓ menu.json in Supabase Storage", {
+  if (!upload.listedInBucket || !upload.verified) {
+    throw new Error(
+      `Publish incomplete for ${targetPath}: listedInBucket=${upload.listedInBucket} publicVerified=${upload.verified}. ` +
+        `Object must exist at ${targetPath} with public access.`,
+    );
+  }
+
+  console.info("[publishService] ✓ menu.json in Supabase Storage (list + public verified)", {
     supabaseHost,
     truckId: id,
     fullPath: upload.fullPath,
     publicUrl: upload.publicUrl,
     publicReadable: upload.verified,
     listedInBucket: upload.listedInBucket,
+    objectId: upload.objectId,
+    listedBytes: upload.listedBytes,
     menuItems: initialJson.menu.length,
     scheduleDays: initialJson.schedule.length,
   });
@@ -440,7 +471,7 @@ export async function publishData(
     return {
       published: uploaded,
       source: "storage",
-      message: `Published to Supabase Storage: ${fullPath}`,
+      message: `Published to Supabase Storage: ${fullPath} (listed + public verified)`,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Cloud publish failed";
@@ -495,29 +526,99 @@ export function buildPublishPayloadFromState(
 // ── Owner auth ───────────────────────────────────────────────────────────────
 
 export async function getOwnerSessionEmail(): Promise<string | null> {
-  const supabase = getSupabase();
-  if (!supabase) return null;
-  const { data } = await supabase.auth.getSession();
-  return data.session?.user?.email ?? null;
+  const status = await getAuthStatus();
+  return status.email;
 }
 
 export async function signInOwner(email: string, password: string): Promise<void> {
   const supabase = getSupabase();
   if (!supabase) throw new Error("Supabase is not configured.");
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw new Error(error.message);
+
+  const trimmed = email.trim();
+  console.info("[publishService] sign-in START", {
+    email: trimmed,
+    supabaseHost: getSupabaseUrl(),
+  });
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: trimmed,
+    password,
+  });
+  if (error) {
+    console.error("[publishService] sign-in FAILED", {
+      email: trimmed,
+      message: error.message,
+      status: error.status,
+    });
+    throw new Error(error.message);
+  }
+
+  let accessToken = data.session?.access_token?.trim() ?? "";
+  let refreshToken = data.session?.refresh_token?.trim() ?? "";
+
+  // Persist session explicitly so Storage uploads pick up the JWT immediately
+  if (accessToken && refreshToken) {
+    const { data: setData, error: setErr } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    if (setErr) {
+      console.warn("[publishService] setSession warning", setErr.message);
+    } else if (setData.session?.access_token) {
+      accessToken = setData.session.access_token;
+      refreshToken = setData.session.refresh_token ?? refreshToken;
+    }
+  }
+
+  if (!accessToken) {
+    // One more read in case the client persisted the session asynchronously
+    const { data: again } = await supabase.auth.getSession();
+    accessToken = again.session?.access_token?.trim() ?? "";
+  }
+
+  if (!accessToken) {
+    console.error("[publishService] sign-in returned no session", {
+      email: trimmed,
+      userId: data.user?.id,
+    });
+    throw new Error(
+      "Signed in but no session was returned. Confirm your email if required, then try again.",
+    );
+  }
+  const status = await getAuthStatus();
+  console.info("[publishService] sign-in OK — session JWT ready for Storage uploads", {
+    email: status.email,
+    userId: status.userId,
+    hasJwt: status.hasJwt,
+    tokenKind: status.tokenKind,
+    expiresAt: status.expiresAt,
+    accessTokenLen: accessToken.length,
+  });
+
   await flushPendingCloudSync();
 }
 
 export async function signUpOwner(email: string, password: string): Promise<void> {
   const supabase = getSupabase();
   if (!supabase) throw new Error("Supabase is not configured.");
-  const { error } = await supabase.auth.signUp({ email, password });
-  if (error) throw new Error(error.message);
+  const trimmed = email.trim();
+  console.info("[publishService] sign-up START", { email: trimmed });
+  const { data, error } = await supabase.auth.signUp({ email: trimmed, password });
+  if (error) {
+    console.error("[publishService] sign-up FAILED", { email: trimmed, message: error.message });
+    throw new Error(error.message);
+  }
+  console.info("[publishService] sign-up OK", {
+    email: trimmed,
+    userId: data.user?.id,
+    session: Boolean(data.session),
+    needsEmailConfirm: !data.session,
+  });
 }
 
 export async function signOutOwner(): Promise<void> {
   const supabase = getSupabase();
   if (!supabase) return;
+  console.info("[publishService] sign-out");
   await supabase.auth.signOut();
 }

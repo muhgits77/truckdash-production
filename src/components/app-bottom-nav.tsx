@@ -1,10 +1,12 @@
 /**
  * Shared mobile bottom navigation — premium, cohesive with dark mode.
  * High-contrast ink tokens (never washed-out green-on-green).
+ * Pro tools (Live Map, Calendar, Flyer Studio) carry subtle premium markers.
  */
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import { BuyFullVersionButton } from "./buy-full-version-button";
+import { ProBadge } from "./pro-badge";
 import { isDemoMode } from "@/lib/demo-mode";
 
 type NavItem = {
@@ -13,6 +15,8 @@ type NavItem = {
   to?: string;
   match?: (path: string) => boolean;
   icon: React.ReactNode;
+  /** Advanced Pro feature — gold micro-dot on the tab */
+  pro?: boolean;
 };
 
 const PRIMARY: NavItem[] = [
@@ -36,6 +40,7 @@ const PRIMARY: NavItem[] = [
     to: "/live-map",
     match: (p) => p.startsWith("/live-map"),
     icon: <IconLive />,
+    pro: true,
   },
   {
     id: "cal",
@@ -43,12 +48,25 @@ const PRIMARY: NavItem[] = [
     to: "/calendar",
     match: (p) => p.startsWith("/calendar"),
     icon: <IconCal />,
+    pro: true,
   },
 ];
 
-const MORE_LINKS: { label: string; to: string; hint: string; emoji: string }[] = [
+const MORE_LINKS: {
+  label: string;
+  to: string;
+  hint: string;
+  emoji: string;
+  pro?: boolean;
+}[] = [
   { label: "Menu", to: "/?tab=menu", hint: "Edit items & prices", emoji: "🍽" },
-  { label: "Flyer Studio", to: "/?tab=flyer", hint: "Social posts & QR", emoji: "✦" },
+  {
+    label: "Flyer Studio",
+    to: "/?tab=flyer",
+    hint: "Social posts & QR",
+    emoji: "✦",
+    pro: true,
+  },
   { label: "My Listings", to: "/listings", hint: "Public profile card", emoji: "★" },
   { label: "Catering", to: "/?tab=catering", hint: "Inquiries & packages", emoji: "◇" },
   { label: "Public website", to: "/website", hint: "Customer preview", emoji: "↗" },
@@ -99,23 +117,33 @@ export function AppBottomNav() {
                     <Link
                       to={l.to}
                       onClick={() => setMoreOpen(false)}
-                      className="flex items-center gap-3.5 px-5 py-3.5 hover:bg-[color:var(--surface-2)] transition active:scale-[0.99]"
+                      className="flex items-center gap-3.5 px-5 py-3.5 transition active:scale-[0.99] hover:bg-[color:var(--surface-2)]"
                     >
                       <span
-                        className="size-10 shrink-0 grid place-items-center rounded-2xl text-sm bg-[color:var(--surface-2)] border border-[color:var(--border)]"
+                        className={[
+                          "size-10 shrink-0 grid place-items-center rounded-2xl text-sm border transition-colors",
+                          l.pro
+                            ? "bg-gradient-to-br from-[#d4a437]/15 to-[color:var(--surface-2)] border-[#c48a3a]/25 text-brand-orange"
+                            : "bg-[color:var(--surface-2)] border-[color:var(--border)]",
+                        ].join(" ")}
                         aria-hidden
                       >
                         {l.emoji}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-bold text-[color:var(--td-ink)] tracking-tight">
-                          {l.label}
+                        <span className="flex items-center gap-2">
+                          <span className="block text-sm font-bold text-[color:var(--td-ink)] tracking-tight">
+                            {l.label}
+                          </span>
+                          {l.pro && <ProBadge size="xs" />}
                         </span>
                         <span className="text-[11px] text-[color:var(--td-ink-muted)]">
                           {l.hint}
                         </span>
                       </span>
-                      <span className="text-brand-orange text-base font-semibold">→</span>
+                      <span className="text-brand-orange text-base font-semibold transition-transform duration-200 group-hover:translate-x-0.5">
+                        →
+                      </span>
                     </Link>
                   </li>
                 ))}
@@ -140,13 +168,20 @@ export function AppBottomNav() {
               <Link
                 key={it.id}
                 to={it.to!}
-                className={`flex flex-1 flex-col items-center gap-1 py-2 px-1 rounded-2xl transition min-w-0 ${
+                className={`relative flex flex-1 flex-col items-center gap-1 py-2 px-1 rounded-2xl transition-all duration-200 min-w-0 ${
                   active
-                    ? "text-brand-orange bg-brand-orange/10 dark:bg-brand-orange/15"
+                    ? it.pro
+                      ? "text-brand-orange bg-gradient-to-b from-brand-gold/15 to-brand-orange/10 dark:from-brand-gold/20 dark:to-brand-orange/15"
+                      : "text-brand-orange bg-brand-orange/10 dark:bg-brand-orange/15"
                     : "text-[color:var(--td-ink-muted)] hover:text-brand-orange"
                 }`}
               >
-                <span className={active ? "scale-105" : ""}>{it.icon}</span>
+                {it.pro && !active && <span className="pro-nav-dot" aria-hidden />}
+                <span
+                  className={`transition-transform duration-200 ${active ? "scale-105" : "group-hover:scale-[1.03]"}`}
+                >
+                  {it.icon}
+                </span>
                 <span className="text-[9px] font-bold uppercase tracking-wider truncate max-w-full">
                   {it.label}
                 </span>

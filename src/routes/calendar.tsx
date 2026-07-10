@@ -147,7 +147,7 @@ function CalendarPage() {
   };
 
   return (
-    <PageShell title="Calendar" eyebrow="Events & markets">
+    <PageShell title="Calendar" eyebrow="Events & markets" pro>
       <TipCard>
         <p className="td-section-label mb-1.5">How to use Calendar</p>
         <p className="text-sm leading-relaxed text-[color:var(--td-ink)]">
@@ -159,12 +159,12 @@ function CalendarPage() {
         </p>
       </TipCard>
 
-      <section className="td-card td-card-pad">
+      <section className="td-card td-card-pad pro-feature-surface">
         <div className="flex items-center justify-between gap-3 mb-5">
           <button
             type="button"
             onClick={() => setCursor((c) => addMonths(c, -1))}
-            className="size-10 rounded-xl border border-[color:var(--border)] font-bold text-[color:var(--td-ink)] bg-[color:var(--surface-2)]"
+            className="size-10 rounded-xl border border-[color:var(--border)] font-bold text-[color:var(--td-ink)] bg-[color:var(--surface-2)] transition-all duration-200 hover:border-brand-gold/40 active:scale-95"
             aria-label="Previous month"
           >
             ‹
@@ -175,7 +175,7 @@ function CalendarPage() {
           <button
             type="button"
             onClick={() => setCursor((c) => addMonths(c, 1))}
-            className="size-10 rounded-xl border border-[color:var(--border)] font-bold text-[color:var(--td-ink)] bg-[color:var(--surface-2)]"
+            className="size-10 rounded-xl border border-[color:var(--border)] font-bold text-[color:var(--td-ink)] bg-[color:var(--surface-2)] transition-all duration-200 hover:border-brand-gold/40 active:scale-95"
             aria-label="Next month"
           >
             ›
@@ -202,11 +202,11 @@ function CalendarPage() {
                   setSelected(day);
                   setDraft((d) => ({ ...d, date: format(day, "yyyy-MM-dd") }));
                 }}
-                className={`aspect-square rounded-xl text-sm font-semibold relative transition ${
+                className={`aspect-square rounded-xl text-sm font-semibold relative transition-all duration-200 active:scale-[0.96] ${
                   sel
-                    ? "bg-brand-orange text-white shadow-md shadow-brand-orange/20"
+                    ? "bg-brand-orange text-white shadow-md shadow-brand-orange/20 ring-2 ring-brand-gold/35 ring-offset-1 ring-offset-[color:var(--surface)]"
                     : inMonth
-                      ? "bg-[color:var(--surface-2)] text-[color:var(--td-ink)] hover:border-brand-orange/30 border border-transparent"
+                      ? "bg-[color:var(--surface-2)] text-[color:var(--td-ink)] hover:border-brand-gold/35 border border-transparent"
                       : "text-[color:var(--td-ink-muted)] opacity-45"
                 }`}
               >

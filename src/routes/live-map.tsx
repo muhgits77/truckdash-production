@@ -560,7 +560,7 @@ function LiveMapPage() {
   const scheduleSource = (id: string) => pins.find((p) => p.id === id)?.source;
 
   return (
-    <PageShell title="Live Map" eyebrow="Command center" live={isLive}>
+    <PageShell title="Live Map" eyebrow="Command center" live={isLive} pro>
       {isDemoMode && <DemoInlineNotice message={DEMO_FEATURE_MESSAGES.map_edit} />}
 
       <TipCard>
@@ -582,7 +582,7 @@ function LiveMapPage() {
         </p>
       </TipCard>
 
-      <section className="td-card overflow-hidden">
+      <section className="td-card overflow-hidden pro-feature-surface">
         <div
           ref={mapEl}
           className="td-leaflet-map w-full h-[min(56vh,360px)] min-h-[280px] bg-[#e8e2d4] dark:bg-[#0c1c15] z-0"

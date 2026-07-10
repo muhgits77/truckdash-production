@@ -1,15 +1,13 @@
 /**
  * License chrome for the app shell:
- * - Valid key → subtle “Licensed to [Customer]” strip
+ * - Valid key → subtle “Licensed to [Customer]” strip (Pro polish when paid)
  * - Missing key → compact unlicensed banner with purchase link
  *
  * Key comes from build-time VITE_LICENSE_KEY only (no localStorage).
+ * Layout stays compact so the rest of the app is never crowded.
  */
-import {
-  LICENSE_CONTACT_URL,
-  LICENSE_PURCHASE_MESSAGE,
-  resolveLicense,
-} from "@/lib/license";
+import { LICENSE_CONTACT_URL, LICENSE_PURCHASE_MESSAGE, resolveLicense } from "@/lib/license";
+import { ProBadge } from "./pro-badge";
 
 /**
  * Root-level license chrome. Mount once in the root layout.
@@ -21,18 +19,18 @@ export function LicenseChrome() {
     return (
       <div
         role="status"
-        aria-label={`Licensed to ${status.customer}`}
-        className="license-licensed print:hidden relative z-[55] border-b border-[color:var(--border)]"
+        aria-label={`Licensed to ${status.customer} — TruckDash Pro`}
+        className="license-licensed pro-licensed print:hidden relative z-[55] border-b border-[color:var(--border)]"
         style={{
-          background: "color-mix(in srgb, var(--surface) 94%, transparent)",
+          background:
+            "linear-gradient(90deg, color-mix(in srgb, var(--surface) 96%, #d4a437) 0%, color-mix(in srgb, var(--surface) 94%, transparent) 40%, color-mix(in srgb, var(--surface) 96%, #1a3d2e) 100%)",
         }}
       >
-        <div className="mx-auto max-w-3xl px-3 sm:px-4 py-1 flex items-center justify-center gap-2">
-          <p className="text-[11px] sm:text-[12px] font-medium text-[color:var(--td-ink-muted)]">
+        <div className="mx-auto max-w-3xl px-3 sm:px-4 py-1.5 flex items-center justify-center gap-2.5">
+          <ProBadge size="xs" title="TruckDash Pro license" />
+          <p className="text-[11px] sm:text-[12px] font-medium text-[color:var(--td-ink-muted)] truncate">
             Licensed to{" "}
-            <span className="font-semibold text-[color:var(--td-ink)]">
-              {status.customer}
-            </span>
+            <span className="font-semibold text-[color:var(--td-ink)]">{status.customer}</span>
           </p>
         </div>
       </div>

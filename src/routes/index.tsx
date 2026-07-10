@@ -52,6 +52,7 @@ import { useDemoGuard } from "@/hooks/use-demo-guard";
 import { AppBottomNav } from "@/components/app-bottom-nav";
 import { BuyFullVersionButton, BuyFullVersionCard } from "@/components/buy-full-version-button";
 import { DemoInlineNotice } from "@/components/demo-banner";
+import { ProBadge } from "@/components/pro-badge";
 import { ThemeToggle } from "@/hooks/use-theme";
 import { DEMO_FEATURE_MESSAGES, isDemoMode } from "@/lib/demo-mode";
 
@@ -869,7 +870,10 @@ function SocialFlyerHero({
             "linear-gradient(145deg, color-mix(in srgb, var(--brand-orange) 12%, var(--surface)) 0%, var(--surface) 55%)",
         }}
       >
-        <p className="td-section-label">Social studio</p>
+        <div className="flex items-center gap-2">
+          <p className="td-section-label mb-0">Social studio</p>
+          <ProBadge size="xs" />
+        </div>
         <h2 className="font-display text-2xl tracking-tight text-[color:var(--td-ink)] leading-snug">
           Kentucky flyers, one-tap share
         </h2>
@@ -946,7 +950,7 @@ function SocialFlyerHero({
         <button
           type="button"
           onClick={onOpenStudio}
-          className="w-full py-3.5 rounded-2xl bg-brand-deep text-white dark:bg-[#c5d9cc] dark:text-[#0f2419] font-bold text-sm"
+          className="w-full py-3.5 rounded-2xl bg-brand-deep text-white dark:bg-[#c5d9cc] dark:text-[#0f2419] font-bold text-sm transition-all duration-200 active:scale-[0.98] hover:brightness-110"
         >
           Open full Flyer Studio →
         </button>
@@ -1165,8 +1169,9 @@ function CommandCenterLinks() {
       to: "/live-map" as const,
       label: "Live Map",
       hint: "Go live + pins",
+      pro: true,
       icon: (
-        <span className="size-10 rounded-2xl bg-brand-orange/12 text-brand-orange flex items-center justify-center">
+        <span className="size-10 rounded-2xl bg-brand-orange/12 text-brand-orange flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
           <span className="size-2.5 rounded-full bg-brand-orange shadow-[0_0_0_4px_rgba(184,114,44,0.2)]" />
         </span>
       ),
@@ -1175,8 +1180,9 @@ function CommandCenterLinks() {
       to: "/calendar" as const,
       label: "Calendar",
       hint: "Events & fairs",
+      pro: true,
       icon: (
-        <span className="size-10 rounded-2xl bg-brand-green/8 dark:bg-white/8 text-brand-green flex items-center justify-center">
+        <span className="size-10 rounded-2xl bg-brand-green/8 dark:bg-white/8 text-brand-green flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
           <CalendarIcon className="size-4.5" />
         </span>
       ),
@@ -1185,6 +1191,7 @@ function CommandCenterLinks() {
       to: "/listings" as const,
       label: "Listings",
       hint: "Public profile",
+      pro: false,
       icon: (
         <span className="size-10 rounded-2xl bg-brand-gold/15 text-brand-green flex items-center justify-center text-sm font-bold">
           ★
@@ -1194,18 +1201,31 @@ function CommandCenterLinks() {
   ];
   return (
     <section className="td-card td-card-pad">
-      <p className="td-section-label mb-3">Command center</p>
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <p className="td-section-label mb-0">Command center</p>
+        <span className="text-[10px] font-medium text-[color:var(--td-ink-muted)]">
+          Map &amp; calendar are Pro
+        </span>
+      </div>
       <div className="grid grid-cols-3 gap-2.5">
         {items.map((it) => (
           <Link
             key={it.to}
             to={it.to}
-            className="flex flex-col items-center gap-2.5 rounded-2xl bg-[color:var(--surface-2)] border border-[color:var(--border)] py-4 px-2 active:scale-[0.98] transition hover:border-brand-orange/30"
+            className={[
+              "group flex flex-col items-center gap-2.5 rounded-2xl py-4 px-2 active:scale-[0.98] transition-all duration-200",
+              it.pro
+                ? "bg-[color:var(--surface-2)] border border-[#c48a3a]/22 hover:border-[#c48a3a]/45 hover:shadow-[0_6px_18px_rgba(184,114,44,0.1)]"
+                : "bg-[color:var(--surface-2)] border border-[color:var(--border)] hover:border-brand-orange/30",
+            ].join(" ")}
           >
             {it.icon}
             <span className="text-center">
-              <span className="block text-[11px] font-bold text-[color:var(--td-ink)] tracking-tight">
-                {it.label}
+              <span className="flex items-center justify-center gap-1">
+                <span className="block text-[11px] font-bold text-[color:var(--td-ink)] tracking-tight">
+                  {it.label}
+                </span>
+                {it.pro && <ProBadge size="xs" className="!px-1 !py-px !text-[7px]" />}
               </span>
               <span className="block text-[10px] text-[color:var(--td-ink-muted)] mt-0.5">
                 {it.hint}
@@ -1261,9 +1281,12 @@ function QuickActions({
       <button
         type="button"
         onClick={onOpenFlyer}
-        className="flex flex-col items-center justify-center gap-2.5 td-card p-4 active:scale-[0.98]"
+        className="relative flex flex-col items-center justify-center gap-2.5 td-card p-4 active:scale-[0.98] border-[#c48a3a]/20 hover:border-[#c48a3a]/40 transition-all duration-200"
       >
-        <div className="size-11 rounded-2xl bg-brand-gold/18 flex items-center justify-center text-brand-orange">
+        <span className="absolute top-2 right-2">
+          <ProBadge size="xs" className="!px-1 !py-px !text-[7px]" />
+        </span>
+        <div className="size-11 rounded-2xl bg-brand-gold/18 flex items-center justify-center text-brand-orange transition-transform duration-200 group-hover:scale-105">
           <SparklesIcon className="size-5" />
         </div>
         <span className="text-xs font-semibold text-[color:var(--td-ink)]">Flyer</span>
@@ -1770,18 +1793,21 @@ function FlyerSection({
     }
   };
 
+  const isStudio = standalone || socialFocus;
+
   return (
     <section className="space-y-4">
-      <div className="flex justify-between items-baseline gap-3">
-        <h3 className="font-display text-lg tracking-tight text-[color:var(--td-ink)]">
-          {standalone || socialFocus ? "Flyer Studio" : "Daily Flyer"}
+      <div className="flex justify-between items-center gap-3">
+        <h3 className="font-display text-lg tracking-tight text-[color:var(--td-ink)] inline-flex items-center gap-2 min-w-0">
+          <span className="truncate">{isStudio ? "Flyer Studio" : "Daily Flyer"}</span>
+          {isStudio && <ProBadge size="xs" />}
         </h3>
         <span className="text-[11px] text-brand-orange font-bold uppercase tracking-wider shrink-0">
           Live preview
         </span>
       </div>
 
-      {(standalone || socialFocus) && (
+      {isStudio && (
         <p className="text-sm text-[color:var(--td-ink-muted)] leading-relaxed -mt-1">
           Kentucky templates · photoreal food hero · scannable QR · captions ready for Facebook
           &amp; Stories.
@@ -1796,7 +1822,7 @@ function FlyerSection({
       <TemplatePicker
         value={state.template}
         onChange={(t) => setState({ ...state, template: t })}
-        featuredFirst={socialFocus || standalone}
+        featuredFirst={isStudio}
       />
 
       <BackgroundPicker
@@ -1804,7 +1830,7 @@ function FlyerSection({
         onChange={(b) => setState({ ...state, background: b })}
       />
 
-      {(standalone || socialFocus) && (
+      {isStudio && (
         <>
           <QrPreviewCard state={state} setState={setState} />
           <FlyerCustomizer state={state} setState={setState} />
@@ -1828,7 +1854,12 @@ function FlyerSection({
         type="button"
         onClick={() => void shareNative()}
         disabled={busy !== null}
-        className="w-full bg-brand-orange text-white font-bold py-4 rounded-2xl shadow-lg shadow-brand-orange/25 active:scale-[0.98] transition disabled:opacity-60"
+        className={[
+          "w-full text-white font-bold py-4 rounded-2xl active:scale-[0.98] transition-all duration-200 disabled:opacity-60",
+          isStudio
+            ? "bg-gradient-to-b from-[#c9843a] to-brand-orange shadow-lg shadow-brand-orange/30 hover:from-[#d49248] hover:to-[#c47a30]"
+            : "bg-brand-orange shadow-lg shadow-brand-orange/25",
+        ].join(" ")}
       >
         {busy === "share"
           ? "Preparing flyer…"
@@ -1837,7 +1868,7 @@ function FlyerSection({
             : `One-tap share · ${SHARE_FORMATS.find((f) => f.id === state.shareFormat)?.label ?? "Flyer"}`}
       </button>
 
-      <div className={`grid gap-2 ${socialFocus || standalone ? "grid-cols-2" : "grid-cols-3"}`}>
+      <div className={`grid gap-2 ${isStudio ? "grid-cols-2" : "grid-cols-3"}`}>
         <ShareChip
           label={busy === "png" ? "Rendering…" : isDemoMode ? "Download PNG 🔒" : "Download PNG"}
           onClick={() => void downloadPng()}
@@ -1848,7 +1879,7 @@ function FlyerSection({
           onClick={() => void shareFacebook()}
           disabled={busy !== null}
         />
-        {(socialFocus || standalone) && (
+        {isStudio && (
           <ShareChip
             label={busy === "ig" ? "…" : isDemoMode ? "Stories 🔒" : "Stories pack"}
             onClick={() => void shareStoriesReady()}

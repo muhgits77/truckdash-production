@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ThemeProvider } from "../hooks/use-theme";
 import { DemoBanner } from "../components/demo-banner";
+import { LicenseChrome } from "../components/license-chrome";
 
 function NotFoundComponent() {
   return (
@@ -166,10 +167,11 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         {/*
-          Demo banner is client-only after hydrate (see DemoBanner).
+          Demo / license chrome is client-resolved after hydrate (localStorage).
           Do not branch on browser-only APIs here — that causes hydration mismatches.
         */}
         <DemoBanner />
+        <LicenseChrome />
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
       </ThemeProvider>

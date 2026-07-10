@@ -8,6 +8,9 @@ interface ImportMetaEnv {
   /** Public demo showcase toggle (true/false). Alias: VITE_DEMO_MODE */
   readonly NEXT_PUBLIC_DEMO_MODE?: string;
   readonly VITE_DEMO_MODE?: string;
+  /** Per-customer license key (TD1.…). Alias: NEXT_PUBLIC_LICENSE_KEY */
+  readonly VITE_LICENSE_KEY?: string;
+  readonly NEXT_PUBLIC_LICENSE_KEY?: string;
 }
 
 interface ImportMeta {

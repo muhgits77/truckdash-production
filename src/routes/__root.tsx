@@ -167,8 +167,8 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         {/*
-          Demo / license chrome is client-resolved after hydrate (localStorage).
-          Do not branch on browser-only APIs here — that causes hydration mismatches.
+          DemoBanner is client-resolved after hydrate (sessionStorage).
+          LicenseChrome uses build-time VITE_LICENSE_KEY only.
         */}
         <DemoBanner />
         <LicenseChrome />

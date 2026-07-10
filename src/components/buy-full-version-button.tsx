@@ -2,6 +2,8 @@
  * Sales CTAs + pricing plans — open the Bluegrass Digital Forge contact form
  * (same as Contact / Get a Quote on bluegrassdigitalforge.com).
  * No mailto — no email client / xdg-open dialog.
+ *
+ * Brand: premium Kentucky soul — deep green, bourbon amber, cream, warm walnut.
  */
 import {
   DEMO_BUY_LABEL,
@@ -25,17 +27,58 @@ function BuyLink({
   size = "md",
   className = "",
   plan,
+  variant = "default",
 }: {
   label: string;
   size?: Size;
   className?: string;
   /** Optional plan hint for the sales form (query string). */
   plan?: "starter" | "pro" | "addon" | "contact";
+  /** Pro CTA uses gold-on-deep-green for premium conversion. */
+  variant?: "default" | "pro";
 }) {
   const href =
     plan && plan !== "contact"
       ? `${DEMO_CONTACT_URL}?plan=${plan}`
       : DEMO_CONTACT_URL;
+
+  if (variant === "pro") {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Contact Bluegrass Digital Forge — open contact form"
+        className={[
+          "group relative inline-flex w-full items-center justify-center gap-2",
+          "rounded-2xl px-5 py-4 text-[15px] font-bold tracking-wide",
+          "text-[#1a3d2e]",
+          "bg-gradient-to-b from-[#e8c45a] via-[#d4a437] to-[#c4922e]",
+          "shadow-[0_4px_0_#8a6a1a,0_12px_28px_rgba(212,164,55,0.35)]",
+          "hover:from-[#f0d06a] hover:via-[#e0b040] hover:to-[#d4a437]",
+          "active:translate-y-[2px] active:shadow-[0_2px_0_#8a6a1a,0_6px_16px_rgba(212,164,55,0.3)]",
+          "transition-all duration-200",
+          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d4a437]",
+          className,
+        ].join(" ")}
+      >
+        <span
+          className="absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent"
+          aria-hidden
+        />
+        <span aria-hidden className="text-[13px] opacity-90">
+          ✦
+        </span>
+        {label}
+        <span
+          aria-hidden
+          className="text-[12px] opacity-70 transition-transform duration-200 group-hover:translate-x-0.5"
+        >
+          →
+        </span>
+      </a>
+    );
+  }
 
   return (
     <a
@@ -98,6 +141,28 @@ const ADDONS = [
   { name: "White-Label / Multi-Truck License", price: "Contact us" },
 ] as const;
 
+function FeatureCheck({ children }: { children: React.ReactNode }) {
+  return (
+    <li className="flex gap-2.5 leading-snug">
+      <span
+        className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-[#1a3d2e]/10 text-[#1a3d2e] dark:bg-[#d4a437]/15 dark:text-[#e4bc52]"
+        aria-hidden
+      >
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="block">
+          <path
+            d="M2 5.2L4.1 7.3L8 2.8"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </span>
+      <span>{children}</span>
+    </li>
+  );
+}
+
 /** Full pricing section for home / demo sales. */
 export function BuyFullVersionCard({ className = "" }: { className?: string }) {
   if (!isDemoMode) return null;
@@ -158,51 +223,105 @@ export function BuyFullVersionCard({ className = "" }: { className?: string }) {
         </div>
       </article>
 
-      {/* Pro */}
-      <article className="mt-3 rounded-2xl border-2 border-brand-orange/50 bg-gradient-to-b from-brand-orange/10 to-[color:var(--surface)] p-4 relative overflow-hidden">
-        <div className="absolute top-3 right-3">
-          <span className="inline-flex items-center rounded-full bg-brand-orange text-white text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 shadow-sm">
+      {/* ── Pro — Most Popular (premium highlight) ───────────────────────── */}
+      <article
+        className="relative mt-4 overflow-hidden rounded-[1.35rem] border border-[#c48a3a]/40 dark:border-[#d4a437]/35"
+        style={{
+          background:
+            "linear-gradient(165deg, color-mix(in srgb, #fffdf6 92%, #d4a437) 0%, var(--surface) 42%, color-mix(in srgb, var(--surface) 94%, #1a3d2e) 100%)",
+          boxShadow:
+            "0 1px 0 color-mix(in srgb, #d4a437 35%, transparent), 0 14px 40px rgba(26, 61, 46, 0.12), 0 4px 12px rgba(184, 114, 44, 0.08)",
+        }}
+        aria-labelledby="pro-plan-heading"
+      >
+        {/* Deep green top ribbon */}
+        <div
+          className="relative flex items-center justify-between gap-2 px-4 py-2.5"
+          style={{
+            background: "linear-gradient(90deg, #1a3d2e 0%, #243f32 50%, #1a3d2e 100%)",
+          }}
+        >
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#e8d5a3]/90">
+            Full Bluegrass Command Center
+          </p>
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#d4a437] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-[#1a3d2e] shadow-sm">
+            <span aria-hidden className="text-[8px]">
+              ★
+            </span>
             Most Popular
           </span>
         </div>
-        <div className="flex items-start justify-between gap-2 pr-16 sm:pr-20">
-          <div>
-            <h3 className="font-display text-lg tracking-tight text-[color:var(--td-ink)]">Pro</h3>
-            <p className="text-[12px] font-semibold text-brand-orange mt-0.5">
-              The full Bluegrass Command Center
+
+        <div className="p-4 pt-5 sm:p-5">
+          {/* Title + price block */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <h3
+                id="pro-plan-heading"
+                className="font-display text-[1.65rem] leading-none tracking-tight text-[color:var(--td-ink)]"
+              >
+                Pro
+              </h3>
+              <p className="mt-1.5 text-[13px] font-medium leading-snug text-[color:var(--td-ink-muted)]">
+                Everything you need to run multiple days, events, and a live website.
+              </p>
+            </div>
+
+            {/* Clean price hierarchy: was → now → save */}
+            <div
+              className="shrink-0 rounded-2xl border border-[#c48a3a]/25 bg-[color:var(--surface)] px-4 py-3 text-left sm:min-w-[9.5rem] sm:text-right"
+              style={{
+                boxShadow: "inset 0 1px 0 color-mix(in srgb, #d4a437 20%, transparent)",
+              }}
+            >
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[color:var(--td-ink-muted)]">
+                Launch price
+              </p>
+              <p className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0 sm:justify-end">
+                <span
+                  className="text-[13px] font-semibold tabular-nums text-[color:var(--td-ink-muted)] line-through decoration-[#a1281e]/50"
+                  aria-label={`Was ${DEMO_PRICE_PRO}`}
+                >
+                  {DEMO_PRICE_PRO}
+                </span>
+                <span
+                  className="font-display text-[1.85rem] font-bold leading-none tabular-nums text-[#1a3d2e] dark:text-[#e4bc52]"
+                  aria-label={`Now ${DEMO_PRICE_PRO_LAUNCH}`}
+                >
+                  {DEMO_PRICE_PRO_LAUNCH}
+                </span>
+              </p>
+              <p className="mt-1.5">
+                <span className="inline-flex items-center rounded-full bg-[#1a3d2e] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#f5efe1] dark:bg-[#d4a437] dark:text-[#1a3d2e]">
+                  Save $500
+                </span>
+              </p>
+              <p className="mt-1.5 text-[10px] font-medium text-[color:var(--td-ink-muted)]">
+                one-time · lifetime updates
+              </p>
+            </div>
+          </div>
+
+          {/* Features */}
+          <ul className="mt-5 space-y-2.5 text-[13px] text-[color:var(--td-ink-muted)]">
+            {PRO_FEATURES.map((f) => (
+              <FeatureCheck key={f}>{f}</FeatureCheck>
+            ))}
+          </ul>
+
+          {/* Best for */}
+          <p className="mt-4 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-2)] px-3 py-2.5 text-[12px] leading-relaxed text-[color:var(--td-ink-muted)]">
+            <span className="font-semibold text-[color:var(--td-ink)]">Best for:</span> Established
+            trucks like Bluegrass Kitchen running multiple days + events.
+          </p>
+
+          {/* CTA */}
+          <div className="mt-5">
+            <BuyLink label="Buy Now — Pro" plan="pro" variant="pro" />
+            <p className="mt-2.5 text-center text-[11px] leading-snug text-[color:var(--td-ink-muted)]">
+              Opens our secure contact form · no payment taken here · honest local service
             </p>
           </div>
-          <p className="shrink-0 text-right">
-            <span className="block text-[11px] line-through text-[color:var(--td-ink-muted)] tabular-nums">
-              {DEMO_PRICE_PRO}
-            </span>
-            <span className="font-display text-2xl font-bold text-[color:var(--td-ink)] tabular-nums">
-              {DEMO_PRICE_PRO_LAUNCH}
-            </span>
-            <span className="block text-[10px] font-semibold uppercase tracking-wider text-[color:var(--td-ink-muted)]">
-              launch offer
-            </span>
-          </p>
-        </div>
-        <ul className="mt-3 space-y-1.5 text-sm text-[color:var(--td-ink-muted)]">
-          {PRO_FEATURES.map((f) => (
-            <li key={f} className="flex gap-2 leading-snug">
-              <span className="text-brand-orange shrink-0" aria-hidden>
-                ·
-              </span>
-              <span>{f}</span>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-3 text-[12px] text-[color:var(--td-ink-muted)]">
-          <span className="font-semibold text-[color:var(--td-ink)]">Best for:</span> Established
-          trucks like Bluegrass Kitchen running multiple days + events.
-        </p>
-        <p className="mt-2 text-[11px] font-semibold text-brand-orange">
-          Save $500 with launch offer
-        </p>
-        <div className="mt-4">
-          <BuyLink label="Buy Now" size="lg" plan="pro" />
         </div>
       </article>
 

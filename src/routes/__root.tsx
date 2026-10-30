@@ -10,6 +10,8 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import { APP_ENABLED } from "../lib/app-availability";
+import { HoldingPage } from "../components/holding-page";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ThemeProvider } from "../hooks/use-theme";
 import { DemoBanner } from "../components/demo-banner";
@@ -75,60 +77,77 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
+// Shown while the app is shelved: generic title, no app branding, kept out of search.
+const HOLDING_HEAD = {
+  meta: [
+    { charSet: "utf-8" },
+    { name: "viewport", content: "width=device-width, initial-scale=1" },
+    { title: "Not available | Bluegrass Digital Forge" },
+    { name: "robots", content: "noindex, nofollow" },
+  ],
+  links: [{ rel: "icon", href: "/favicon.ico", type: "image/x-icon" }],
+};
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { name: "theme-color", content: "#b8722c" },
-      { name: "mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
-      { name: "apple-mobile-web-app-title", content: "TruckDash" },
-      { title: "TruckDash — Food Truck Dashboard & Flyer Studio" },
-      {
-        name: "description",
-        content:
-          "The mobile HQ for food truck owners. Update location, hours & menu, then design and share a beautiful flyer with a real QR code.",
-      },
-      { property: "og:title", content: "TruckDash — Food Truck Dashboard & Flyer Studio" },
-      {
-        property: "og:description",
-        content:
-          "The mobile HQ for food truck owners. Update location, hours & menu, then design and share a beautiful flyer with a real QR code.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "TruckDash — Food Truck Dashboard & Flyer Studio" },
-      {
-        name: "twitter:description",
-        content:
-          "The mobile HQ for food truck owners. Update location, hours & menu, then design and share a beautiful flyer with a real QR code.",
-      },
-      {
-        property: "og:image",
-        content:
-          "https://id-preview--58991d74-931b-4bef-bb57-6e09504e9fbb.lovable.app/icon-512.png",
-      },
-      {
-        name: "twitter:image",
-        content:
-          "https://id-preview--58991d74-931b-4bef-bb57-6e09504e9fbb.lovable.app/icon-512.png",
-      },
-    ],
-    links: [
-      { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
-      { rel: "apple-touch-icon", href: "/icon-512.png" },
-      { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,600;1,9..144,700&family=Inter:wght@400;500;600;700&display=swap",
-      },
-    ],
-  }),
+  head: () =>
+    APP_ENABLED
+      ? {
+          meta: [
+            { charSet: "utf-8" },
+            {
+              name: "viewport",
+              content: "width=device-width, initial-scale=1, viewport-fit=cover",
+            },
+            { name: "theme-color", content: "#b8722c" },
+            { name: "mobile-web-app-capable", content: "yes" },
+            { name: "apple-mobile-web-app-capable", content: "yes" },
+            { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+            { name: "apple-mobile-web-app-title", content: "TruckDash" },
+            { title: "TruckDash — Food Truck Dashboard & Flyer Studio" },
+            {
+              name: "description",
+              content:
+                "The mobile HQ for food truck owners. Update location, hours & menu, then design and share a beautiful flyer with a real QR code.",
+            },
+            { property: "og:title", content: "TruckDash — Food Truck Dashboard & Flyer Studio" },
+            {
+              property: "og:description",
+              content:
+                "The mobile HQ for food truck owners. Update location, hours & menu, then design and share a beautiful flyer with a real QR code.",
+            },
+            { property: "og:type", content: "website" },
+            { name: "twitter:card", content: "summary_large_image" },
+            { name: "twitter:title", content: "TruckDash — Food Truck Dashboard & Flyer Studio" },
+            {
+              name: "twitter:description",
+              content:
+                "The mobile HQ for food truck owners. Update location, hours & menu, then design and share a beautiful flyer with a real QR code.",
+            },
+            {
+              property: "og:image",
+              content:
+                "https://id-preview--58991d74-931b-4bef-bb57-6e09504e9fbb.lovable.app/icon-512.png",
+            },
+            {
+              name: "twitter:image",
+              content:
+                "https://id-preview--58991d74-931b-4bef-bb57-6e09504e9fbb.lovable.app/icon-512.png",
+            },
+          ],
+          links: [
+            { rel: "stylesheet", href: appCss },
+            { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+            { rel: "apple-touch-icon", href: "/icon-512.png" },
+            { rel: "manifest", href: "/manifest.webmanifest" },
+            { rel: "preconnect", href: "https://fonts.googleapis.com" },
+            { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+            {
+              rel: "stylesheet",
+              href: "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,600;1,9..144,700&family=Inter:wght@400;500;600;700&display=swap",
+            },
+          ],
+        }
+      : HOLDING_HEAD,
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -146,8 +165,19 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
-        <HeadContent />
+        {APP_ENABLED && <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />}
+        {APP_ENABLED ? (
+          <HeadContent />
+        ) : (
+          <>
+            {/* Static head while shelved so page-level titles/descriptions don't leak through */}
+            <meta charSet="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <meta name="robots" content="noindex, nofollow" />
+            <title>Not available | Bluegrass Digital Forge</title>
+            <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+          </>
+        )}
       </head>
       <body
         className="bg-brand-sand text-[color:var(--td-ink)] antialiased"
@@ -162,6 +192,8 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  if (!APP_ENABLED) return <HoldingPage />;
 
   return (
     <QueryClientProvider client={queryClient}>

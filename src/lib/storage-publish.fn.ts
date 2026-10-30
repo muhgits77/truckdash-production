@@ -5,6 +5,7 @@
  * Secrets load only inside the handler via `.server.ts` (never in the browser).
  */
 import { createServerFn } from "@tanstack/react-start";
+import { APP_ENABLED } from "./app-availability";
 
 export type ServerStorageUploadInput = {
   bucket: string;
@@ -44,6 +45,8 @@ export const serverUploadStorageObject = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data }): Promise<ServerStorageUploadResult> => {
+    // App is shelved on public builds — refuse uploads so the shared Storage data can't be changed.
+    if (!APP_ENABLED) throw new Error("This app isn't available right now.");
     // Dynamic import: server-only module with fs .env fallback (not shipped to client)
     const { getServerSupabaseConfig } = await import("./supabase-server-config.server");
     const { url, key, keyKind } = getServerSupabaseConfig();
@@ -51,9 +54,7 @@ export const serverUploadStorageObject = createServerFn({ method: "POST" })
     const encodedPath = data.path.split("/").map(encodeURIComponent).join("/");
     const uploadUrl = `${url}/storage/v1/object/${encodeURIComponent(data.bucket)}/${encodedPath}`;
 
-    const payload: BodyInit = data.base64
-      ? Buffer.from(data.body, "base64")
-      : data.body;
+    const payload: BodyInit = data.base64 ? Buffer.from(data.body, "base64") : data.body;
 
     const headers: Record<string, string> = {
       apikey: key,
@@ -68,10 +69,7 @@ export const serverUploadStorageObject = createServerFn({ method: "POST" })
       path: data.path,
       keyKind,
       contentType: data.contentType,
-      bytes:
-        typeof payload === "string"
-          ? payload.length
-          : (payload as Buffer).byteLength,
+      bytes: typeof payload === "string" ? payload.length : (payload as Buffer).byteLength,
       host: url.replace(/^https?:\/\//, ""),
     });
 
@@ -86,7 +84,12 @@ export const serverUploadStorageObject = createServerFn({ method: "POST" })
 
     let res = await fetch(uploadUrl, { method: "POST", headers, body: payload });
     if (!res.ok && (res.status === 400 || res.status === 409 || res.status === 405)) {
-      const peek = (await res.clone().text().catch(() => "")).slice(0, 200);
+      const peek = (
+        await res
+          .clone()
+          .text()
+          .catch(() => "")
+      ).slice(0, 200);
       if (!/authorization/i.test(peek) || !/required property/i.test(peek)) {
         res = await fetch(uploadUrl, { method: "PUT", headers, body: payload });
       }
